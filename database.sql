@@ -74,34 +74,41 @@ CREATE INDEX idx_freshwater_year ON freshwater_data(year);
 -- 3. DOMAIN: Healthcare Systems
 -- =================================================================
 
-CREATE TABLE healthcare_indicator_details (
-    indicator_id INT AUTO_INCREMENT PRIMARY KEY,
-    indicator_name VARCHAR(255) NOT NULL UNIQUE,
-    indicator_code VARCHAR(50) NOT NULL UNIQUE,
-    source_note TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+CREATE TABLE health_indicator_details (
+    indicator_id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    indicator_name        VARCHAR(100) NOT NULL,
+    indicator_description TEXT,
+    unit_symbol           VARCHAR(20),
+    UNIQUE (indicator_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE healthcare_data (
-    data_id INT AUTO_INCREMENT PRIMARY KEY,
-    country_id INT NOT NULL,
-    indicator_id INT NOT NULL,
-    year INT NOT NULL,
-    value DECIMAL(20,10),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT chk_healthcare_year CHECK (year BETWEEN 1900 AND 2100),
-    CONSTRAINT fk_healthcare_country FOREIGN KEY (country_id)
+CREATE TABLE health_system (
+    row_id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    country_id      INT UNSIGNED NOT NULL,
+    indicator_id    INT UNSIGNED NOT NULL,
+    indicator_value DECIMAL(20,10),
+    year            INT NOT NULL,
+    source_notes    VARCHAR(255),
+
+    CONSTRAINT chk_health_year CHECK (year BETWEEN 1900 AND 2100),
+
+    CONSTRAINT fk_health_country
+        FOREIGN KEY (country_id)
         REFERENCES countries(country_id)
         ON DELETE CASCADE,
-    CONSTRAINT fk_healthcare_indicator FOREIGN KEY (indicator_id)
-        REFERENCES healthcare_indicator_details(indicator_id)
+
+    CONSTRAINT fk_health_indicator
+        FOREIGN KEY (indicator_id)
+        REFERENCES health_indicator_details(indicator_id)
         ON DELETE CASCADE,
-    UNIQUE(country_id, indicator_id, year)
+
+    UNIQUE (country_id, indicator_id, year),
+    INDEX idx_health_country   (country_id),
+    INDEX idx_health_indicator (indicator_id),
+    INDEX idx_health_year      (year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_healthcare_year ON healthcare_data(year);
+CREATE INDEX idx_health_year ON health_system(year);
 
 -- =================================================================
 -- 4. DOMAIN: Greenhouse Gas Emissions
