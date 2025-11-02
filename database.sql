@@ -1,3 +1,4 @@
+
 /*
  ============================================================================
  World Development Indicators (WDI) Project - Master SQL Schema
@@ -115,34 +116,41 @@ CREATE INDEX idx_health_year ON health_system(year);
 -- =================================================================
 
 CREATE TABLE ghg_indicator_details (
-    indicator_id INT AUTO_INCREMENT PRIMARY KEY,
-    indicator_name VARCHAR(255) NOT NULL UNIQUE,
-    indicator_code VARCHAR(50) NOT NULL UNIQUE,
-    source_note TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    indicator_id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    indicator_name        VARCHAR(255) NOT NULL,
+    indicator_code        VARCHAR(50) NOT NULL,
+    source_note           TEXT,
+    UNIQUE (indicator_name),
+    UNIQUE (indicator_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE ghg_data (
-    data_id INT AUTO_INCREMENT PRIMARY KEY,
-    country_id INT NOT NULL,
-    indicator_id INT NOT NULL,
-    year INT NOT NULL,
-    value DECIMAL(20,10),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    row_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    country_id     INT UNSIGNED NOT NULL,
+    indicator_id   INT UNSIGNED NOT NULL,
+    indicator_value DECIMAL(20,10),
+    year           INT NOT NULL,
+    source_notes   VARCHAR(255),
+
     CONSTRAINT chk_ghg_year CHECK (year BETWEEN 1900 AND 2100),
-    CONSTRAINT fk_ghg_country FOREIGN KEY (country_id)
+
+    CONSTRAINT fk_ghg_country
+        FOREIGN KEY (country_id)
         REFERENCES countries(country_id)
         ON DELETE CASCADE,
-    CONSTRAINT fk_ghg_indicator FOREIGN KEY (indicator_id)
+
+    CONSTRAINT fk_ghg_indicator
+        FOREIGN KEY (indicator_id)
         REFERENCES ghg_indicator_details(indicator_id)
         ON DELETE CASCADE,
-    UNIQUE(country_id, indicator_id, year)
+
+    UNIQUE (country_id, indicator_id, year),
+    INDEX idx_ghg_country   (country_id),
+    INDEX idx_ghg_indicator (indicator_id),
+    INDEX idx_ghg_year      (year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_ghg_year ON ghg_data(year);
-
 -- =================================================================
 -- 5. DOMAIN: Sustainable Energy
 -- =================================================================
@@ -235,24 +243,3 @@ VALUES
 
 SELECT * FROM countries;
 SELECT * FROM healthcare_indicator_details;
-
-
--- Added sustainability tables by Salih Sefer
-CREATE TABLE sustainability_indicator_details (
-    sus_indicator_id INT PRIMARY KEY,
-    indicator_code VARCHAR(50),
-    indicator_name VARCHAR(255),
-    indicator_description TEXT
-);
-
-CREATE TABLE sustainability_data (
-    data_id INT PRIMARY KEY,
-    country_id INT,
-    sus_indicator_id INT,
-    year INT,
-    indicator_value FLOAT,
-    source_note VARCHAR(255),
-
-    FOREIGN KEY (country_id) REFERENCES countries(country_id),
-    FOREIGN KEY (sus_indicator_id) REFERENCES sustainability_indicator_details(sus_indicator_id)
-);
