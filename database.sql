@@ -235,3 +235,24 @@ VALUES
 
 SELECT * FROM countries;
 SELECT * FROM healthcare_indicator_details;
+
+
+-- Added sustainability tables by Salih Sefer
+CREATE TABLE sustainability_indicator_details (
+    sus_indicator_id INT PRIMARY KEY,
+    indicator_code VARCHAR(50),
+    indicator_name VARCHAR(255),
+    indicator_description TEXT
+);
+
+CREATE TABLE sustainability_data (
+    data_id INT PRIMARY KEY,
+    country_id INT,
+    sus_indicator_id INT,
+    year INT,
+    indicator_value FLOAT,
+    source_note VARCHAR(255),
+
+    FOREIGN KEY (country_id) REFERENCES countries(country_id),
+    FOREIGN KEY (sus_indicator_id) REFERENCES sustainability_indicator_details(sus_indicator_id)
+);
