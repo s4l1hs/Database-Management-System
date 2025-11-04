@@ -39,37 +39,52 @@ CREATE TABLE countries (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =================================================================
--- 2. DOMAIN: Freshwater Usage
+-- 2. DOMAIN: Freshwater Usage (MUHAMMET TUNCER, 820230314)
 -- =================================================================
 
 CREATE TABLE freshwater_indicator_details (
-    indicator_id INT AUTO_INCREMENT PRIMARY KEY,
-    indicator_name VARCHAR(255) NOT NULL UNIQUE,
-    indicator_code VARCHAR(50) NOT NULL UNIQUE,
-    source_note TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    indicator_id          INT AUTO_INCREMENT PRIMARY KEY,
+    indicator_name        VARCHAR(255) NOT NULL UNIQUE,
+    indicator_code        VARCHAR(50)  NOT NULL UNIQUE,
+    indicator_description TEXT,
+    unit_of_measure       VARCHAR(100),
+    source_note           TEXT,
+    created_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at            TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE freshwater_data (
-    data_id INT AUTO_INCREMENT PRIMARY KEY,
-    country_id INT NOT NULL,
+    data_id      INT AUTO_INCREMENT PRIMARY KEY,
+    country_id   INT NOT NULL,
     indicator_id INT NOT NULL,
-    year INT NOT NULL,
-    value DECIMAL(20,10),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    year         INT NOT NULL,
+    value        DECIMAL(20,10),
+    source_notes VARCHAR(255) NULL,
+    created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- Kısıtlamalar (Constraints)
     CONSTRAINT chk_freshwater_year CHECK (year BETWEEN 1900 AND 2100),
-    CONSTRAINT fk_freshwater_country FOREIGN KEY (country_id)
+    
+    CONSTRAINT fk_freshwater_country 
+        FOREIGN KEY (country_id)
         REFERENCES countries(country_id)
         ON DELETE CASCADE,
-    CONSTRAINT fk_freshwater_indicator FOREIGN KEY (indicator_id)
+        
+    CONSTRAINT fk_freshwater_indicator 
+        FOREIGN KEY (indicator_id)
         REFERENCES freshwater_indicator_details(indicator_id)
         ON DELETE CASCADE,
-    UNIQUE(country_id, indicator_id, year)
+    
+        UNIQUE(country_id, indicator_id, year)
+    
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX idx_freshwater_year ON freshwater_data(year);
+ 
+CREATE INDEX idx_freshwater_country ON freshwater_data(country_id);
+CREATE INDEX idx_freshwater_indicator ON freshwater_data(indicator_id);
+CREATE INDEX idx_freshwater_year ON freshwater_data(year); 
+CREATE INDEX idx_freshwater_country_indicator ON freshwater_data(country_id, indicator_id);
 
 -- =================================================================
 -- 3. DOMAIN: Healthcare Systems
@@ -257,6 +272,15 @@ VALUES
 
 ('Renewable electricity output(% of total electricity output)', 'EG.ELC.RNEW.ZS.OUTPUT', 'Electricity generated from renewable resources as a percentage of total electricity generated.', 'Percent (%)');
 
+
+INSERT INTO freshwater_indicator_details (indicator_name, indicator_code, indicator_description, unit_of_measure)
+VALUES
+
+('Annual freshwater withdrawals, total (% of internal resources)', 'ER.H2O.FWTL.ZS', 'Total freshwater withdrawn in a given year, expressed as a percentage of total renewable internal freshwater resources.', 'Percent (%)'),
+('Renewable internal freshwater resources per capita (cubic meters)', 'ER.H2O.RNEW.PC', 'The amount of internal renewable freshwater resources available per person.', 'Cubic meters');
+
+
 SELECT * FROM countries;
 SELECT * FROM health_indicator_details;
 SELECT * FROM energy_indicator_details;
+SELECT * FROM freshwater_indicator_details
