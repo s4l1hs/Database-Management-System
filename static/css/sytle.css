@@ -1,0 +1,54 @@
+:root {
+  --main-bg-color: #86A8E7;
+  --main-text-color: #fff;
+  --user-icon-color: #D16BA5;
+}
+
+.nav-pills {
+  --bs-nav-pills-border-radius: var(--bs-border-radius) !important;
+  --bs-nav-pills-link-active-color: var(--main-text-color) !important;
+  --bs-nav-pills-link-active-bg: var(--main-bg-color) !important;
+}
+
+a {
+  color: inherit !important;/* Inherit color from the parent */
+  text-decoration: none !important;/* Remove underline */
+}
+
+body {
+  background-color: var(--main-bg-color);
+}
+
+.user-icon {
+  color: var(--user-icon-color);
+}
+.p-01 {
+  padding:0.1rem;
+}
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.modal-sheet {
+  display: flex;
+  align-items: center; /* Center vertically */
+  justify-content: center; /* Center horizontally */
+  height: 100%;
+}
+
+.modal-dialog {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+}
+
+.modal-content {
+  width: 100%; /* Optional: Adjust width as needed */
+  max-width: 500px; /* Optional: Adjust max-width as needed */
+}
+
+.me-auto {
+  margin-right: 15px !important;
+}
