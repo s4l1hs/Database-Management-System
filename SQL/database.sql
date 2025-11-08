@@ -36,7 +36,7 @@ CREATE TABLE countries (
     income_group VARCHAR(50),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 -- =================================================================
 -- 2. DOMAIN: Freshwater Usage (MUHAMMET TUNCER, 820230314)
@@ -96,7 +96,7 @@ CREATE TABLE health_indicator_details (
     indicator_description TEXT,
     unit_symbol           VARCHAR(20),
     UNIQUE (indicator_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 CREATE TABLE health_system (
     row_id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -118,11 +118,8 @@ CREATE TABLE health_system (
         REFERENCES health_indicator_details(indicator_id)
         ON DELETE CASCADE,
 
-    UNIQUE (country_id, indicator_id, year),
-    INDEX idx_health_country   (country_id),
-    INDEX idx_health_indicator (indicator_id),
-    INDEX idx_health_year      (year)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    UNIQUE (country_id, indicator_id, year)
+);
 
 CREATE INDEX idx_health_year ON health_system(year);
 
