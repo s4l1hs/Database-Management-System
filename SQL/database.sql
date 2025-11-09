@@ -140,7 +140,7 @@ CREATE TABLE ghg_data (
     row_id         INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     country_id     INT UNSIGNED NOT NULL,
     indicator_id   INT UNSIGNED NOT NULL,
-    indicator_value DECIMAL(20,10),
+indicator_value DECIMAL(12,4),
     year           INT NOT NULL,
     source_notes   VARCHAR(255),
 
