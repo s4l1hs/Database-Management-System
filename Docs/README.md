@@ -5,4 +5,4 @@
 # Empty data can be specified as NA/NULL.
 # Use English characters.
 # Foreign key values ​​must be correct.
-# Don't use single quotes (''), otherwise it will be passed as strings.
+# Don't use single quotes (''), otherwise it will be passed as strings
