@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}Greenhouse Gas{% endblock %}
+
+{% block content %}
+<h1>Greenhouse Gas Emissions</h1>
+
+{% if rows %}
+<table border="1">
+    <tr>
+        <th>Country</th>
+        <th>Year</th>
+        <th>Emissions</th>
+    </tr>
+    {% for row in rows %}
+    <tr>
+        <td>{{ row.country }}</td>
+        <td>{{ row.year }}</td>
+        <td>{{ row.total_emissions }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No data found.</p>
+{% endif %}
+
+{% endblock %}
