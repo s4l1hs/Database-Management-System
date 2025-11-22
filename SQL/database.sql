@@ -26,7 +26,7 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- =================================================================
 -- Main 'countries' table referenced by all domain data tables.
--- This table will be populated manually (as before).
+-- This table will be populated manually (Gülbahar Karabaş).
 -- =================================================================
 CREATE TABLE countries (
     country_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -86,9 +86,9 @@ CREATE INDEX idx_freshwater_indicator ON freshwater_data(indicator_id);
 CREATE INDEX idx_freshwater_year ON freshwater_data(year); 
 CREATE INDEX idx_freshwater_country_indicator ON freshwater_data(country_id, indicator_id);
 
--- =================================================================
--- 3. DOMAIN: Healthcare Systems
--- =================================================================
+-- ================================================================
+-- 3. DOMAIN: Healthcare Systems (Gülbahar Karabaş)
+-- ================================================================
 
 CREATE TABLE health_indicator_details (
     indicator_id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
