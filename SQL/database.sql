@@ -63,7 +63,7 @@ CREATE TABLE freshwater_data (
     created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    -- Kısıtlamalar (Constraints)
+   
     CONSTRAINT chk_freshwater_year CHECK (year BETWEEN 1900 AND 2100),
     
     CONSTRAINT fk_freshwater_country 
