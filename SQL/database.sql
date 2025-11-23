@@ -1,34 +1,12 @@
 SET FOREIGN_KEY_CHECKS = 0;
 
-CREATE TABLE regions (
-    region_id INT AUTO_INCREMENT PRIMARY KEY,
-    region_name VARCHAR(100) NOT NULL UNIQUE
-);
-
-INSERT INTO regions (region_name) VALUES 
-('East Asia & Pacific'), ('Europe & Central Asia'), 
-('Latin America & Caribbean'), ('Middle East & North Africa'), 
-('North America'), ('South Asia'), ('Sub-Saharan Africa');
-
--- Countries -> Depends on Regions
 CREATE TABLE countries (
     country_id INT AUTO_INCREMENT PRIMARY KEY,
     country_name VARCHAR(100) NOT NULL UNIQUE,
     country_code VARCHAR(3) NOT NULL UNIQUE,
-    region_id INT, 
-    region VARCHAR(100),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    
-    FOREIGN KEY (region_id) REFERENCES regions(region_id)
-);
-
-INSERT INTO countries (country_name, country_code, region, region_id) VALUES
-('Turkey', 'TUR', 'Europe & Central Asia', 2),
-('Germany', 'DEU', 'Europe & Central Asia', 2),
-('United States', 'USA', 'North America', 5),
-('China', 'CHN', 'East Asia & Pacific', 1);
-
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
 CREATE TABLE students (
     student_id INT AUTO_INCREMENT PRIMARY KEY,
     student_number VARCHAR(20) NOT NULL UNIQUE,
@@ -41,7 +19,7 @@ INSERT INTO students (student_number, full_name, team_no) VALUES
 ('820230334', 'Atahan Evintan', 1),
 ('820230326', 'Fatih Serdar Çakmak', 1),
 ('820230314', 'Muhammet Tuncer', 1),
-('123456789', 'Gülbahar Karabaş', 1);
+('150210085', 'Gülbahar Karabaş', 1);
 
 -- Audit Logs 
 CREATE TABLE audit_logs (
