@@ -1,29 +1,123 @@
-from flask import Blueprint, render_template
-from db import get_db
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from App.db import db
+from App.models import SustainabilityData, Countries, Region, SustainabilityIndicatorDetails, Student, AuditLog
 
 sustainability_bp = Blueprint("sustainability", __name__)
 
-@sustainability_bp.route("/", methods=["GET"])
+# =========================================================
+# 1. READ - COMPLEX JOIN 
+# =========================================================
+@sustainability_bp.route("/sustainability", methods=["GET"])
 def list_sustainability():
-    db = get_db()
-    cur = db.cursor(dictionary=True)
+    try:
+        query = db.session.query(
+            SustainabilityData, Countries, Region, SustainabilityIndicatorDetails
+        ).join(
+            Countries, SustainabilityData.country_id == Countries.country_id
+        ).outerjoin(
+            Region, Countries.region_id == Region.region_id
+        ).join(
+            SustainabilityIndicatorDetails, SustainabilityData.sus_indicator_id == SustainabilityIndicatorDetails.sus_indicator_id
+        ).limit(100).all()
 
-    cur.execute("""
-        SELECT s.data_id,
-               c.country_name,
-               c.region,
-               c.country_code,
-               i.indicator_name,
-               i.indicator_code,
-               i.source_note,
-               s.year,
-               s.value
-        FROM sustainability_data s
-        JOIN countries c ON c.country_id = s.country_id
-        JOIN sustainability_indicator_details i ON i.indicator_id = s.indicator_id
-        ORDER BY c.country_name, i.indicator_name, s.year
-    """)
+        return render_template('sustainability_list.html', rows=query)
+    except Exception as e:
+        return f"Veritabanı Hatası: {e}"
 
-    rows = cur.fetchall()
-    return render_template("sustainability_list.html", rows=rows)
+# =========================================================
+# 2. CREATE  + AUDIT LOG 
+# =========================================================
+@sustainability_bp.route("/sustainability/add", methods=["GET", "POST"])
+def add_sustainability():
+    if request.method == "POST":
+        try:
+            c_id = request.form.get('country_id')
+            i_id = request.form.get('sus_indicator_id')
+            year = request.form.get('year')
+            val = request.form.get('indicator_value')
+            note = request.form.get('source_note')
+            
+            student_id = request.form.get('student_id')
 
+            new_data = SustainabilityData(
+                country_id=c_id,
+                sus_indicator_id=i_id,
+                year=year,
+                indicator_value=val,
+                source_note=note
+            )
+            db.session.add(new_data)
+            db.session.commit()
+            
+            if student_id:
+                log = AuditLog(
+                    student_id=student_id, 
+                    action_type='CREATE', 
+                    table_name='sustainability_data', 
+                    record_id=new_data.data_id
+                )
+                db.session.add(log)
+                db.session.commit()
+
+            return redirect(url_for('sustainability.list_sustainability'))
+        
+        except Exception as e:
+            return f"Ekleme Hatası: {e}"
+
+    return render_template("sustainability_form.html", 
+                           countries=Countries.query.all(), 
+                           indicators=SustainabilityIndicatorDetails.query.all(),
+                           students=Student.query.all(),
+                           action="Add")
+
+# =========================================================
+# 3. UPDATE + AUDIT LOG
+# =========================================================
+@sustainability_bp.route("/sustainability/edit/<int:id>", methods=["GET", "POST"])
+def edit_sustainability(id):
+    record = SustainabilityData.query.get_or_404(id)
+
+    if request.method == "POST":
+        try:
+            record.indicator_value = request.form.get('indicator_value')
+            record.year = request.form.get('year')
+            record.source_note = request.form.get('source_note')
+            
+            student_id = request.form.get('student_id')
+            
+            # Log
+            if student_id:
+                log = AuditLog(
+                    student_id=student_id, 
+                    action_type='UPDATE', 
+                    table_name='sustainability_data', 
+                    record_id=record.data_id
+                )
+                db.session.add(log)
+                db.session.commit()
+
+            db.session.commit()
+
+            return redirect(url_for('sustainability.list_sustainability'))
+        except Exception as e:
+            return f"Güncelleme Hatası: {e}"
+
+    return render_template("sustainability_form.html", 
+                           record=record, 
+                           countries=Countries.query.all(), 
+                           indicators=SustainabilityIndicatorDetails.query.all(),
+                           students=Student.query.all(),
+                           action="Edit")
+
+# =========================================================
+# 4. DELETE 
+# =========================================================
+@sustainability_bp.route("/sustainability/delete/<int:id>", methods=["POST"])
+def delete_sustainability(id):
+    record = SustainabilityData.query.get_or_404(id)
+    try:
+        db.session.delete(record)
+        db.session.commit()
+    except Exception as e:
+        return f"Silme Hatası: {e}"
+    return redirect(url_for('sustainability.list_sustainability'))
