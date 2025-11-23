@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Freshwater Verileri</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Freshwater (Tatlı Su Kullanımı) Veri Listesi</h1>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Ülke</th>
+                <th>Bölge</th>
+                <th>Gösterge (Indicator)</th>
+                <th>Yıl</th>
+                <th>Değer (Value)</th>
+                <th>Birim</th>
+                </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.country_name }} ({{ row.country_code }})</td>
+                <td>{{ row.region }}</td>
+                <td>{{ row.indicator_name }}</td>
+                <td>{{ row.year }}</td>
+                <td>{{ row.value }}</td>
+                <td>{{ row.unit_of_measure }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
