@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from App.db import db
-from App.models import SustainabilityData, Countries, Region, SustainabilityIndicatorDetails, Student, AuditLog
+from App.models import SustainabilityData, Countries, SustainabilityIndicatorDetails, Student, AuditLog
 
 sustainability_bp = Blueprint("sustainability", __name__)
 
@@ -11,11 +11,9 @@ sustainability_bp = Blueprint("sustainability", __name__)
 def list_sustainability():
     try:
         query = db.session.query(
-            SustainabilityData, Countries, Region, SustainabilityIndicatorDetails
+            SustainabilityData, Countries, SustainabilityIndicatorDetails
         ).join(
             Countries, SustainabilityData.country_id == Countries.country_id
-        ).outerjoin(
-            Region, Countries.region_id == Region.region_id
         ).join(
             SustainabilityIndicatorDetails, SustainabilityData.sus_indicator_id == SustainabilityIndicatorDetails.sus_indicator_id
         ).limit(100).all()

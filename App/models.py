@@ -5,14 +5,6 @@ from sqlalchemy.sql import func
 # 1. CORE TABLES AND AUDIT LOGS
 # =========================================================
 
-class Region(db.Model):
-    __tablename__ = 'regions'
-    
-    region_id = db.Column(db.Integer, primary_key=True)
-    region_name = db.Column(db.String(100), unique=True, nullable=False)
-    
-    countries = db.relationship('Countries', backref='region_ref')
-
 class Countries(db.Model):
     __tablename__ = 'countries'
     
@@ -20,7 +12,6 @@ class Countries(db.Model):
     country_name = db.Column(db.String(100), unique=True, nullable=False)
     country_code = db.Column(db.String(3), unique=True, nullable=False)
     
-    region_id = db.Column(db.Integer, db.ForeignKey('regions.region_id'))
     region = db.Column(db.String(100)) 
     created_at = db.Column(db.DateTime, server_default=func.now())
     updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
@@ -39,7 +30,7 @@ class Student(db.Model):
     full_name = db.Column(db.String(100), nullable=False)
     team_no = db.Column(db.Integer, default=1)
     
-    # Öğrencinin logları
+    #Student Logs
     logs = db.relationship('AuditLog', backref='student')
 
 class AuditLog(db.Model):

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Sustainability Data{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3">Sustainability Data</h1>
+    <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-primary">
+      Add New Record
+    </a>
+  </div>
+
+  {% if rows %}
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>#</th>
+            <th>Country</th>
+            <th>Country Code</th>
+            <th>Indicator Name</th>
+            <th>Indicator Code</th>
+            <th>Year</th>
+            <th>Value</th>
+            <th>Source Note</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for data, country, indicator in rows %}
+          <tr>
+            <td>{{ data.data_id }}</td>
+            <td>{{ country.country_name }}</td>
+            <td>{{ country.country_code }}</td>
+            <td>{{ indicator.indicator_name }}</td>
+            <td>{{ indicator.indicator_code }}</td>
+            <td>{{ data.year }}</td>
+            <td>{{ "%.3f"|format(data.indicator_value) if data.indicator_value is not none }}</td>
+            <td>{{ data.source_note }}</td>
+            <td>
+              <a href="{{ url_for('sustainability.edit_sustainability', id=data.data_id) }}" 
+                 class="btn btn-sm btn-outline-secondary">
+                Edit
+              </a>
+              <form action="{{ url_for('sustainability.delete_sustainability', id=data.data_id) }}"
+                    method="post"
+                    style="display:inline-block"
+                    onsubmit="return confirm('Are you sure you want to delete this record?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                  Delete
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="alert alert-info">
+      No sustainability data found.
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

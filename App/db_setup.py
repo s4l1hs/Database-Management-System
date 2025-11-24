@@ -19,7 +19,7 @@ def setup_nuclear():
             conn.execute(text(f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
             
     except Exception as e:
-        print(f"❌ ERROR (Root Connection): {e}")
+        print(f"ERROR (Root Connection): {e}")
         return
 
     engine_db = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}")
@@ -39,9 +39,9 @@ def setup_nuclear():
             conn.commit()
 
     except FileNotFoundError:
-        print(f"❌ HATA: '{SQL_FILE_PATH}' could not be found.")
+        print(f"error:'{SQL_FILE_PATH}' could not be found.")
     except Exception as e:
-        print(f"❌ UNEXPECTED ERROR: {e}")
+        print(f"UNEXPECTED ERROR: {e}")
 
 if __name__ == "__main__":
     setup_nuclear()

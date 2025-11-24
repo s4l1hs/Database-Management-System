@@ -4,8 +4,8 @@ from flask import g
 from flask_sqlalchemy import SQLAlchemy
 import os
 
-# 1. ORM Nesnesi (Yeni Puan Kazandıran Yapı)
-# models.py ve app.py bunu kullanacak.
+# 1. ORM Object 
+# will be used by models.py and app.py.
 db = SQLAlchemy()
 
 # Environment variables will come from .env file

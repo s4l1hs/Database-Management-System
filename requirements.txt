@@ -2,3 +2,4 @@ pandas
 SQLAlchemy
 pymysql
 flask
+flask_sqlalchemy

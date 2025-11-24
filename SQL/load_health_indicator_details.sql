@@ -1,6 +1,6 @@
-USE sustainability;--use your own schema name here
+USE sustainability;
 
-LOAD DATA LOCAL INFILE '../Data/health_indicator_details.csv'
+LOAD DATA LOCAL INFILE '/Users/fahrettin/Desktop/Data-insertion/health_indicator_details.csv'
 INTO TABLE health_indicator_details
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'

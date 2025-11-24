@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Health Indicators{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3">Health Indicators</h1>
+  <a href="{{ url_for('health.add_health') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus"></i> Add New
+  </a>
+</div>
+
+<table class="table table-striped table-hover align-middle">
+  <thead class="table-dark">
+    <tr>
+      <th>#</th>
+      <th>Country</th>
+      <th>Region</th>
+      <th>Code</th>
+      <th>Indicator</th>
+      <th>Unit</th>
+      <th>Year</th>
+      <th>Value</th>
+      <th>Source Notes</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for hs, country, indicator in rows %}
+      <tr>
+        <td>{{ hs.row_id }}</td>
+        <td>{{ country.country_name }}</td>
+        <td>{{ country.region or '-' }}</td>
+        <td>{{ country.country_code }}</td>
+        <td>{{ indicator.indicator_name }}</td>
+        <td>{{ indicator.unit_symbol or '-' }}</td>
+        <td>{{ hs.year }}</td>
+        <td>{{ hs.indicator_value }}</td>
+        <td>{{ hs.source_notes or '' }}</td>
+        <td>
+          <a href="{{ url_for('health.edit_health', id=hs.row_id) }}"
+             class="btn btn-sm btn-outline-secondary">
+            Edit
+          </a>
+          <form
+            action="{{ url_for('health.delete_health', id=hs.row_id) }}"
+            method="post"
+            style="display:inline-block"
+            onsubmit="return confirm('Delete this record?');"
+          >
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+              Delete
+            </button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

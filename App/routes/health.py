@@ -1,69 +1,125 @@
-# App/routes/health.py
-from flask import Blueprint, render_template
-from db import get_db
+from flask import Blueprint, render_template, request, redirect, url_for
+from App.db import db
+from App.models import (HealthSystem,Countries,HealthIndicatorDetails,Student,AuditLog,)
 
-#blueprints
-health_bp = Blueprint("health", __name__) # Blueprint name: health
+health_bp = Blueprint("health", __name__)
 
 
-#list health records with some details of all countries
-@health_bp.route("/", methods=["GET"])
+# READ - LIST + JOIN
+@health_bp.route("/health", methods=["GET"])
 def list_health():
-    db = get_db()
-    cur = db.cursor(dictionary=True)
+    try:
+        rows = (
+            db.session.query(HealthSystem, Countries, HealthIndicatorDetails)
+            .join(Countries, HealthSystem.country_id == Countries.country_id)
+            .join(
+                HealthIndicatorDetails,
+                HealthSystem.health_indicator_id
+                == HealthIndicatorDetails.health_indicator_id,
+            )
+            .limit(100)
+            .all()
+        )
 
-    cur.execute("""
-        SELECT h.row_id,
-               c.country_name,
-               c.region,
-               c.country_code, 
-               i.indicator_name,
-               i.unit_symbol,   
-               h.year,
-               h.indicator_value              
-        FROM health_system h
-        JOIN countries c ON c.country_id = h.country_id
-        JOIN health_indicator_details i ON i.indicator_id = h.indicator_id
-        ORDER BY c.country_name, i.indicator_name, h.year
-    """)
+        return render_template("health_list.html", rows=rows)
+    except Exception as e:
+        return f"Database Error (health): {e}"
 
-    rows = cur.fetchall()
-    return render_template("health_list.html", rows=rows)
 
-#list health records for specific country
-@health_bp.route("/country/<int:country_id>", methods=["GET"])
-def list_health_by_country(country_id):
-    db = get_db()
-    cur = db.cursor(dictionary=True)
+ 
+# CREATE  + AUDIT LOG
+@health_bp.route("/health/add", methods=["GET", "POST"])
+def add_health():
+    if request.method == "POST":
+        try:
+            c_id = request.form.get("country_id")
+            i_id = request.form.get("health_indicator_id")
+            year = request.form.get("year")
+            val = request.form.get("indicator_value")
+            note = request.form.get("source_notes")
+            student_id = request.form.get("student_id")
 
-    cur.execute("""
-        SELECT 
-            h.country_id,
-            c.country_name,
-            c.region,
-            c.country_code,
-            i.indicator_name,
-            i.indicator_description,
-            i.unit_symbol,
-            h.year,
-            h.indicator_value,
-            h.source_notes
-        FROM health_system h
-        JOIN countries c 
-            ON c.country_id = h.country_id
-        JOIN health_indicator_details i 
-            ON i.indicator_id = h.indicator_id
-        WHERE h.country_id = %s
-        ORDER BY h.year, i.indicator_name
-    """, (country_id,))
+            new_data = HealthSystem(
+                country_id=c_id,
+                health_indicator_id=i_id,
+                year=year,
+                indicator_value=val,
+                source_notes=note,
+            )
+            db.session.add(new_data)
+            db.session.commit()
 
-    rows = cur.fetchall()
+            # Audit log
+            if student_id:
+                log = AuditLog(
+                    student_id=student_id,
+                    action_type="CREATE",
+                    table_name="health_system",
+                    record_id=new_data.row_id,
+                )
+                db.session.add(log)
+                db.session.commit()
 
-    country_name = rows[0]["country_name"] if rows else "Unknown Country"
+            return redirect(url_for("health.list_health"))
+
+        except Exception as e:
+            return f"Ekleme Hatası (health): {e}"
 
     return render_template(
-        "health_country.html",
-        rows=rows,
-        country_name=country_name
+        "health_form.html",
+        countries=Countries.query.all(),
+        indicators=HealthIndicatorDetails.query.all(),
+        students=Student.query.all(),
+        action="Add",
+        record=None,
     )
-#other methods will be added soon
+
+
+
+#UPDATE + AUDIT LOG
+@health_bp.route("/health/edit/<int:id>", methods=["GET", "POST"])
+def edit_health(id):
+    record = HealthSystem.query.get_or_404(id)
+
+    if request.method == "POST":
+        try:
+            record.indicator_value = request.form.get("indicator_value")
+            record.year = request.form.get("year")
+            record.source_notes = request.form.get("source_notes")
+            student_id = request.form.get("student_id")
+
+            if student_id:
+                log = AuditLog(
+                    student_id=student_id,
+                    action_type="UPDATE",
+                    table_name="health_system",
+                    record_id=record.row_id,
+                )
+                db.session.add(log)
+
+            db.session.commit()
+
+            return redirect(url_for("health.list_health"))
+
+        except Exception as e:
+            return f"Güncelleme Hatası (health): {e}"
+
+    return render_template(
+        "health_form.html",
+        record=record,
+        countries=Countries.query.all(),
+        indicators=HealthIndicatorDetails.query.all(),
+        students=Student.query.all(),
+        action="Edit",
+    )
+#DELETE
+@health_bp.route("/health/delete/<int:id>", methods=["POST"])
+def delete_health(id):
+    record = HealthSystem.query.get_or_404(id)
+    try:
+        db.session.delete(record)
+        db.session.commit()
+    except Exception as e:
+        return f"Silme Hatası (health): {e}"
+
+    return redirect(url_for("health.list_health"))
