@@ -17,7 +17,6 @@ def list_health():
                 HealthSystem.health_indicator_id
                 == HealthIndicatorDetails.health_indicator_id,
             )
-            .limit(100)
             .all()
         )
 

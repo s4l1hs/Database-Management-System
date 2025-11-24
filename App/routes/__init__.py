@@ -36,23 +36,25 @@ def create_app():
     app.teardown_appcontext(close_db)
 
     # ---------- BLUEPRINTS ----------
-    from App.routes.sustainability import sustainability_bp
+    # from App.routes.sustainability import sustainability_bp
     from App.routes.about import about_bp
-    from App.routes.freshwater import freshwater_bp
+    # from App.routes.freshwater import freshwater_bp
     from App.routes.health import health_bp
-    from App.routes.ghg import ghg_bp
-    from App.routes.energy import energy_bp
+    # from App.routes.ghg import ghg_bp
+    # from App.routes.energy import energy_bp
 
-    app.register_blueprint(sustainability_bp)
+
+    #app.register_blueprint(sustainability_bp)
     app.register_blueprint(about_bp)
-    app.register_blueprint(freshwater_bp)
+    #app.register_blueprint(freshwater_bp)
     app.register_blueprint(health_bp)
-    app.register_blueprint(ghg_bp)
-    app.register_blueprint(energy_bp)
+    #app.register_blueprint(ghg_bp)
+    #app.register_blueprint(energy_bp)
 
     # ---------- ROOT ----------
     @app.route("/")
     def index():
-        return redirect(url_for("sustainability.list_sustainability"))
+        return redirect(url_for("health.list_health"))
+
 
     return app

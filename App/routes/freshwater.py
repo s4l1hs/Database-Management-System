@@ -1,6 +1,5 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
-from App.db import db
-from App.models import FreshwaterData, Countries, FreshwaterIndicatorDetails, Student, AuditLog
+from flask import Blueprint, render_template
+from App.db import get_db
 
 
 freshwater_bp = Blueprint("freshwater", __name__)

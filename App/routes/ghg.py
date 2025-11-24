@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template
-from db import get_db
+from App.db import get_db
 
 ghg_bp = Blueprint("ghg", __name__)
 
