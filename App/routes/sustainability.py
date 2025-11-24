@@ -1,13 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from App.db import db
 from App.models import SustainabilityData, Countries, SustainabilityIndicatorDetails, Student, AuditLog
-
-sustainability_bp = Blueprint("sustainability", __name__)
+from App.routes.login import admin_required #added for admin control
+sustainability_bp = Blueprint("sustainability", __name__, url_prefix="/sustainability")
 
 # =========================================================
 # 1. READ - COMPLEX JOIN 
 # =========================================================
-@sustainability_bp.route("/sustainability", methods=["GET"])
+@sustainability_bp.route("/", methods=["GET"])
 def list_sustainability():
     try:
         query = db.session.query(
@@ -25,7 +25,8 @@ def list_sustainability():
 # =========================================================
 # 2. CREATE  + AUDIT LOG 
 # =========================================================
-@sustainability_bp.route("/sustainability/add", methods=["GET", "POST"])
+@sustainability_bp.route("/add", methods=["GET", "POST"])
+@admin_required
 def add_sustainability():
     if request.method == "POST":
         try:
@@ -71,7 +72,8 @@ def add_sustainability():
 # =========================================================
 # 3. UPDATE + AUDIT LOG
 # =========================================================
-@sustainability_bp.route("/sustainability/edit/<int:id>", methods=["GET", "POST"])
+@sustainability_bp.route("/edit/<int:id>", methods=["GET", "POST"])
+@admin_required
 def edit_sustainability(id):
     record = SustainabilityData.query.get_or_404(id)
 
@@ -110,7 +112,8 @@ def edit_sustainability(id):
 # =========================================================
 # 4. DELETE 
 # =========================================================
-@sustainability_bp.route("/sustainability/delete/<int:id>", methods=["POST"])
+@sustainability_bp.route("/delete/<int:id>", methods=["POST"])
+@admin_required
 def delete_sustainability(id):
     record = SustainabilityData.query.get_or_404(id)
     try:

@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template
 from App.db import get_db
+from App.routes.login import admin_required #added for admin control
 
-ghg_bp = Blueprint("ghg", __name__)
+ghg_bp = Blueprint("ghg", __name__, url_prefix="/ghg")
 
 @ghg_bp.route("/", methods=["GET"])
 def list_ghg():

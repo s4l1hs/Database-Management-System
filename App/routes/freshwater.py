@@ -1,8 +1,10 @@
 from flask import Blueprint, render_template
 from App.db import get_db
+from App.routes.login import admin_required #added for admin control
 
 
-freshwater_bp = Blueprint("freshwater", __name__)
+freshwater_bp = Blueprint("freshwater", __name__, url_prefix="/freshwater")
+
 @freshwater_bp.route("/", methods=["GET"])
 def list_freshwater():
     db = get_db()

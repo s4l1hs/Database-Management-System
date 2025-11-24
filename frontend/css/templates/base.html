@@ -1,40 +1,159 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
+    <title>{% block title %}WDI Project{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>{% block title %}Sustainability Indicators{% endblock %}</title>
-
-    <!-- Bootstrap -->
+    <!-- Bootstrap 5 CSS -->
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
-    <script
-      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
-    ></script>
 
     <!-- Font Awesome -->
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
     />
 
-    <!-- Custom CSS -->
-    <link
-      rel="stylesheet"
-      href="{{ url_for('static', filename='style.css') }}"
-      />
+    {% block extra_head %}{% endblock %}
   </head>
 
-  <body class="bg-light">
+  <body>
 
-    {% include "navbar.html" %}
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid">
 
-    <main class="container mt-5 pt-5">
+        <!-- Logo -->
+        <a class="navbar-brand" href="{{ url_for('dashboard.dashboard') }}">
+          WDI Project
+        </a>
+
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#mainNavbar"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+
+          <!-- Sol Menü -->
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+
+            <!-- Dashboard -->
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint and request.endpoint.startswith('dashboard.') %}active{% endif %}"
+                href="{{ url_for('dashboard.dashboard') }}"
+              >
+                Dashboard
+              </a>
+            </li>
+
+            <!-- Health -->
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint and request.endpoint.startswith('health.') %}active{% endif %}"
+                href="{{ url_for('health.list_health') }}"
+              >
+                Health
+              </a>
+            </li>
+
+            <!-- Sustainability (opsiyonel kapalıysa kırılmaz) -->
+            {% if 'sustainability.list_sustainability' in navbar_endpoints|default([]) %}
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('sustainability.list_sustainability') }}">
+                Sustainability
+              </a>
+            </li>
+            {% endif %}
+
+            <!-- About -->
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint == 'about.about' %}active{% endif %}"
+                href="{{ url_for('about.about') }}"
+              >
+                About
+              </a>
+            </li>
+
+          </ul>
+
+          <!-- Sağ Menü -->
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+
+            {% if session.get("team_no") == 1 %}
+              <!-- Admin login görünümü -->
+              <li class="nav-item me-2">
+                <span class="navbar-text text-light">
+                  ID: {{ session.get("student_number") }}
+                  <span class="badge bg-warning text-dark ms-1">Admin</span>
+                </span>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+              </li>
+
+            {% elif session.get("student_number") %}
+              <!-- Normal kullanıcı login -->
+              <li class="nav-item me-2">
+                <span class="navbar-text text-light">
+                  ID: {{ session.get("student_number") }}
+                </span>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+              </li>
+
+            {% else %}
+              <!-- Login yapılmamış -->
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('auth.login') }}">Login</a>
+              </li>
+            {% endif %}
+
+          </ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <!-- Flash Mesajları -->
+    <div class="container mt-3">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ msg }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mt-3 mb-5">
       {% block content %}{% endblock %}
-    </main>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    ></script>
+
+    {% block extra_js %}{% endblock %}
 
   </body>
 </html>

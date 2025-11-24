@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+  <h1 class="mb-4">WDI Project Dashboard</h1>
+  <p class="text-muted mb-4">
+    View data categories or login as admin to manage the database.
+  </p>
+
+  <div class="mb-4">
+    {% if session.get("team_no")|int == 1 %}
+      <div class="alert alert-success">
+        Logged in as admin (ID: {{ session.get("student_number") }}).
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger mb-3">
+        Logout
+      </a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary mb-3">
+        Admin Login
+      </a>
+    {% endif %}
+  </div>
+
+  <div class="row g-4">
+
+    <!-- Health: ÇALIŞIYOR -->
+    <div class="col-md-4">
+      <a href="{{ url_for('health.list_health') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h4 class="card-title">Health</h4>
+            <p class="text-muted small">
+              Country health system indicators.
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <!-- Sustainability: ŞİMDİLİK PASİF -->
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h4 class="card-title">
+            Sustainability
+            <span class="badge bg-secondary ms-1">Coming soon</span>
+          </h4>
+          <p class="text-muted small">
+            Environmental sustainability metrics.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Energy: ŞİMDİLİK PASİF -->
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h4 class="card-title">
+            Energy
+            <span class="badge bg-secondary ms-1">Coming soon</span>
+          </h4>
+          <p class="text-muted small">
+            Energy production and consumption.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Freshwater: ŞİMDİLİK PASİF -->
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h4 class="card-title">
+            Freshwater
+            <span class="badge bg-secondary ms-1">Coming soon</span>
+          </h4>
+          <p class="text-muted small">
+            Water usage & quality indicators.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- GHG: ŞİMDİLİK PASİF -->
+    <div class="col-md-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h4 class="card-title">
+            GHG (Greenhouse Gas)
+            <span class="badge bg-secondary ms-1">Coming soon</span>
+          </h4>
+          <p class="text-muted small">
+            Greenhouse gas emissions by country.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

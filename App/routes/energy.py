@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template
 from App.db import get_db
+from App.routes.login import admin_required #added for admin control
 
-energy_bp = Blueprint("energy", __name__) 
+energy_bp = Blueprint("energy", __name__, url_prefix="/energy")
 
 # =========================================================
 # 1. READ: Basic List (Route: /energy)

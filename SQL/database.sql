@@ -15,7 +15,7 @@ CREATE TABLE students (
     team_no INT DEFAULT 1
 );
 
-INSERT INTO students (student_number, full_name, team_no) VALUES 
+INSERT INTO students (student_number, full_name, team_no) VALUES --students table used for admin control
 ('820230313', 'Salih Sefer', 1),
 ('820230334', 'Atahan Evintan', 1),
 ('820230326', 'Fatih Serdar Çakmak', 1),

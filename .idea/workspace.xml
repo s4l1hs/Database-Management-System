@@ -4,7 +4,19 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c053198-3e75-491e-a0ae-62dc6ec0e506" name="Changes" comment="" />
+    <list default="true" id="6c053198-3e75-491e-a0ae-62dc6ec0e506" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/routes/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/App/routes/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/routes/energy.py" beforeDir="false" afterPath="$PROJECT_DIR$/App/routes/energy.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/routes/freshwater.py" beforeDir="false" afterPath="$PROJECT_DIR$/App/routes/freshwater.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/routes/ghg.py" beforeDir="false" afterPath="$PROJECT_DIR$/App/routes/ghg.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/routes/health.py" beforeDir="false" afterPath="$PROJECT_DIR$/App/routes/health.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/App/routes/sustainability.py" beforeDir="false" afterPath="$PROJECT_DIR$/App/routes/sustainability.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/SQL/database.sql" beforeDir="false" afterPath="$PROJECT_DIR$/SQL/database.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/css/templates/about.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/css/templates/about.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/css/templates/base.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/css/templates/base.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/css/templates/health_list.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/css/templates/health_list.html" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -12,6 +24,9 @@
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;customColor&quot;: &quot;&quot;,
@@ -22,24 +37,24 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/fahrettin&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "dev",
+    "last_opened_file_path": "/Users/fahrettin",
+    "settings.editor.selected.configurable": "configurable.group.database.main"
   },
-  &quot;keyToStringList&quot;: {
-    &quot;DatabaseDriversLRU&quot;: [
-      &quot;mysql&quot;
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "mysql"
     ],
-    &quot;com.intellij.ide.scratch.LRUPopupBuilder$1/SQL Dialect&quot;: [
-      &quot;MySQL&quot;
+    "com.intellij.ide.scratch.LRUPopupBuilder$1/SQL Dialect": [
+      "MySQL"
     ]
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="database.sql" type="DatabaseScript" editBeforeRun="true" temporary="true" nameIsGenerated="true">
       <script-file value="$PROJECT_DIR$/SQL/database.sql" />
