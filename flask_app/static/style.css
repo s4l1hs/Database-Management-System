@@ -1,0 +1,6 @@
+body { font-family: Arial; }
+ul { list-style: none; padding: 0; }
+li { display: inline; margin-right: 15px; }
+h1 { color: #333; }
+table { border-collapse: collapse; }
+td, th { padding: 4px 8px; border: 1px solid #ccc; }
