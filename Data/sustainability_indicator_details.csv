@@ -1,0 +1,5 @@
+sus_indicator_id,indicator_name,indicator_code,indicator_description
+1,"Adjusted net savings, including particulate emission damage (% of GNI)","NY.ADJ.SVNG.GN.ZS","Net savings minus particulate emission damage."
+2,"Forest area (% of land area)","AG.LND.FRST.ZS","Forest area is land under natural or planted stands of trees."
+3,"Access to electricity (% of population)","EG.ELC.ACCS.ZS","Access to electricity is the percentage of population with access to electricity."
+4,"Renewable energy consumption (% of total final energy consumption)","EG.FEC.RNEW.ZS","The share of renewable energy in total final energy consumption."
