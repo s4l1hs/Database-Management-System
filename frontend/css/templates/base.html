@@ -67,14 +67,15 @@
               </a>
             </li>
 
-            <!-- Sustainability (opsiyonel kapalıysa kırılmaz) -->
-            {% if 'sustainability.list_sustainability' in navbar_endpoints|default([]) %}
+            <!-- Sustainability -->
             <li class="nav-item">
-              <a class="nav-link" href="{{ url_for('sustainability.list_sustainability') }}">
+              <a
+                class="nav-link {% if request.endpoint and request.endpoint.startswith('sustainability.') %}active{% endif %}"
+                href="{{ url_for('sustainability.list_sustainability') }}"
+              >
                 Sustainability
               </a>
             </li>
-            {% endif %}
 
             <!-- About -->
             <li class="nav-item">
