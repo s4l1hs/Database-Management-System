@@ -7,11 +7,10 @@
   <div>
     <h1 class="h3 mb-1">Freshwater Usage Indicators</h1>
     <p class="text-muted mb-0">
-      Country-based freshwater statistics.
+      Country-based freshwater statistics with year and source notes.
     </p>
   </div>
 
-  {# Sadece adminler Add butonunu görsün #}
   {% if session.get("team_no")|int == 1 %}
     <a href="{{ url_for('freshwater.add_freshwater') }}" class="btn btn-primary">
       <i class="fa-solid fa-plus"></i> Add New Record
@@ -37,7 +36,6 @@
     </tr>
   </thead>
   <tbody>
-    {# Python tarafında query 3 tablo çektiği için burada 3 değişkenle karşılıyoruz #}
     {% for fw, country, indicator in rows %}
       <tr>
         <td>{{ fw.data_id }}</td>
