@@ -1,41 +1,77 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Freshwater Data</title>
-    <style>
-        body { font-family: sans-serif; margin: 20px; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-    </style>
-</head>
-<body>
-    <h1>Freshwater Usage Data List</h1>
-    
-    <table>
-        <thead>
-            <tr>
-                <th>Country</th>
-                <th>Region</th>
-                <th>Indicator</th>
-                <th>Year</th>
-                <th>Value</th>
-                <th>Unit</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in rows %}
-            <tr>
-                <td>{{ row.country_name }} ({{ row.country_code }})</td>
-                <td>{{ row.region }}</td>
-                <td>{{ row.indicator_name }}</td>
-                <td>{{ row.year }}</td>
-                <td>{{ row.value }}</td>
-                <td>{{ row.unit_of_measure }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}Freshwater Indicators{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Freshwater Usage Indicators</h1>
+    <p class="text-muted mb-0">
+      Country-based freshwater statistics.
+    </p>
+  </div>
+
+  {# Sadece adminler Add butonunu görsün #}
+  {% if session.get("team_no")|int == 1 %}
+    <a href="{{ url_for('freshwater.add_freshwater') }}" class="btn btn-primary">
+      <i class="fa-solid fa-plus"></i> Add New Record
+    </a>
+  {% endif %}
+</div>
+
+<table class="table table-striped table-hover align-middle">
+  <thead class="table-dark">
+    <tr>
+      <th>#</th>
+      <th>Country</th>
+      <th>Region</th>
+      <th>Code</th>
+      <th>Indicator</th>
+      <th>Unit</th>
+      <th>Year</th>
+      <th>Value</th>
+      <th>Source Notes</th>
+      {% if session.get("team_no")|int == 1 %}
+        <th>Actions</th>
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {# Python tarafında query 3 tablo çektiği için burada 3 değişkenle karşılıyoruz #}
+    {% for fw, country, indicator in rows %}
+      <tr>
+        <td>{{ fw.data_id }}</td>
+        <td>{{ country.country_name }}</td>
+        <td>{{ country.region or '-' }}</td>
+        <td>{{ country.country_code }}</td>
+        <td>{{ indicator.indicator_name }}</td>
+        <td>{{ indicator.unit_of_measure or '-' }}</td>
+        <td>{{ fw.year }}</td>
+        <td>{{ fw.indicator_value }}</td>
+        <td>{{ fw.source_notes or '' }}</td>
+
+        {% if session.get("team_no")|int == 1 %}
+          <td>
+            <a
+              href="{{ url_for('freshwater.edit_freshwater', id=fw.data_id) }}"
+              class="btn btn-sm btn-outline-secondary me-1"
+            >
+              Edit
+            </a>
+            <form
+              action="{{ url_for('freshwater.delete_freshwater', id=fw.data_id) }}"
+              method="post"
+              style="display:inline-block"
+              onsubmit="return confirm('Delete this record?');"
+            >
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                Delete
+              </button>
+            </form>
+          </td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
