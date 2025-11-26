@@ -1,105 +1,138 @@
-from flask import Blueprint, render_template
-from App.db import get_db
-from App.routes.login import admin_required #added for admin control
+from sqlalchemy.exc import IntegrityError
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from App.db import db
+from App.models import EnergyData, Countries, EnergyIndicatorDetails, Student, AuditLog
+from App.routes.login import admin_required
 
 energy_bp = Blueprint("energy", __name__, url_prefix="/energy")
 
-# =========================================================
-# 1. READ: Basic List (Route: /energy)
-# =========================================================
-@energy_bp.route("/energy", methods=["GET"])
-def list_energy_data():
-    """Retrieves all comprehensive energy data for the main list view."""
-    db = get_db()
-    cur = db.cursor(dictionary=True) 
-    
-    cur.execute("""
-        SELECT 
-            e.data_id,                 
-            c.country_name,
-            c.region,
-            c.country_code,
-            i.indicator_name,
-            i.measurement_unit,       
-            e.year,
-            e.indicator_value        
-        FROM energy_data e
-        JOIN countries c ON c.country_id = e.country_id
-        JOIN energy_indicator_details i ON i.energy_indicator_id = e.energy_indicator_id
-        ORDER BY c.country_name, i.indicator_name, e.year
-        LIMIT 200
-    """)
-
-    rows = cur.fetchall()
-    return render_template('energy_list.html', rows=rows)
+# ---------- LIST ----------
+@energy_bp.route("/", methods=["GET"])
+def list_energy():
+    try:
+        rows = (
+            db.session.query(EnergyData, Countries, EnergyIndicatorDetails)
+            .join(Countries, EnergyData.country_id == Countries.country_id)
+            .join(
+                EnergyIndicatorDetails,
+                EnergyData.energy_indicator_id == EnergyIndicatorDetails.energy_indicator_id,
+            )
+            .order_by(Countries.country_name, EnergyIndicatorDetails.indicator_name, EnergyData.year)
+            .all()
+        )
+        return render_template("energy_list.html", rows=rows)
+    except Exception as e:
+        return f"Database Error (energy): {e}"
 
 
-# =========================================================
-# 2. READ: Parametric Filtering (Route: /energy/<int:country_id>)
-# =========================================================
-@energy_bp.route("/energy/<int:country_id>", methods=["GET"])
-def list_energy_by_country(country_id):
-    """Retrieves and displays all Energy data specific to a given country ID."""
-    db = get_db()
-    cur = db.cursor(dictionary=True)
+# ---------- CREATE ----------
+@energy_bp.route("/add", methods=["GET", "POST"])
+@admin_required
+def add_energy():
+    if request.method == "POST":
+        try:
+            c_id = request.form.get("country_id")
+            i_id = request.form.get("energy_indicator_id")
+            year = request.form.get("year")
+            val = request.form.get("indicator_value")
+            note = request.form.get("data_source")
+            student_id = request.form.get("student_id")
 
-    cur.execute("""
-        SELECT 
-            e.data_id,
-            c.country_name,
-            c.region,
-            i.indicator_name,
-            i.measurement_unit,
-            e.year,
-            e.indicator_value
-        FROM energy_data e
-        JOIN countries c ON c.country_id = e.country_id
-        JOIN energy_indicator_details i ON i.energy_indicator_id = e.energy_indicator_id
-        WHERE c.country_id = %s
-        ORDER BY i.indicator_name, e.year
-    """, (country_id,)) 
+            new_data = EnergyData(
+                country_id=c_id,
+                energy_indicator_id=i_id,
+                year=year,
+                indicator_value=val,
+                data_source=note
+            )
+            db.session.add(new_data)
+            db.session.commit()
 
-    rows = cur.fetchall()
-    
-    country_name = rows[0]['country_name'] if rows else "Veri Bulunamayan Ülke"
+            # ---------- AUDIT LOG ----------
+            if student_id:
+                log = AuditLog(
+                    student_id=student_id,
+                    action_type="CREATE",
+                    table_name="energy_data",
+                    record_id=new_data.data_id,
+                )
+                db.session.add(log)
+                db.session.commit()
+
+            flash("Record added successfully.", "success")
+            return redirect(url_for("energy.list_energy"))
+
+        except IntegrityError:
+            db.session.rollback()
+            flash("This country + indicator + year combination already exists!", "danger")
+            return redirect(url_for("energy.add_energy"))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error: {e}", "danger")
+            return redirect(url_for("energy.add_energy"))
 
     return render_template(
-        "energy_country.html", 
-        rows=rows,
-        country_name=country_name
+        "energy_form.html",
+        countries=Countries.query.all(),
+        indicators=EnergyIndicatorDetails.query.all(),
+        students=Student.query.all(),
+        action="Add",
+        record=None,
     )
 
 
-# =========================================================
-# 3. READ: Analytic Analysis (Route: /energy/ranking)
-# =========================================================
-@energy_bp.route("/energy/ranking", methods=["GET"])
-def energy_ranking():
-    """Analyzes and ranks countries based on their average renewable energy consumption."""
-    db = get_db()
-    cur = db.cursor(dictionary=True) 
+# ---------- UPDATE ----------
+@energy_bp.route("/edit/<int:id>", methods=["GET", "POST"])
+@admin_required
+def edit_energy(id):
+    record = EnergyData.query.get_or_404(id)
 
-    cur.execute("""
-        SELECT
-            c.country_name,
-            c.region,
-            AVG(e.indicator_value) AS avg_renewable_consumption 
-        FROM energy_data e
-        JOIN countries c ON c.country_id = e.country_id
-        JOIN energy_indicator_details i ON i.energy_indicator_id = e.energy_indicator_id
-        WHERE 
-            i.indicator_code = 'EG.FEC.RNEW.ZS' 
-        GROUP BY 
-            c.country_name, c.region
-        HAVING 
-            AVG(e.indicator_value) IS NOT NULL 
-        ORDER BY 
-            avg_renewable_consumption DESC
-        LIMIT 20;
-    """)
+    if request.method == "POST":
+        try:
+            record.indicator_value = request.form.get("indicator_value", type=float)
+            record.year = request.form.get("year", type=int)
+            record.data_source = request.form.get("data_source")
+            student_id = request.form.get("student_id")
 
-    ranking_data = cur.fetchall()
-        
-    return render_template('energy_ranking.html', 
-                           analysis_data=ranking_data,
-                           title="Top 20 Renewable Energy Consumers")
+            # Audit Log
+            if student_id:
+                log = AuditLog(
+                    student_id=student_id,
+                    action_type="UPDATE",
+                    table_name="energy_data",
+                    record_id=record.data_id,
+                )
+                db.session.add(log)
+
+            db.session.commit()
+            flash("Record updated successfully.", "success")
+            return redirect(url_for("energy.list_energy"))
+
+        except Exception as e:
+            return f"Update Error (energy): {e}"
+
+    return render_template(
+        "energy_form.html",
+        record=record,
+        countries=Countries.query.all(),
+        indicators=EnergyIndicatorDetails.query.all(),
+        students=Student.query.all(),
+        action="Edit",
+    )
+
+
+# ---------- DELETE ----------
+@energy_bp.route("/delete/<int:id>", methods=["POST"])
+@admin_required
+def delete_energy(id):
+    record = EnergyData.query.get_or_404(id)
+
+    try:
+        db.session.delete(record)
+        db.session.commit()
+        flash("Record deleted successfully.", "success")
+    except Exception as e:
+        return f"Delete Error (energy): {e}"
+
+    return redirect(url_for("energy.list_energy"))
