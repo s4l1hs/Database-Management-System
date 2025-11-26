@@ -1,66 +1,79 @@
 {% extends "base.html" %}
-
 {% block title %}Sustainability Data{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="h3">Sustainability Data</h1>
-    <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-primary">
-      Add New Record
-    </a>
-  </div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h3 text-success">🌱 Sustainability Indicators</h1>
+  
+  {% if session.get("team_no")|int == 1 %}
+  <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-success shadow-sm">
+    <i class="fa-solid fa-plus"></i> Add New Record
+  </a>
+  {% endif %}
+</div>
 
-  {% if rows %}
+<div class="card shadow-sm">
+  <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle">
-        <thead class="table-dark">
+      <table class="table table-striped table-hover align-middle mb-0">
+        <thead class="table-success">
           <tr>
-            <th>#</th>
             <th>Country</th>
-            <th>Country Code</th>
-            <th>Indicator Name</th>
-            <th>Indicator Code</th>
+            <th>Region</th>
+            <th>Indicator</th>
             <th>Year</th>
             <th>Value</th>
             <th>Source Note</th>
-            <th>Actions</th>
+            {% if session.get("team_no")|int == 1 %}
+            <th class="text-end">Actions</th>
+            {% endif %}
           </tr>
         </thead>
         <tbody>
           {% for data, country, indicator in rows %}
           <tr>
-            <td>{{ data.data_id }}</td>
-            <td>{{ country.country_name }}</td>
-            <td>{{ country.country_code }}</td>
-            <td>{{ indicator.indicator_name }}</td>
-            <td>{{ indicator.indicator_code }}</td>
-            <td>{{ data.year }}</td>
-            <td>{{ "%.3f"|format(data.indicator_value) if data.indicator_value is not none }}</td>
-            <td>{{ data.source_note }}</td>
             <td>
+              <strong>{{ country.country_name }}</strong> 
+              <span class="text-muted small">({{ country.country_code }})</span>
+            </td>
+            <td>
+              <span class="badge bg-light text-dark border">{{ country.region }}</span>
+            </td>
+            <td title="{{ indicator.indicator_description }}">
+              {{ indicator.indicator_name|truncate(50) }}
+            </td>
+            <td>{{ data.year }}</td>
+            <td class="fw-bold text-success">{{ data.indicator_value }}</td>
+            <td><small class="text-muted">{{ data.source_note or '-' }}</small></td>
+            
+            {% if session.get("team_no")|int == 1 %}
+            <td class="text-end">
               <a href="{{ url_for('sustainability.edit_sustainability', id=data.data_id) }}" 
-                 class="btn btn-sm btn-outline-secondary">
-                Edit
+                 class="btn btn-sm btn-outline-warning me-1" title="Edit">
+                <i class="fa-solid fa-pen"></i>
               </a>
-              <form action="{{ url_for('sustainability.delete_sustainability', id=data.data_id) }}"
-                    method="post"
-                    style="display:inline-block"
+              
+              <form action="{{ url_for('sustainability.delete_sustainability', id=data.data_id) }}" 
+                    method="post" class="d-inline" 
                     onsubmit="return confirm('Are you sure you want to delete this record?');">
-                <button type="submit" class="btn btn-sm btn-outline-danger">
-                  Delete
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                  <i class="fa-solid fa-trash"></i>
                 </button>
               </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center py-4 text-muted">
+              No sustainability data found. 
+              {% if session.get("team_no")|int == 1 %}Start by adding a new record.{% endif %}
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
-  {% else %}
-    <div class="alert alert-info">
-      No sustainability data found.
-    </div>
-  {% endif %}
+  </div>
 </div>
 {% endblock %}
