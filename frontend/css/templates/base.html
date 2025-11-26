@@ -76,7 +76,17 @@
                 GHG Emissions
               </a>
             </li>
-
+            
+            <!-- Energy -->
+            <li class="nav-item">
+              <a 
+                class="nav-link {% if request.endpoint and request.endpoint.startswith('energy.') %}active{% endif %}" 
+                href="{{ url_for('energy.list_energy') }}"
+              >
+                 Energy
+              </a>
+            </li>
+            
             <!-- Sustainability -->
             <li class="nav-item">
               <a
