@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}GHG Emissions | {{ action }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+  <h1 class="h4 mb-3">
+    {{ "Add New GHG Emission Record" if action == "Add" else "Edit GHG Emission Record" }}
+  </h1>
+
+  <form
+    method="post"
+    action="{% if action == 'Add' %}
+               {{ url_for('ghg.add_ghg') }}
+            {% else %}
+               {{ url_for('ghg.edit_ghg', id=record.row_id) }}
+            {% endif %}"
+    class="row g-3"
+  >
+    {# Country #}
+    <div class="col-md-4">
+      <label for="country_id" class="form-label">Country</label>
+      <select
+        id="country_id"
+        name="country_id"
+        class="form-select"
+        {% if action == 'Edit' %}disabled{% endif %}
+        required
+      >
+        <option value="" disabled
+          {% if action == 'Add' %}selected{% endif %}
+        >
+          Select country...
+        </option>
+        {% for c in countries %}
+          <option value="{{ c.country_id }}"
+            {% if action == 'Edit' and c.country_id == record.country_id %}selected{% endif %}
+          >
+            {{ c.country_name }} ({{ c.country_code }})
+          </option>
+        {% endfor %}
+      </select>
+      {% if action == 'Edit' %}
+        <div class="form-text">Country cannot be changed while editing.</div>
+      {% endif %}
+    </div>
+
+    {# Indicator #}
+    <div class="col-md-4">
+      <label for="ghg_indicator_id" class="form-label">Indicator</label>
+      <select
+        id="ghg_indicator_id"
+        name="ghg_indicator_id"
+        class="form-select"
+        {% if action == 'Edit' %}disabled{% endif %}
+        required
+      >
+        <option value="" disabled
+          {% if action == 'Add' %}selected{% endif %}
+        >
+          Select indicator...
+        </option>
+        {% for ind in indicators %}
+          <option value="{{ ind.ghg_indicator_id }}"
+            {% if action == 'Edit' and ind.ghg_indicator_id == record.ghg_indicator_id %}selected{% endif %}
+          >
+            {{ ind.indicator_name }} ({{ ind.unit_symbol or '-' }})
+          </option>
+        {% endfor %}
+      </select>
+      {% if action == 'Edit' %}
+        <div class="form-text">Indicator cannot be changed while editing.</div>
+      {% endif %}
+    </div>
+
+    {# Year #}
+    <div class="col-md-2">
+      <label for="year" class="form-label">Year</label>
+      <input
+        type="number"
+        class="form-control"
+        id="year"
+        name="year"
+        min="1900"
+        max="2100"
+        value="{{ record.year if record else '' }}"
+        required
+      />
+    </div>
+
+    {# Indicator Value #}
+    <div class="col-md-2">
+      <label for="indicator_value" class="form-label">Value</label>
+      <input
+        type="number"
+        class="form-control"
+        id="indicator_value"
+        name="indicator_value"
+        value="{{ record.indicator_value if record else '' }}"
+        required
+      />
+    </div>
+
+    {# Share of Total % #}
+    <div class="col-md-3">
+      <label for="share_of_total_pct" class="form-label">Share of Total (%)</label>
+      <input
+        type="number"
+        class="form-control"
+        id="share_of_total_pct"
+        name="share_of_total_pct"
+        value="{{ record.share_of_total_pct if record else '' }}"
+      />
+    </div>
+
+    {# Uncertainty % #}
+    <div class="col-md-3">
+      <label for="uncertainty_pct" class="form-label">Uncertainty (%)</label>
+      <input
+        type="number"
+        class="form-control"
+        id="uncertainty_pct"
+        name="uncertainty_pct"
+        value="{{ record.uncertainty_pct if record else '' }}"
+      />
+    </div>
+
+    {# Source Notes #}
+    <div class="col-12">
+      <label for="source_notes" class="form-label">Source Notes</label>
+      <textarea
+        id="source_notes"
+        name="source_notes"
+        rows="3"
+        class="form-control"
+      >{{ record.source_notes if record else '' }}</textarea>
+    </div>
+
+    {# Student (Audit) #}
+    <div class="col-md-4">
+      <label for="student_id" class="form-label">Student (Audit)</label>
+      <select id="student_id" name="student_id" class="form-select">
+        <option value="">Select student (optional)</option>
+        {% for s in students %}
+          <option value="{{ s.student_id }}">
+            {{ s.student_number }} - {{ s.full_name }}
+          </option>
+        {% endfor %}
+      </select>
+      <div class="form-text">
+        If you select a student, this operation will be stored in Audit Log.
+      </div>
+    </div>
+
+    <div class="col-12 mt-3">
+      <button type="submit" class="btn btn-primary">
+        {{ "Create" if action == "Add" else "Update" }}
+      </button>
+      <a href="{{ url_for('ghg.list_ghg') }}" class="btn btn-secondary ms-2">
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
