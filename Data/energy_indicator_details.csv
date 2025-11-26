@@ -1,0 +1,7 @@
+energy_indicator_id, indicator_name, indicator_code, indicator_description, measurement_unit
+1, "Access to electricity  % of population", "EG.ELC.ACCS.UR.ZS", "Percentage of the urban population with access to electricity.", "% of population"
+2, "Access to electricity % of urban population", "EG.ELC.ACCS.UR.ZS", "Percentage of the urban population with access to electricity.", "% of urban population"
+3, "Access to electricity % of rural population", "EG.ELC.ACCS.RU.ZS", "Percentage of the rural population with access to electricity.", "% of rural population"
+4, "Access to clean fuels and technologies for cooking % of population", "EG.CFT.ACCS.ZS", "Percentage of population using clean fuels and technologies for cooking.", "% of population"
+5, "Renewable energy consumption % of total final energy consumption", "EG.FEC.RNEW.ZS", "Renewable energy consumption as a share of total final energy consumption.", "% of total energy consumption"
+6, "Renewable electricity output % of total electricity output", "EG.ELC.RNEW.ZS", "Electricity generated from renewable sources as a percentage of total generated electricity.", "% of total electricity output"
