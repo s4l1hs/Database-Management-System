@@ -19,7 +19,7 @@ class Countries(db.Model):
     energy_data = db.relationship('EnergyData', backref='country')
     freshwater_data = db.relationship('FreshwaterData', backref='country')
     health_data = db.relationship('HealthSystem', backref='country')
-    ghg_data = db.relationship('GreenhouseEmissions', backref='country')
+    ghg_data = db.relationship('GreenhouseGas', backref='country')
     sustainability_data = db.relationship('SustainabilityData', backref='country')
 
 class Student(db.Model):
@@ -101,6 +101,17 @@ class HealthSystem(db.Model):
         db.UniqueConstraint('country_id', 'health_indicator_id', 'year', name='unique_health'),
     )
 
+    # Basit bir sözlüğe dönüştürme yardımcı fonksiyonu
+    def to_dict(self):
+        return {
+            "row_id": self.row_id,
+            "country_id": self.country_id,
+            "health_indicator_id": self.health_indicator_id,
+            "indicator_value": float(self.indicator_value) if self.indicator_value is not None else None,
+            "year": self.year,
+            "source_notes": self.source_notes,
+        }
+
 
 # =========================================================
 # 4. DOMAIN: GHG EMISSIONS (Fatih Serdar Çakmak)
@@ -114,9 +125,13 @@ class GhgIndicatorDetails(db.Model):
     indicator_description = db.Column(db.String(200), nullable=False)
     unit_symbol = db.Column(db.String(20))
     
-    data_points = db.relationship("GreenhouseEmissions", backref="indicator_details")
+    data_points = db.relationship("GreenhouseGas", backref="indicator_details")
 
-class GreenhouseEmissions(db.Model):
+
+class GreenhouseGas(db.Model):
+    """
+    HealthSystem modeline benzer şekilde tasarlanmış sera gazı emisyon modeli.
+    """
     __tablename__ = 'greenhouse_emissions'
     
     row_id = db.Column(db.Integer, primary_key=True)
@@ -131,6 +146,18 @@ class GreenhouseEmissions(db.Model):
     __table_args__ = (
         db.UniqueConstraint('country_id', 'ghg_indicator_id', 'year', name='unique_ghg'),
     )
+
+    def to_dict(self):
+        return {
+            "row_id": self.row_id,
+            "country_id": self.country_id,
+            "ghg_indicator_id": self.ghg_indicator_id,
+            "indicator_value": self.indicator_value,
+            "share_of_total_pct": self.share_of_total_pct,
+            "uncertainty_pct": self.uncertainty_pct,
+            "year": self.year,
+            "source_notes": self.source_notes,
+        }
 
 
 # =========================================================
