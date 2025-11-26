@@ -43,7 +43,7 @@ def create_app():
     from App.routes.dashboard import dashboard_bp
     # from App.routes.freshwater import freshwater_bp
     from App.routes.ghg import ghg_bp
-    # from App.routes.energy import energy_bp
+    from App.routes.energy import energy_bp
 
     app.register_blueprint(about_bp)
     app.register_blueprint(login_bp)
@@ -52,7 +52,7 @@ def create_app():
     app.register_blueprint(sustainability_bp)
     #app.register_blueprint(freshwater_bp)
     app.register_blueprint(ghg_bp)
-    #app.register_blueprint(energy_bp)
+    app.register_blueprint(energy_bp)
 
 
     # ---------- ROOT: ilk sayfa = login ----------
