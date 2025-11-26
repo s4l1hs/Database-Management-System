@@ -17,7 +17,6 @@
             {% endif %}"
     class="row g-3"
   >
-    {# Country #}
     <div class="col-md-4">
       <label for="country_id" class="form-label">Country</label>
       <select
@@ -38,9 +37,11 @@
           </option>
         {% endfor %}
       </select>
+      {% if action == 'Edit' %}
+        <div class="form-text">Country cannot be changed while editing.</div>
+      {% endif %}
     </div>
 
-    {# Indicator #}
     <div class="col-md-4">
       <label for="freshwater_indicator_id" class="form-label">Indicator</label>
       <select
@@ -61,9 +62,11 @@
           </option>
         {% endfor %}
       </select>
+      {% if action == 'Edit' %}
+        <div class="form-text">Indicator cannot be changed while editing.</div>
+      {% endif %}
     </div>
 
-    {# Year #}
     <div class="col-md-2">
       <label for="year" class="form-label">Year</label>
       <input
@@ -78,7 +81,6 @@
       />
     </div>
 
-    {# Value #}
     <div class="col-md-2">
       <label for="indicator_value" class="form-label">Value</label>
       <input
@@ -92,7 +94,6 @@
       />
     </div>
 
-    {# Source Notes #}
     <div class="col-12">
       <label for="source_notes" class="form-label">Source Notes</label>
       <textarea
@@ -103,7 +104,6 @@
       >{{ record.source_notes if record else '' }}</textarea>
     </div>
 
-    {# Student (Audit) #}
     <div class="col-md-4">
       <label for="student_id" class="form-label">Student (Audit Log)</label>
       <select id="student_id" name="student_id" class="form-select">
@@ -115,7 +115,7 @@
         {% endfor %}
       </select>
       <div class="form-text">
-        Logging this action under a student name.
+        If you select a student, this operation will be stored in Audit Log.
       </div>
     </div>
 
