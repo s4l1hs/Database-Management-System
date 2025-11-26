@@ -36,7 +36,7 @@ def create_app():
     app.teardown_appcontext(close_db)
 
     # ---------- BLUEPRINTS ----------> some of them temporarly closed until imports
-    # from App.routes.sustainability import sustainability_bp
+    from App.routes.sustainability import sustainability_bp
     from App.routes.about import about_bp
     from App.routes.login import login_bp
     from App.routes.health import health_bp
@@ -49,7 +49,7 @@ def create_app():
     app.register_blueprint(login_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(dashboard_bp)
-    #app.register_blueprint(sustainability_bp)
+    app.register_blueprint(sustainability_bp)
     #app.register_blueprint(freshwater_bp)
     #app.register_blueprint(ghg_bp)
     #app.register_blueprint(energy_bp)
