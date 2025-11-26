@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Sustainability Record{% endblock %}
+
+{% block content %}
+<div class="container mt-4 col-md-8">
+  <div class="card shadow">
+    <div class="card-header bg-success text-white">
+      <h4 class="mb-0">{{ action }} Sustainability Data</h4>
+    </div>
+    <div class="card-body">
+      <form method="post">
+        
+        <div class="mb-3">
+            <label class="form-label fw-bold">Country</label>
+            <select name="country_id" class="form-select" {% if action == 'Edit' %}disabled{% endif %} required>
+                <option value="">Select Country...</option>
+                {% for c in countries %}
+                <option value="{{ c.country_id }}" {% if record and record.country_id == c.country_id %}selected{% endif %}>
+                    {{ c.country_name }} ({{ c.country_code }})
+                </option>
+                {% endfor %}
+            </select>
+            {% if action == 'Edit' %}<small class="text-muted">Country cannot be changed.</small>{% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label fw-bold">Indicator</label>
+            <select name="sus_indicator_id" class="form-select" {% if action == 'Edit' %}disabled{% endif %} required>
+                <option value="">Select Indicator...</option>
+                {% for i in indicators %}
+                <option value="{{ i.sus_indicator_id }}" {% if record and record.sus_indicator_id == i.sus_indicator_id %}selected{% endif %}>
+                    {{ i.indicator_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Year</label>
+                <input type="number" name="year" class="form-control" value="{{ record.year if record else 2020 }}" min="1900" max="2100" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Value</label>
+                <input type="number" step="any" name="indicator_value" class="form-control" value="{{ record.indicator_value if record else '' }}" required>
+            </div>
+        </div>
+
+        <div class="mb-3 mt-3">
+            <label class="form-label">Source Note</label>
+            <input type="text" name="source_note" class="form-control" value="{{ record.source_note if record else 'WDI Data' }}">
+        </div>
+
+        <hr>
+
+        <div class="alert alert-warning">
+            <label class="fw-bold text-danger">🛑 Who is making this change? (Audit Log)</label>
+            <select name="student_id" class="form-select border-danger" required>
+                <option value="">-- Select Your Name --</option>
+                {% for s in students %}
+                <option value="{{ s.student_id }}">
+                    👤 {{ s.full_name }} ({{ s.student_number }})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2">
+            <a href="{{ url_for('sustainability.list_sustainability') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-success">Save Record</button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
