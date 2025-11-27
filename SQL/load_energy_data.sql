@@ -7,7 +7,6 @@ ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 LINES
 (
-    data_id, 
     country_id, 
     energy_indicator_id, 
     year, 
