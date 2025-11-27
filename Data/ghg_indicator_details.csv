@@ -1,0 +1,7 @@
+ghg_indicator_id,indicator_name,indicator_description,unit_symbol
+1,Total greenhouse gas emissions,Total greenhouse gas emissions in thousand metric tons of carbon dioxide equivalent,kt CO2-eq
+2,Methane emissions,Methane emissions in thousand metric tons of carbon dioxide equivalent,kt CO2-eq
+3,Nitrous oxide emissions,Nitrous oxide emissions in thousand metric tons of carbon dioxide equivalent,kt CO2-eq
+4,Other greenhouse gas emissions,Other greenhouse gas emissions (F-gases) in thousand metric tons of carbon dioxide equivalent,kt CO2-eq
+5,Carbon dioxide emissions Total,Total carbon dioxide emissions in thousand metric tons,kt
+6,Carbon dioxide emissions per capita,Carbon dioxide emissions per capita in metric tons,metric tons
