@@ -1,0 +1,12 @@
+health_indicator_id,indicator_name,indicator_description,unit_symbol
+1,"Health expenditure Current % of GDP","Level of current health expenditure expressed as a percentage of GDP.","% of GDP"
+2,"Health expenditure Public % of current","Share of current health expenditures funded from domestic public sources.","% of current"
+3,"Health expenditure Out of pocket % of current","Share of out-of-pocket payments of total current health expenditures.","% of current"
+4,"Health expenditure per capita $","Current health expenditure per capita in US dollars.","USD"
+5,"Health expenditure per capita current PPP $","Current health expenditure per capita in PPP-adjusted US dollars.","PPP USD"
+6,"External health expenditure % of current","External (donor) health expenditure as a share of current health expenditure.","% of current"
+7,"Health workers Physicians per 1,000 people","Number of physicians per 1,000 population.","per 1,000 people"
+8,"Health workers Nurses and midwives per 1,000 people","Number of nurses and midwives per 1,000 population.","per 1,000 people"
+9,"Specialist surgical workforce per 100,000 population","Specialist surgical workforce per 100,000 population.","per 100,000"
+10,"Completeness of birth registration %","Percentage of births registered (children under 5).","%"
+11,"Completeness of death registration %","Percentage of deaths registered in vital registration system.","%"

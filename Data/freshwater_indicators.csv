@@ -1,0 +1,5 @@
+freshwater_indicator_id,indicator_name,description,unit_of_measure
+1,"Annual freshwater withdrawals, total (% of internal resources)","Total freshwater withdrawn in a given year, expressed as a percentage of total renewable internal freshwater resources.","% of internal resources"
+3,"Annual freshwater withdrawals, agriculture (% of total freshwater withdrawal)","Water withdrawn for irrigation and livestock production.","% of total withdrawal"
+4,"Annual freshwater withdrawals, industry (% of total freshwater withdrawal)","Water withdrawn for direct industrial use.","% of total withdrawal"
+5,"Annual freshwater withdrawals, domestic (% of total freshwater withdrawal)","Water withdrawn for drinking, hygiene and other household uses.","% of total withdrawal"

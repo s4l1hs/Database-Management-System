@@ -1,51 +1,51 @@
 import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
+from dotenv import load_dotenv
 
-DB_USER = "root"
-DB_PASS = "sifren"
-DB_HOST = "localhost"
-DB_NAME = "wdi_project"
+load_dotenv()
 
-SQL_FILE_PATH = os.path.join('SQL', 'master.sql')
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASS = os.getenv("DB_PASSWORD", "db_pass")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_NAME = os.getenv("DB_NAME", "wdi_project")
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+SQL_FILE_PATH = os.path.join(BASE_DIR, 'SQL', 'database.sql') 
 
-def setup_database():
+def setup_nuclear():
+    engine_root = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}")
+    
     try:
-        engine_url_root = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}"
-        root_engine = create_engine(engine_url_root)
-
-        with root_engine.connect() as conn:
-            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
-            print(f"Database '{DB_NAME}' checked/created.")
-
-        engine_url_db = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
-        db_engine = create_engine(engine_url_db)
-
-        try:
-            with open(SQL_FILE_PATH, 'r', encoding='utf-8') as f:
-                sql_script = f.read()
-        except FileNotFoundError:
-            print(f"HATA: '{SQL_FILE_PATH}' dosyası bulunamadı.")
-            return
-
-        with db_engine.connect() as conn:
-            commands = sql_script.split(';')
-            print(f"Executing commands from '{SQL_FILE_PATH}'...")
+        with engine_root.connect() as conn:
+            conn.execute(text(f"DROP DATABASE IF EXISTS {DB_NAME}"))
+            print(f"🗑️ The old database '{DB_NAME}' has been completely deleted.")
             
+            conn.execute(text(f"CREATE DATABASE {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
+            
+    except Exception as e:
+        print(f"ERROR (Root Connection): {e}")
+        return
+
+    engine_db = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}")
+    
+    try:
+        with open(SQL_FILE_PATH, 'r', encoding='utf-8') as f:
+            sql_script = f.read()
+            
+        with engine_db.connect() as conn:
+            commands = sql_script.split(';')
             for command in commands:
                 if command.strip():
+                    conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
                     conn.execute(text(command))
             
+            conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
             conn.commit()
-            print("Success! All tables created and sample data inserted.")
 
-    except OperationalError as e:
-        if "Access denied" in str(e):
-            print(f"HATA: MySQL bağlantısı başarısız. Kullanıcı adı veya şifre hatalı.")
-        else:
-            print(f"Veritabanı hatası: {e}")
+    except FileNotFoundError:
+        print(f"error:'{SQL_FILE_PATH}' could not be found.")
     except Exception as e:
-        print(f"Beklenmedik hata: {e}")
+        print(f"UNEXPECTED ERROR: {e}")
 
 if __name__ == "__main__":
-    setup_database()
+    setup_nuclear()

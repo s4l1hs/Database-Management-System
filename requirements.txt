@@ -2,3 +2,5 @@ pandas
 SQLAlchemy
 pymysql
 flask
+flask_sqlalchemy
+python-dotenv
