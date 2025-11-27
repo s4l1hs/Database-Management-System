@@ -12,22 +12,37 @@ health_bp = Blueprint("health", __name__, url_prefix="/health")
 # ---------- LIST ----------
 @health_bp.route("/", methods=["GET"])
 def list_health():
-    try:
-        rows = (
-            db.session.query(HealthSystem, Countries, HealthIndicatorDetails)
-            .join(Countries, HealthSystem.country_id == Countries.country_id)
-            .join(
-                HealthIndicatorDetails,
-                HealthSystem.health_indicator_id == HealthIndicatorDetails.health_indicator_id,
-            )
-            .order_by(Countries.country_name, HealthIndicatorDetails.indicator_name, HealthSystem.year)
-            .all()
+
+    country_name = request.args.get("country", type=str)
+    year = request.args.get("year", type=int)
+
+    # ---- Base query ----
+    query = (
+        db.session.query(HealthSystem, Countries, HealthIndicatorDetails)
+        .join(Countries, HealthSystem.country_id == Countries.country_id)
+        .join(
+            HealthIndicatorDetails,
+            HealthSystem.health_indicator_id == HealthIndicatorDetails.health_indicator_id,
         )
-        return render_template("health_list.html", rows=rows)
-    except Exception as e:
-        return f"Database Error (health): {e}"
+    )
 
+    # ---- Filters ----
+    if country_name:
+ 
+        query = query.filter(Countries.country_name.ilike(f"%{country_name}%"))
 
+    if year:
+        query = query.filter(HealthSystem.year == year)
+
+    # LIMIT
+    rows = query.order_by(Countries.country_name, HealthSystem.year).limit(500).all()
+
+    return render_template(
+        "health_list.html",
+        rows=rows,
+        current_country=country_name,
+        current_year=year,
+    )
 # ---------- CREATE ----------
 @health_bp.route("/add", methods=["GET", "POST"])
 @admin_required
