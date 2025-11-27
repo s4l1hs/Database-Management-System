@@ -15,7 +15,7 @@ def admin_required(f):
             team = 0
 
         if team != 1:
-            return "Unauthorized: Admins only."
+            return "Error:Admins only."
         return f(*args, **kwargs)
 
     return decorated_function
@@ -24,11 +24,11 @@ def admin_required(f):
 @login_bp.route("/login", methods=["GET", "POST"])
 def login():
     """
-    Sadece admin login (team_no=1).
-    Normal kullanıcı oluşturulmaz.
+    Admin login only (team_no=1).
+    No regular users will be created.
     """
     if request.method == "POST":
-        # ⚠️ form'daki input name'i ile aynı olmalı
+     
         sid = request.form.get("student_number", type=int)
 
         student = Student.query.filter_by(student_number=sid, team_no=1).first()
@@ -37,11 +37,11 @@ def login():
             flash("No admin was found registered with this number.", "danger")
             return redirect(url_for("auth.login"))
 
-        # admin bulundu → session'a yaz
+
         session["student_number"] = student.student_number
         session["team_no"] = int(student.team_no or 0)
 
-        return redirect(url_for("health.list_health"))
+        return redirect(url_for("dashboard.dashboard"))
 
     return render_template("login.html")
 
