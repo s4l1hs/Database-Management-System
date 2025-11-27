@@ -1,6 +1,6 @@
 USE sustainability;
 
-LOAD DATA LOCAL INFILE '/Users/fahrettin/Desktop/Data-insertion/ghg_indicator_details.csv'
+LOAD DATA LOCAL INFILE '/Users/fahrettin/Desktop/data-insertion/ghg_indicator_details.csv'
 INTO TABLE ghg_indicator_details
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'

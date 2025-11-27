@@ -1,6 +1,6 @@
 USE sustainability;
 
-LOAD DATA LOCAL INFILE '/Users/fahrettin/Desktop/Data-insertion/energy_data.csv'
+LOAD DATA LOCAL INFILE '/Users/fahrettin/Desktop/data-insertion/energy_data.csv'
 INTO TABLE energy_data
 FIELDS TERMINATED BY ',' 
 ENCLOSED BY '"'

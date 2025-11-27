@@ -1,6 +1,6 @@
 USE sustainability;
 -- Dosya yolunu kendi bilgisayarına göre güncellemeyi unutma!
-LOAD DATA LOCAL INFILE '/Users/fahrettin/Desktop/Data-insertion/sustainability_system.csv'
+LOAD DATA LOCAL INFILE '/Users/fahrettin/desktop/data-insertion/sustainability_data.csv'
 INTO TABLE sustainability_data
 FIELDS TERMINATED BY ','
 ENCLOSED BY '"'

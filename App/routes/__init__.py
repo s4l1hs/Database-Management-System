@@ -41,7 +41,7 @@ def create_app():
     from App.routes.login import login_bp
     from App.routes.health import health_bp
     from App.routes.dashboard import dashboard_bp
-    # from App.routes.freshwater import freshwater_bp
+    from App.routes.freshwater import freshwater_bp
     from App.routes.ghg import ghg_bp
     from App.routes.energy import energy_bp
 
@@ -50,7 +50,7 @@ def create_app():
     app.register_blueprint(health_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(sustainability_bp)
-    #app.register_blueprint(freshwater_bp)
+    app.register_blueprint(freshwater_bp)
     app.register_blueprint(ghg_bp)
     app.register_blueprint(energy_bp)
 

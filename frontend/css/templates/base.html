@@ -86,7 +86,15 @@
                  Energy
               </a>
             </li>
-            
+            <!-- Freshwater -->
+            <li class="nav-item">
+              <a
+                class="nav-link {% if request.endpoint and request.endpoint.startswith('freshwater.') %}active{% endif %}"
+                href="{{ url_for('freshwater.list_freshwater') }}"
+              >
+                Freshwater
+              </a>
+            </li>
             <!-- Sustainability -->
             <li class="nav-item">
               <a
