@@ -9,7 +9,7 @@ from App.routes.login import admin_required
 health_bp = Blueprint("health", __name__, url_prefix="/health")
 
 
-# ---------- LIST ----------
+# ---------- READ ----------
 @health_bp.route("/", methods=["GET"])
 def list_health():
 
