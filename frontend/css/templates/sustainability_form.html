@@ -67,15 +67,30 @@
             <label class="fw-bold text-danger mb-2">
               <i class="fa-solid fa-user-pen me-1"></i> Who is making this change? (Audit Log)
             </label>
-            <select name="student_id" class="form-select border-danger" required>
-              <option value="">-- Select Your Name --</option>
-              {% for s in students %}
-              <option value="{{ s.student_id }}">
-                👤 {{ s.full_name }} ({{ s.student_number }})
-              </option>
-              {% endfor %}
+
+            <!-- student selection is now OPTIONAL; if no students are provided, show 5 fallback names -->
+            <select name="student_id" class="form-select border-danger">
+              <option value="">-- Optional: Select Your Name (or leave blank) --</option>
+
+              {% if students and students|length > 0 %}
+                {% for s in students %}
+                <option value="{{ s.student_id }}" {% if record and record.student_id == s.student_id %}selected{% endif %}>
+                  👤 {{ s.full_name }} ({{ s.student_number }})
+                </option>
+                {% endfor %}
+              {% else %}
+                <!-- Fallback sample students so form is usable without DB seeds -->
+                <option value="820230313">👤 Salih Sefer (820230313)</option>
+                <option value="820230334">👤 Atahan Evintan (820230334)</option>
+                <option value="820230326">👤 Fatih Serdar Çakmak (820230326)</option>
+                <option value="820230314">👤 Muhammet Tuncer (820230314)</option>
+                <option value="150210085">👤 Gülbahar Karabaş (150210085)</option>
+              {% endif %}
             </select>
-            <div class="form-text small mt-1">This action will be recorded for the project demo.</div>
+
+            <div class="form-text small mt-1">
+              This selection is optional. If provided, the change will be recorded in the audit log; otherwise no student will be recorded.
+            </div>
           </div>
 
           <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
