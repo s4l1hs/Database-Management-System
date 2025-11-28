@@ -55,7 +55,7 @@ def login():
         session["student_number"] = student.student_number
         session["team_no"] = int(student.team_no)
 
-        return redirect(url_for("health.list_health"))
+        return redirect(url_for("dashboard.dashboard"))
 
     return render_template("login.html")
 
