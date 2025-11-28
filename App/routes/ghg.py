@@ -11,24 +11,37 @@ ghg_bp = Blueprint("ghg", __name__, url_prefix="/ghg")
 # ---------- LIST ----------
 @ghg_bp.route("/", methods=["GET"])
 def list_ghg():
-    try:
-        rows = (
-            db.session.query(GreenhouseGas, Countries, GhgIndicatorDetails)
-            .join(Countries, GreenhouseGas.country_id == Countries.country_id)
-            .join(
-                GhgIndicatorDetails,
-                GreenhouseGas.ghg_indicator_id == GhgIndicatorDetails.ghg_indicator_id,
-            )
-            .order_by(
-                Countries.country_name,
-                GhgIndicatorDetails.indicator_name,
-                GreenhouseGas.year,
-            )
-            .all()
+
+    country_name = request.args.get("country", type=str)
+    year = request.args.get("year", type=int)
+
+    # ---- Base query ----
+    query = (
+        db.session.query(GreenhouseGas, Countries, GhgIndicatorDetails)
+        .join(Countries, GreenhouseGas.country_id == Countries.country_id)
+        .join(
+            GhgIndicatorDetails,
+            GreenhouseGas.ghg_indicator_id == GhgIndicatorDetails.ghg_indicator_id,
         )
-        return render_template("ghg_list.html", rows=rows)
-    except Exception as e:
-        return f"Database Error (ghg): {e}"
+    )
+
+    # ---- Filters ----
+    if country_name:
+ 
+        query = query.filter(Countries.country_name.ilike(f"%{country_name}%"))
+
+    if year:
+        query = query.filter(GreenhouseGas.year == year)
+
+    # LIMIT
+    rows = query.order_by(Countries.country_name, GreenhouseGas.year).limit(500).all()
+
+    return render_template(
+        "ghg_list.html",
+        rows=rows,
+        current_country=country_name,
+        current_year=year,
+    )
 
 
 # ---------- CREATE ----------
@@ -37,14 +50,14 @@ def list_ghg():
 def add_ghg():
     if request.method == "POST":
         try:
-            c_id = request.form.get("country_id", type=int)
-            i_id = request.form.get("ghg_indicator_id", type=int)
-            year = request.form.get("year", type=int)
-            indicator_value = request.form.get("indicator_value", type=int)
-            share_of_total_pct = request.form.get("share_of_total_pct", type=int)
-            uncertainty_pct = request.form.get("uncertainty_pct", type=int)
+            c_id = request.form.get("country_id")
+            i_id = request.form.get("ghg_indicator_id")
+            year = request.form.get("year")
+            indicator_value = request.form.get("indicator_value")
+            share_of_total_pct = request.form.get("share_of_total_pct")
+            uncertainty_pct = request.form.get("uncertainty_pct")
             source_notes = request.form.get("source_notes")
-            student_id = request.form.get("student_id", type=int)
+            student_id = request.form.get("student_id")
 
             new_data = GreenhouseGas(
                 country_id=c_id,
@@ -105,7 +118,7 @@ def edit_ghg(id):
             record.uncertainty_pct = request.form.get("uncertainty_pct", type=int)
             record.year = request.form.get("year", type=int)
             record.source_notes = request.form.get("source_notes")
-            student_id = request.form.get("student_id", type=int)
+            student_id = request.form.get("student_id")
 
             # Audit
             if student_id:
@@ -118,11 +131,13 @@ def edit_ghg(id):
                 db.session.add(log)
 
             db.session.commit()
+            flash("Record updated successfully.", "success")
             return redirect(url_for("ghg.list_ghg"))
 
         except Exception as e:
             db.session.rollback()
-            return f"Güncelleme Hatası (ghg): {e}"
+            flash(f"Update error: {e}", "danger")
+            return redirect(url_for("ghg.edit_ghg", id=id))
 
     return render_template(
         "ghg_form.html",
@@ -143,8 +158,9 @@ def delete_ghg(id):
     try:
         db.session.delete(record)
         db.session.commit()
+        flash("Record deleted successfully.", "success")
     except Exception as e:
         db.session.rollback()
-        return f"Silme Hatası (ghg): {e}"
+        flash(f"Delete error: {e}", "danger")
 
     return redirect(url_for("ghg.list_ghg"))
