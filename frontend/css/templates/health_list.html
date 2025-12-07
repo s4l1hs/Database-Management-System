@@ -18,45 +18,11 @@
   {% endif %}
 </div>
 
-<!-- FILTER FORM -->
-<form method="get" class="row g-3 mb-3">
-  <div class="col-md-4">
-    <label class="form-label fw-semibold">Country</label>
-    <input
-      type="text"
-      name="country"
-      class="form-control form-control-sm"
-      placeholder="e.g. Turkey"
-      value="{{ current_country or '' }}"
-    />
-  </div>
-
-  <div class="col-md-2">
-    <label class="form-label fw-semibold">Year</label>
-    <input
-      type="number"
-      name="year"
-      class="form-control form-control-sm"
-      placeholder="e.g. 2016"
-      value="{{ current_year or '' }}"
-    />
-  </div>
-
-  <div class="col-md-3 d-flex align-items-end gap-2">
-    <button type="submit" class="btn btn-sm btn-outline-primary">
-      Apply Filter
-    </button>
-    <a href="{{ url_for('health.list_health') }}" class="btn btn-sm btn-outline-secondary">
-      Clear
-    </a>
-  </div>
-</form>
-
-<!-- SORT PANEL (client-side) -->
+<!-- SORT PANEL -->
 <form id="sortForm" class="d-flex flex-wrap gap-3 mb-3">
   <div>
     <label class="form-label fw-semibold">Sort By</label>
-    <select id="sortColumn" class="form-select form-select-sm">
+    <select id="sortColumn" class="form-select">
       <option value="0">ID</option>
       <option value="1">Country</option>
       <option value="2">Region</option>
@@ -71,101 +37,76 @@
 
   <div>
     <label class="form-label fw-semibold">Order</label>
-    <select id="sortOrder" class="form-select form-select-sm">
+    <select id="sortOrder" class="form-select">
       <option value="asc">Ascending</option>
       <option value="desc">Descending</option>
     </select>
   </div>
 
   <div class="align-self-end">
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="applySort()">
+    <button type="button" class="btn btn-secondary" onclick="applySort()">
       Apply Sort
     </button>
   </div>
 </form>
 
-<div class="table-responsive">
-  <table class="table table-sm table-striped table-hover align-middle">
-    <thead class="table-dark">
+<table class="table table-striped table-hover align-middle">
+  <thead class="table-dark">
+    <tr>
+      <th>#</th>
+      <th>Country</th>
+      <th>Region</th>
+      <th>Code</th>
+      <th>Indicator</th>
+      <th>Unit</th>
+      <th>Year</th>
+      <th>Value</th>
+      <th>Source Notes</th>
+      {% if session.get("team_no")|int == 1 %}
+        <th>Actions</th>
+      {% endif %}
+    </tr>
+  </thead>
+
+  <tbody>
+    {# BURASI DEĞİŞTİ #}
+    {% for row in rows %}
       <tr>
-        <th style="width: 60px;">#</th>
-        <th style="width: 140px;">Country</th>
-        <th style="width: 120px;">Region</th>
-        <th style="width: 80px;">Code</th>
-        <th style="min-width: 260px;">Indicator</th>
-        <th style="min-width: 140px;">Unit</th>
-        <th class="text-center" style="width: 80px;">Year</th>
-        <th class="text-end" style="width: 110px;">Value</th>
-        <th style="min-width: 180px;">Source Notes</th>
+        <td>{{ row.row_id }}</td>
+        <td>{{ row.country_name }}</td>
+        <td>{{ row.region or '-' }}</td>
+        <td>{{ row.country_code }}</td>
+        <td>{{ row.indicator_name }}</td>
+        <td>{{ row.unit_symbol or '-' }}</td>
+        <td>{{ row.year }}</td>
+        <td>{{ row.indicator_value }}</td>
+        <td>{{ row.source_notes or '' }}</td>
+
         {% if session.get("team_no")|int == 1 %}
-          <th style="width: 130px;">Actions</th>
+          <td>
+            <a
+              href="{{ url_for('health.edit_health', id=row.row_id) }}"
+              class="btn btn-sm btn-outline-secondary me-1"
+            >
+              Edit
+            </a>
+
+            <form
+              action="{{ url_for('health.delete_health', id=row.row_id) }}"
+              method="post"
+              style="display:inline-block"
+              onsubmit="return confirm('Delete this record?');"
+            >
+              <button type="submit" class="btn btn-sm btn-outline-danger">
+                Delete
+              </button>
+            </form>
+          </td>
         {% endif %}
       </tr>
-    </thead>
-
-    <tbody>
-      {% for hs, country, indicator in rows %}
-        <tr>
-          <td class="text-muted">{{ hs.row_id }}</td>
-
-          <td class="fw-semibold text-truncate" style="max-width: 140px;" title="{{ country.country_name }}">
-            {{ country.country_name }}
-          </td>
-
-          <td class="text-truncate" style="max-width: 120px;" title="{{ country.region or '-' }}">
-            {{ country.region or '-' }}
-          </td>
-
-          <td class="text-uppercase text-muted">{{ country.country_code }}</td>
-
-          <td class="text-truncate" style="max-width: 260px;" title="{{ indicator.indicator_name }}">
-            {{ indicator.indicator_name }}
-          </td>
-
-          <td class="text-truncate" style="max-width: 140px;" title="{{ indicator.unit_symbol or '-' }}">
-            {{ indicator.unit_symbol or '-' }}
-          </td>
-
-          <td class="text-center">{{ hs.year }}</td>
-
-          <td class="text-end">
-            {% if hs.indicator_value is not none %}
-              {{ "%.4f"|format(hs.indicator_value) }}
-            {% else %}
-              <span class="text-muted">n/a</span>
-            {% endif %}
-          </td>
-
-          <td class="text-truncate" style="max-width: 180px;" title="{{ hs.source_notes or '' }}">
-            {{ hs.source_notes or '' }}
-          </td>
-
-          {% if session.get("team_no")|int == 1 %}
-            <td>
-              <div class="d-flex gap-1">
-                <a
-                  href="{{ url_for('health.edit_health', id=hs.row_id) }}"
-                  class="btn btn-sm btn-outline-secondary"
-                >
-                  Edit
-                </a>
-                <form
-                  action="{{ url_for('health.delete_health', id=hs.row_id) }}"
-                  method="post"
-                  onsubmit="return confirm('Delete this record?');"
-                >
-                  <button type="submit" class="btn btn-sm btn-outline-danger">
-                    Delete
-                  </button>
-                </form>
-              </div>
-            </td>
-          {% endif %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock %}
 
 {% block extra_js %}
@@ -188,7 +129,9 @@ function applySort() {
     if (isNumeric) {
       return order === "asc" ? numA - numB : numB - numA;
     } else {
-      return order === "asc" ? A.localeCompare(B) : B.localeCompare(A);
+      return order === "asc"
+        ? A.localeCompare(B)
+        : B.localeCompare(A);
     }
   });
 

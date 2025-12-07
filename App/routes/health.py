@@ -1,175 +1,300 @@
-# App/routes/health.py
-
-from sqlalchemy.exc import IntegrityError
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from App.db import db
-from App.models import HealthSystem, Countries, HealthIndicatorDetails, Student, AuditLog
+import mysql.connector
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    abort,
+)
+from App.db import get_db
 from App.routes.login import admin_required
 
-# All endpoints are placed under /health
 health_bp = Blueprint("health", __name__, url_prefix="/health")
 
 
-# ---------- READ ----------
+# 1. READ  (LIST + FILTER)
 @health_bp.route("/", methods=["GET"])
 def list_health():
     country_name = request.args.get("country", type=str)
     year = request.args.get("year", type=int)
 
-    # ---- Base query ----
-    query = (
-        db.session.query(HealthSystem, Countries, HealthIndicatorDetails)
-        .join(Countries, HealthSystem.country_id == Countries.country_id)
-        .join(
-            HealthIndicatorDetails,
-            HealthSystem.health_indicator_id == HealthIndicatorDetails.health_indicator_id,
-        )
-    )
+    db = get_db()
+    cur = db.cursor(dictionary=True)
 
-    # ---- Filters ----
+    base_sql = """
+        SELECT
+            hs.row_id,
+            hs.country_id,
+            hs.health_indicator_id,
+            hs.indicator_value,
+            hs.year,
+            hs.source_notes,
+            c.country_name,
+            c.country_code,
+            c.region,
+            h.indicator_name,
+            h.unit_symbol
+        FROM health_system hs
+        JOIN countries c
+            ON c.country_id = hs.country_id
+        JOIN health_indicator_details h
+            ON h.health_indicator_id = hs.health_indicator_id
+    """
+
+    conditions = []
+    params = []
+
     if country_name:
-        query = query.filter(Countries.country_name.ilike(f"%{country_name}%"))
+        conditions.append("c.country_name LIKE %s")
+        params.append(f"%{country_name}%")
 
     if year:
-        query = query.filter(HealthSystem.year == year)
+        conditions.append("hs.year = %s")
+        params.append(year)
 
-    # LIMIT
-    rows = query.order_by(Countries.country_name, HealthSystem.year).limit(500).all()
+    if conditions:
+        base_sql += " WHERE " + " AND ".join(conditions)
+
+    base_sql += " ORDER BY c.country_name, hs.year LIMIT 500"
+
+    cur.execute(base_sql, params)
+    rows = cur.fetchall()
 
     return render_template(
         "health_list.html",
-        rows=rows,
+        rows=rows,                
         current_country=country_name,
         current_year=year,
     )
 
 
-# ---------- CREATE ----------
+# 2. HELPER: COUNTRY + INDICATOR LISTS FOR FORM
+def _load_countries_and_indicators():
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute("""
+        SELECT country_id, country_name, country_code
+        FROM countries
+        ORDER BY country_name
+    """)
+    countries = cur.fetchall()
+
+    cur.execute("""
+        SELECT health_indicator_id, indicator_name, unit_symbol
+        FROM health_indicator_details
+        ORDER BY indicator_name
+    """)
+    indicators = cur.fetchall()
+
+    return countries, indicators
+
+
+# 3. CREATE
 @health_bp.route("/add", methods=["GET", "POST"])
 @admin_required
 def add_health():
     if request.method == "POST":
+        db = get_db()
+        cur = db.cursor()
+
         try:
-            c_id = request.form.get("country_id")
-            i_id = request.form.get("health_indicator_id")
-            year = request.form.get("year")
-            val = request.form.get("indicator_value")
+            c_id = request.form.get("country_id", type=int)
+            i_id = request.form.get("health_indicator_id", type=int)
+            year = request.form.get("year", type=int)
+            val = request.form.get("indicator_value", type=float)
             note = request.form.get("source_notes")
 
-            new_data = HealthSystem(
-                country_id=c_id,
-                health_indicator_id=i_id,
-                year=year,
-                indicator_value=val,
-                source_notes=note,
-            )
-            db.session.add(new_data)
-            db.session.commit()
+            insert_sql = """
+                INSERT INTO health_system
+                    (country_id, health_indicator_id, indicator_value, year, source_notes)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cur.execute(insert_sql, (c_id, i_id, val, year, note))
+            db.commit()
 
-            # ---------- AUDIT ----------
+            new_row_id = cur.lastrowid
+
+            #  AUDIT 
             current_student_id = session.get("student_id")
             if current_student_id:
-                log = AuditLog(
-                    student_id=current_student_id,
-                    action_type="CREATE",
-                    table_name="health_system",
-                    record_id=new_data.row_id,
+                log_sql = """
+                    INSERT INTO audit_logs
+                        (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """
+                cur.execute(
+                    log_sql,
+                    (
+                        current_student_id,
+                        "CREATE",
+                        "health_system",
+                        new_row_id,
+                    ),
                 )
-                db.session.add(log)
-                db.session.commit()
+                db.commit()
 
             flash("Record added successfully.", "success")
             return redirect(url_for("health.list_health"))
 
-        except IntegrityError:
-            db.session.rollback()
-            flash(
-                "This country + indicator + year combination already exists!",
-                "danger",
-            )
+        except mysql.connector.IntegrityError as e:
+            db.rollback()
+            # 1062 = duplicate key
+            if e.errno == 1062:
+                flash(
+                    "This country + indicator + year combination already exists!",
+                    "danger",
+                )
+            else:
+                flash(f"DB Integrity error: {e}", "danger")
             return redirect(url_for("health.add_health"))
 
         except Exception as e:
-            db.session.rollback()
+            db.rollback()
             flash(f"Error: {e}", "danger")
             return redirect(url_for("health.add_health"))
 
+    countries, indicators = _load_countries_and_indicators()
     return render_template(
         "health_form.html",
-        countries=Countries.query.all(),
-        indicators=HealthIndicatorDetails.query.all(),
-        students=Student.query.all(),  # İstersen bunu da kaldırabiliriz
+        countries=countries,
+        indicators=indicators,
         action="Add",
         record=None,
     )
 
 
-# ---------- UPDATE ----------
+# 4. UPDATE
 @health_bp.route("/edit/<int:id>", methods=["GET", "POST"])
 @admin_required
 def edit_health(id):
-    record = HealthSystem.query.get_or_404(id)
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    cur.execute(
+        """
+        SELECT
+            row_id,
+            country_id,
+            health_indicator_id,
+            indicator_value,
+            year,
+            source_notes
+        FROM health_system
+        WHERE row_id = %s
+        """,
+        (id,),
+    )
+    record = cur.fetchone()
+    if not record:
+        abort(404)
 
     if request.method == "POST":
         try:
-            record.indicator_value = request.form.get("indicator_value", type=float)
-            record.year = request.form.get("year", type=int)
-            record.source_notes = request.form.get("source_notes")
+            indicator_value = request.form.get("indicator_value", type=float)
+            year = request.form.get("year", type=int)
+            source_notes = request.form.get("source_notes")
 
-            # ---------- AUDIT ----------
+            update_sql = """
+                UPDATE health_system
+                SET indicator_value = %s,
+                    year = %s,
+                    source_notes = %s
+                WHERE row_id = %s
+            """
+            cur.execute(update_sql, (indicator_value, year, source_notes, id))
+            db.commit()
+
+            #  AUDIT 
             current_student_id = session.get("student_id")
             if current_student_id:
-                log = AuditLog(
-                    student_id=current_student_id,
-                    action_type="UPDATE",
-                    table_name="health_system",
-                    record_id=record.row_id,
+                log_sql = """
+                    INSERT INTO audit_logs
+                        (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """
+                cur.execute(
+                    log_sql,
+                    (
+                        current_student_id,
+                        "UPDATE",
+                        "health_system",
+                        id,
+                    ),
                 )
-                db.session.add(log)
+                db.commit()
 
-            db.session.commit()
             flash("Record updated successfully.", "success")
             return redirect(url_for("health.list_health"))
 
         except Exception as e:
-            db.session.rollback()
+            db.rollback()
             flash(f"Update Error (health): {e}", "danger")
             return redirect(url_for("health.edit_health", id=id))
 
+    countries, indicators = _load_countries_and_indicators()
     return render_template(
         "health_form.html",
-        record=record,
-        countries=Countries.query.all(),
-        indicators=HealthIndicatorDetails.query.all(),
-        students=Student.query.all(),  # İstersen bunu da kaldırabiliriz
+        record=record,          #dict
+        countries=countries,    
+        indicators=indicators,  
         action="Edit",
     )
 
 
-# ---------- DELETE ----------
+# 5. DELETE
 @health_bp.route("/delete/<int:id>", methods=["POST"])
 @admin_required
 def delete_health(id):
-    record = HealthSystem.query.get_or_404(id)
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    # check if register available
+    cur.execute(
+        """
+        SELECT row_id
+        FROM health_system
+        WHERE row_id = %s
+        """,
+        (id,),
+    )
+    record = cur.fetchone()
+    if not record:
+        abort(404)
 
     try:
-        # ---------- AUDIT ----------
+        #  AUDIT 
         current_student_id = session.get("student_id")
         if current_student_id:
-            log = AuditLog(
-                student_id=current_student_id,
-                action_type="DELETE",
-                table_name="health_system",
-                record_id=record.row_id,
+            cur2 = db.cursor()
+            log_sql = """
+                INSERT INTO audit_logs
+                    (student_id, action_type, table_name, record_id)
+                VALUES (%s, %s, %s, %s)
+            """
+            cur2.execute(
+                log_sql,
+                (
+                    current_student_id,
+                    "DELETE",
+                    "health_system",
+                    id,
+                ),
             )
-            db.session.add(log)
+            db.commit()
 
-        db.session.delete(record)
-        db.session.commit()
+    
+        delete_sql = "DELETE FROM health_system WHERE row_id = %s"
+        cur.execute(delete_sql, (id,))
+        db.commit()
+
         flash("Record deleted successfully.", "success")
 
     except Exception as e:
-        db.session.rollback()
-        return f"Silme Hatası (health): {e}"
+        db.rollback()
+        return f"Error (health): {e}"
 
     return redirect(url_for("health.list_health"))

@@ -113,21 +113,7 @@
       >{{ record.source_notes if record else '' }}</textarea>
     </div>
 
-    {# Student (Audit) #}
-    <div class="col-md-4">
-      <label for="student_number" class="form-label">Student (Audit)</label>
-      <select id="student_number" name="student_number" class="form-select">
-        <option value="">Select student (optional)</option>
-        {% for s in students %}
-          <option value="{{ s.student_number }}">
-            {{ s.student_number }} - {{ s.name }}
-          </option>
-        {% endfor %}
-      </select>
-      <div class="form-text">
-        If you select a student, this operation will be stored in Audit Log.
-      </div>
-    </div>
+    
 
     <div class="col-12 mt-3">
       <button type="submit" class="btn btn-primary">
