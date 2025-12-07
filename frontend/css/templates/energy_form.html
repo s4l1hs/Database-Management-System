@@ -17,7 +17,7 @@
             {% endif %}"
     class="row g-3"
   >
-    {# Country #}
+    {# Country Dropdown #}
     <div class="col-md-4">
       <label for="country_id" class="form-label">Country</label>
       <select
@@ -36,7 +36,7 @@
           <option value="{{ c.country_id }}"
             {% if action == 'Edit' and c.country_id == record.country_id %}selected{% endif %}
           >
-            {{ c.country_name }} ({{ c.country_code }})
+            {{ c.country_name }}
           </option>
         {% endfor %}
       </select>
@@ -45,7 +45,7 @@
       {% endif %}
     </div>
 
-    {# Indicator #}
+    {# Indicator Dropdown #}
     <div class="col-md-4">
       <label for="energy_indicator_id" class="form-label">Indicator</label>
       <select
@@ -64,7 +64,7 @@
           <option value="{{ ind.energy_indicator_id }}"
             {% if action == 'Edit' and ind.energy_indicator_id == record.energy_indicator_id %}selected{% endif %}
           >
-            {{ ind.indicator_name }} ({{ ind.measurement_unit or '-' }})
+            {{ ind.indicator_name }} ({{ ind.unit_symbol or '-' }})
           </option>
         {% endfor %}
       </select>
@@ -73,7 +73,7 @@
       {% endif %}
     </div>
 
-    {# Year #}
+    {# Year Input #}
     <div class="col-md-2">
       <label for="year" class="form-label">Year</label>
       <input
@@ -88,12 +88,12 @@
       />
     </div>
 
-    {# Value #}
+    {# Value Input #}
     <div class="col-md-2">
       <label for="indicator_value" class="form-label">Value</label>
       <input
         type="number"
-        step="0.0001"
+        step="any"
         class="form-control"
         id="indicator_value"
         name="indicator_value"
@@ -102,9 +102,9 @@
       />
     </div>
 
-    {# Data Source (Source Notes) #}
+    {# Data Source (Note: Variable name is data_source) #}
     <div class="col-12">
-      <label for="data_source" class="form-label">Data Source</label>
+      <label for="data_source" class="form-label">Source Notes</label>
       <textarea
         id="data_source"
         name="data_source"
@@ -124,3 +124,4 @@
   </form>
 </div>
 {% endblock %}
+
