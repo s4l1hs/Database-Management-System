@@ -64,7 +64,7 @@
           <option value="{{ ind.energy_indicator_id }}"
             {% if action == 'Edit' and ind.energy_indicator_id == record.energy_indicator_id %}selected{% endif %}
           >
-            {{ ind.indicator_name }} ({{ ind.unit_symbol or '-' }})
+            {{ ind.indicator_name }} ({{ ind.measurement_unit or '-' }})
           </option>
         {% endfor %}
       </select>
