@@ -19,7 +19,7 @@ def _load_countries_and_indicators():
     
     # 2. Get Energy Indicators
     cur.execute("""
-        SELECT energy_indicator_id, indicator_name, unit_symbol 
+        SELECT energy_indicator_id, indicator_name, measurement_unit 
         FROM energy_indicator_details 
         ORDER BY indicator_name
     """)
