@@ -2,7 +2,7 @@
 
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
-from App.models import Student
+from App.db import get_db
 
 login_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -41,19 +41,28 @@ def login():
             return redirect(url_for("auth.login"))
 
         # Only admins (team_no = 1) can log in
-        student = Student.query.filter_by(
-            student_number=entered_number,
-            team_no=1
-        ).first()
+        conn = get_db()
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            """
+            SELECT student_id, student_number, full_name, team_no
+            FROM students
+            WHERE student_number = %s AND team_no = 1
+            """,
+            (entered_number,),
+        )
+        student = cur.fetchone()
+        cur.close()
 
         if not student:
             flash("Admin not found.", "danger")
             return redirect(url_for("auth.login"))
 
         # Save login session
-        session["student_id"] = student.student_id
-        session["student_number"] = student.student_number
-        session["team_no"] = int(student.team_no)
+        session["student_id"] = student["student_id"]
+        session["student_number"] = student["student_number"]
+        session["team_no"] = int(student["team_no"])
 
         return redirect(url_for("dashboard.dashboard"))
 
