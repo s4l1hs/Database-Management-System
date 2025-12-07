@@ -1,54 +1,81 @@
 :root {
-  --main-bg-color: #86A8E7;
-  --main-text-color: #fff;
-  --user-icon-color: #D16BA5;
-}
-
-.nav-pills {
-  --bs-nav-pills-border-radius: var(--bs-border-radius) !important;
-  --bs-nav-pills-link-active-color: var(--main-text-color) !important;
-  --bs-nav-pills-link-active-bg: var(--main-bg-color) !important;
-}
-
-a {
-  color: inherit !important;/* Inherit color from the parent */
-  text-decoration: none !important;/* Remove underline */
+  --bg-soft: #f6f8fb;
+  --text-main: #0f172a;
+  --accent: #4b6cb7;
+  --accent-2: #00b894;
+  --border-soft: #e5e7eb;
+  --card-radius: 14px;
 }
 
 body {
-  background-color: var(--main-bg-color);
+  background: var(--bg-soft);
+  color: var(--text-main);
+  min-height: 100vh;
 }
 
-.user-icon {
-  color: var(--user-icon-color);
-}
-.p-01 {
-  padding:0.1rem;
-}
-html, body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-.modal-sheet {
-  display: flex;
-  align-items: center; /* Center vertically */
-  justify-content: center; /* Center horizontally */
-  height: 100%;
+.card {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--card-radius);
 }
 
-.modal-dialog {
-  flex-grow: 1;
-  display: flex;
+.hover-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+}
+
+.icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.06);
+  font-size: 16px;
+}
+
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-outline-info {
+  border-color: #66d9ff;
+  color: #e0f7ff !important;
+}
+
+.btn-outline-info:hover {
+  background: #66d9ff;
+  color: #0f172a !important;
+}
+
+.table thead {
+  background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
+  color: #fff;
+}
+
+.table tbody tr:hover {
+  background-color: #eef2ff;
+}
+
+.alert {
+  border-radius: 10px;
 }
 
 .modal-content {
-  width: 100%; /* Optional: Adjust width as needed */
-  max-width: 500px; /* Optional: Adjust max-width as needed */
+  border-radius: 16px;
 }
 
-.me-auto {
-  margin-right: 15px !important;
+.navbar .nav-link.active {
+  font-weight: 700;
+  text-decoration: underline;
 }

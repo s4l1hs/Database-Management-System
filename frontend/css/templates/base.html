@@ -17,16 +17,18 @@
       referrerpolicy="no-referrer"
     />
 
+    <link rel="stylesheet" href="/css/style.css" />
+
     {% block extra_head %}{% endblock %}
   </head>
 
   <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);">
       <div class="container-fluid">
 
         <a class="navbar-brand" href="{{ url_for('dashboard.dashboard') }}">
-          WDI Project
+          <i class="fa-solid fa-chart-line me-1"></i> WDI Project
         </a>
 
         <button

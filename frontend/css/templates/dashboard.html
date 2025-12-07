@@ -5,10 +5,11 @@
 {% block content %}
 <div class="container py-5">
 
-  <h1 class="mb-4">WDI Project Dashboard</h1>
-  <p class="text-muted mb-4">
-    View data categories or login as admin to manage the database.
-  </p>
+  <div class="mb-4">
+    <h1 class="fw-bold">WDI Project Dashboard</h1>
+    <p class="text-muted mb-1">Explore domains or login to manage data.</p>
+    <span class="badge bg-primary bg-opacity-75">5 domains</span>
+  </div>
 
   <div class="mb-4">
     {% if session.get("team_no")|int == 1 %}
@@ -30,12 +31,13 @@
     <!-- Health -->
     <div class="col-md-4">
       <a href="{{ url_for('health.list_health') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #e0f7ff 0%, #f8fbff 100%);">
           <div class="card-body">
-            <h4 class="card-title">Health</h4>
-            <p class="text-muted small">
-              Country health system indicators.
-            </p>
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-primary"><i class="fa-solid fa-heart-pulse"></i></div>
+              <h5 class="mb-0 ms-2">Health</h5>
+            </div>
+            <p class="text-muted small mb-0">Country health system indicators.</p>
           </div>
         </div>
       </a>
@@ -44,10 +46,13 @@
     <!-- Sustainability -->
     <div class="col-md-4">
       <a href="{{ url_for('sustainability.list_sustainability') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #e7f8ef 0%, #f5fff7 100%);">
           <div class="card-body">
-            <h4 class="card-title">Sustainability</h4>
-            <p class="text-muted small">Environmental sustainability metrics.</p>
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-success"><i class="fa-solid fa-leaf"></i></div>
+              <h5 class="mb-0 ms-2">Sustainability</h5>
+            </div>
+            <p class="text-muted small mb-0">Environmental sustainability metrics.</p>
           </div>
         </div>
       </a>
@@ -56,12 +61,13 @@
     <!-- Energy (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('energy.list_energy') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fff2f7 0%, #fff9fb 100%);">
           <div class="card-body">
-            <h4 class="card-title">Energy</h4>
-            <p class="text-muted small">
-              Energy production and consumption.
-            </p>
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-danger"><i class="fa-solid fa-bolt"></i></div>
+              <h5 class="mb-0 ms-2">Energy</h5>
+            </div>
+            <p class="text-muted small mb-0">Energy production and consumption.</p>
           </div>
         </div>
       </a>
@@ -70,12 +76,13 @@
     <!-- Freshwater (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('freshwater.list_freshwater') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #eaf5ff 0%, #f7fbff 100%);">
           <div class="card-body">
-            <h4 class="card-title">Freshwater</h4>
-            <p class="text-muted small">
-              Water usage & quality indicators.
-            </p>
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-info"><i class="fa-solid fa-droplet"></i></div>
+              <h5 class="mb-0 ms-2">Freshwater</h5>
+            </div>
+            <p class="text-muted small mb-0">Water usage & quality indicators.</p>
           </div>
         </div>
       </a>
@@ -84,12 +91,13 @@
     <!-- GHG (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('ghg.list_ghg') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fff6e5 0%, #fffbf3 100%);">
           <div class="card-body">
-            <h4 class="card-title">GHG (Greenhouse Gas)</h4>
-            <p class="text-muted small">
-              Greenhouse gas emissions by country.
-            </p>
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-warning"><i class="fa-solid fa-smog"></i></div>
+              <h5 class="mb-0 ms-2">GHG (Greenhouse Gas)</h5>
+            </div>
+            <p class="text-muted small mb-0">Greenhouse gas emissions by country.</p>
           </div>
         </div>
       </a>
