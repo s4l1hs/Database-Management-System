@@ -1,4 +1,3 @@
-# App/routes/energy.py
 import mysql.connector
 from flask import (
     Blueprint, render_template, request, redirect, url_for, flash, session, abort
@@ -17,7 +16,7 @@ def _load_countries_and_indicators():
     cur.execute("SELECT country_id, country_name FROM countries ORDER BY country_name")
     countries = cur.fetchall()
     
-    # 2. Get Energy Indicators
+    # 2. Get Energy Indicators (Using correct 'measurement_unit')
     cur.execute("""
         SELECT energy_indicator_id, indicator_name, measurement_unit 
         FROM energy_indicator_details 
@@ -34,7 +33,7 @@ def list_energy():
     year = request.args.get("year", type=int)
 
     db = get_db()
-    # dictionary=True is CRITICAL. It lets us access data by name in HTML (row.country_name)
+    # dictionary=True is CRITICAL. It lets us access data by name in HTML
     cur = db.cursor(dictionary=True)
 
     # Base Query
@@ -136,7 +135,15 @@ def add_energy():
 
     # GET request: Show form
     countries, indicators = _load_countries_and_indicators()
-    return render_template("energy_form.html", countries=countries, indicators=indicators)
+    
+    # ✅ FIX: Passing 'action' and 'record' so the form knows it is Adding
+    return render_template(
+        "energy_form.html", 
+        countries=countries, 
+        indicators=indicators, 
+        action="Add", 
+        record=None
+    )
 
 # --- 3. UPDATE (EDIT) ---
 @energy_bp.route("/edit/<int:id>", methods=["GET", "POST"])
@@ -183,7 +190,15 @@ def edit_energy(id):
             db.rollback()
             flash(f"Update Error: {e}", "danger")
 
-    return render_template("energy_form.html", record=record)
+    # ✅ FIX: Loading dropdowns AND passing 'action' so the form knows it is Editing
+    countries, indicators = _load_countries_and_indicators()
+    return render_template(
+        "energy_form.html", 
+        record=record,
+        countries=countries,
+        indicators=indicators,
+        action="Edit"
+    )
 
 # --- 4. DELETE ---
 @energy_bp.route("/delete/<int:id>", methods=["POST"])
@@ -212,3 +227,4 @@ def delete_energy(id):
         flash(f"Delete Error: {e}", "danger")
 
     return redirect(url_for("energy.list_energy"))
+    
