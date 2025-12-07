@@ -50,7 +50,7 @@ def list_energy():
             c.country_code,
             c.region,
             ind.indicator_name,
-            ind.unit_symbol
+            ind.measurement_unit
         FROM energy_data e
         JOIN countries c ON e.country_id = c.country_id
         JOIN energy_indicator_details ind ON e.energy_indicator_id = ind.energy_indicator_id
