@@ -28,13 +28,28 @@
 
   <div class="row g-4">
 
+    <!-- Countries -->
+    <div class="col-md-4">
+      <a href="{{ url_for('countries.list_countries') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fdf7e3 0%, #fffaf0 100%);">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-warning"><i class="fa-solid fa-flag"></i></div>
+              <h5 class="mb-0 ms-2">Countries</h5>
+            </div>
+            <p class="text-muted small mb-0">Country list, codes, regions and map filter.</p>
+          </div>
+        </div>
+      </a>
+    </div>
+
     <!-- Health -->
     <div class="col-md-4">
       <a href="{{ url_for('health.list_health') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #e0f7ff 0%, #f8fbff 100%);">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #ffe8f0 0%, #fff5f8 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
-              <div class="icon-circle text-primary"><i class="fa-solid fa-heart-pulse"></i></div>
+              <div class="icon-circle text-danger"><i class="fa-solid fa-heart-pulse"></i></div>
               <h5 class="mb-0 ms-2">Health</h5>
             </div>
             <p class="text-muted small mb-0">Country health system indicators.</p>
@@ -61,10 +76,10 @@
     <!-- Energy (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('energy.list_energy') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fff2f7 0%, #fff9fb 100%);">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fff5cc 0%, #fff9e6 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
-              <div class="icon-circle text-danger"><i class="fa-solid fa-bolt"></i></div>
+              <div class="icon-circle text-warning"><i class="fa-solid fa-bolt"></i></div>
               <h5 class="mb-0 ms-2">Energy</h5>
             </div>
             <p class="text-muted small mb-0">Energy production and consumption.</p>
@@ -91,10 +106,10 @@
     <!-- GHG (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('ghg.list_ghg') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fff6e5 0%, #fffbf3 100%);">
+        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #eef3f1 0%, #f8fbfa 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
-              <div class="icon-circle text-warning"><i class="fa-solid fa-smog"></i></div>
+              <div class="icon-circle text-secondary"><i class="fa-solid fa-smog"></i></div>
               <h5 class="mb-0 ms-2">GHG (Greenhouse Gas)</h5>
             </div>
             <p class="text-muted small mb-0">Greenhouse gas emissions by country.</p>
