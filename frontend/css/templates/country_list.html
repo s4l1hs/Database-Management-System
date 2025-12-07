@@ -11,7 +11,7 @@
         margin-bottom: 20px;
         border: 1px solid #ddd;
         border-radius: 8px;
-        background-color: #f8f9fa; /* Açık mavi/gri ton */
+        background-color: #f8f9fa; /* Light blue/gray tone */
     }
     .jvm-tooltip {
         background-color: #333;
@@ -28,7 +28,7 @@
   <div>
     <h1 class="h3 mb-1">Countries & Map</h1>
     <p class="text-muted mb-0">
-      Haritadan bir ülkeye tıklayarak aşağıdaki listeyi filtreleyebilirsin.
+      Click a country on the map to filter the list below.
     </p>
   </div>
 </div>
@@ -99,16 +99,16 @@
 <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
 
 <script>
-    // Haritayı Başlat
+    // Initialize map
     const map = new jsVectorMap({
         selector: '#world-map',
         map: 'world',
         
-        // Yakınlaştırma butonları
+        // Zoom buttons
         zoomButtons: true,
         zoomOnScroll: false,
         
-        // Görsel Stil
+        // Visual style
         regionStyle: {
             initial: {
                 fill: '#d1d5db',
@@ -117,7 +117,7 @@
                 fillOpacity: 1
             },
             hover: {
-                fill: '#0d6efd', // Mouse üzerine gelince Mavi
+                fill: '#0d6efd', // Use blue on hover
                 cursor: 'pointer'
             },
             selected: {
@@ -125,9 +125,9 @@
             }
         },
 
-        // TIKLAMA FONKSİYONU
+        // Click handler
         onRegionClick: function(event, code) {
-            // Harita kütüphanesinden ülke adını al (örn: Turkey)
+          // Get country name from the map library (e.g., Turkey)
             const countryName = window.jsVectorMap.maps.world.paths[code].name;
             
             // Arama kutusunu bul ve doldur
@@ -136,7 +136,7 @@
             
             if (searchInput && searchForm) {
                 searchInput.value = countryName;
-                searchForm.submit(); // Formu gönder (Sayfa yenilenir ve filtreler)
+              searchForm.submit(); // Submit the form (refreshes and filters)
             }
         }
     });

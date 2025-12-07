@@ -17,6 +17,10 @@
       referrerpolicy="no-referrer"
     />
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="/css/style.css" />
 
     {% block extra_head %}{% endblock %}
@@ -24,7 +28,7 @@
 
   <body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark shadow-sm" style="background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);">
+    <nav class="navbar navbar-expand-lg bg-white shadow-sm border-bottom">
       <div class="container-fluid">
 
         <a class="navbar-brand" href="{{ url_for('dashboard.dashboard') }}">
@@ -131,7 +135,7 @@
       {% endwith %}
     </div>
 
-    <div class="container mt-3 mb-5">
+    <div class="container py-4">
       {% block content %}{% endblock %}
     </div>
 
@@ -202,18 +206,17 @@
 
     <script>
         function loadGlobalStats() {
-            // Önce 'yükleniyor' spinner'larını göster (her açılışta)
+          // Always show loading spinners on open
             const spinner = '<div class="spinner-border spinner-border-sm text-secondary" role="status"></div>';
             document.getElementById("widget-countries").innerHTML = spinner;
             document.getElementById("widget-regions").innerHTML = spinner;
             document.getElementById("widget-health").innerHTML = spinner;
 
-            // API'den veri çek
-            // URL: /countries/api/stats
+          // Fetch data from API (URL: /countries/api/stats)
             fetch("{{ url_for('countries.get_global_stats') }}")
                 .then(response => response.json())
                 .then(data => {
-                    // Verileri yerleştir
+              // Populate widgets
                     document.getElementById("widget-countries").innerText = data.total_countries || 0;
                     document.getElementById("widget-regions").innerText = data.total_regions || 0;
                     document.getElementById("widget-health").innerText = data.total_health || 0;

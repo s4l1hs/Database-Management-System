@@ -3,27 +3,44 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container py-5">
+<div class="container py-4">
 
-  <div class="mb-4">
-    <h1 class="fw-bold">WDI Project Dashboard</h1>
-    <p class="text-muted mb-1">Explore domains or login to manage data.</p>
-    <span class="badge bg-primary bg-opacity-75">5 domains</span>
-  </div>
-
-  <div class="mb-4">
-    {% if session.get("team_no")|int == 1 %}
-      <div class="alert alert-success">
-        Logged in as admin (ID: {{ session.get("student_number") }}).
+  <div class="hero-panel mb-4 p-4 p-md-5">
+    <div class="row align-items-center g-4">
+      <div class="col-md-7">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span class="badge badge-soft">Live</span>
+          <span class="text-uppercase small text-muted-70">World Development Indicators</span>
+        </div>
+        <h1 class="fw-bold display-5 mb-2">Explore and govern data</h1>
+        <p class="mb-3 text-muted-70">Browse domains, compare countries, and manage data-driven decisions with ease.</p>
+        <div class="d-flex flex-wrap gap-2">
+          <span class="chip">5 domains</span>
+          <span class="chip">Countries</span>
+          <span class="chip">Sustainability</span>
+        </div>
       </div>
-      <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger mb-3">
-        Logout
-      </a>
-    {% else %}
-      <a href="{{ url_for('auth.login') }}" class="btn btn-primary mb-3">
-        Admin Login
-      </a>
-    {% endif %}
+      <div class="col-md-5">
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Countries</div>
+            <div class="stat-value"><i class="fa-solid fa-flag me-2"></i>190+</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Domains</div>
+            <div class="stat-value"><i class="fa-solid fa-layer-group me-2"></i>5</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Indicators</div>
+            <div class="stat-value"><i class="fa-solid fa-chart-simple me-2"></i>100+</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Admin</div>
+            <div class="stat-value"><i class="fa-solid fa-user-shield me-2"></i>{{ 'On' if session.get('team_no')|int == 1 else 'Off' }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="row g-4">
@@ -31,7 +48,7 @@
     <!-- Countries -->
     <div class="col-md-4">
       <a href="{{ url_for('countries.list_countries') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fdf7e3 0%, #fffaf0 100%);">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,199,92,0.18) 0%, rgba(255,243,207,0.3) 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
               <div class="icon-circle text-warning"><i class="fa-solid fa-flag"></i></div>
@@ -46,7 +63,7 @@
     <!-- Health -->
     <div class="col-md-4">
       <a href="{{ url_for('health.list_health') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #ffe8f0 0%, #fff5f8 100%);">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,118,140,0.14) 0%, rgba(255,240,245,0.4) 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
               <div class="icon-circle text-danger"><i class="fa-solid fa-heart-pulse"></i></div>
@@ -61,7 +78,7 @@
     <!-- Sustainability -->
     <div class="col-md-4">
       <a href="{{ url_for('sustainability.list_sustainability') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #e7f8ef 0%, #f5fff7 100%);">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(46,204,113,0.12) 0%, rgba(234,255,241,0.35) 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
               <div class="icon-circle text-success"><i class="fa-solid fa-leaf"></i></div>
@@ -76,7 +93,7 @@
     <!-- Energy (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('energy.list_energy') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #fff5cc 0%, #fff9e6 100%);">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,206,86,0.18) 0%, rgba(255,244,209,0.38) 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
               <div class="icon-circle text-warning"><i class="fa-solid fa-bolt"></i></div>
@@ -91,7 +108,7 @@
     <!-- Freshwater (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('freshwater.list_freshwater') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #eaf5ff 0%, #f7fbff 100%);">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(0,174,239,0.14) 0%, rgba(232,246,255,0.4) 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
               <div class="icon-circle text-info"><i class="fa-solid fa-droplet"></i></div>
@@ -106,7 +123,7 @@
     <!-- GHG (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('ghg.list_ghg') }}" class="text-decoration-none">
-        <div class="card shadow-sm h-100 hover-card" style="background: linear-gradient(135deg, #eef3f1 0%, #f8fbfa 100%);">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(128,139,150,0.12) 0%, rgba(240,242,243,0.35) 100%);">
           <div class="card-body">
             <div class="d-flex align-items-center mb-2">
               <div class="icon-circle text-secondary"><i class="fa-solid fa-smog"></i></div>
