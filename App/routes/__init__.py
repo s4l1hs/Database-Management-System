@@ -35,7 +35,7 @@ def create_app():
     # ---------- TEARDOWN ----------
     app.teardown_appcontext(close_db)
 
-    # ---------- BLUEPRINTS ----------> some of them temporarly closed until imports
+    # ---------- BLUEPRINTS ----------> 
     from App.routes.sustainability import sustainability_bp
     from App.routes.about import about_bp
     from App.routes.login import login_bp
@@ -44,7 +44,10 @@ def create_app():
     from App.routes.freshwater import freshwater_bp
     from App.routes.ghg import ghg_bp
     from App.routes.energy import energy_bp
+    # App/__init__.py içindeki create_app içinde
+    from App.routes.countries import countries_bp
 
+    app.register_blueprint(countries_bp)
     app.register_blueprint(about_bp)
     app.register_blueprint(login_bp)
     app.register_blueprint(health_bp)

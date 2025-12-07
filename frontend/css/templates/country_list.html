@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Countries Map{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" />
+<style>
+    #world-map {
+        width: 100%;
+        height: 400px;
+        margin-bottom: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background-color: #f8f9fa; /* Açık mavi/gri ton */
+    }
+    .jvm-tooltip {
+        background-color: #333;
+        border-radius: 3px;
+        padding: 5px 10px;
+        font-family: sans-serif;
+        z-index: 999; 
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Countries & Map</h1>
+    <p class="text-muted mb-0">
+      Haritadan bir ülkeye tıklayarak aşağıdaki listeyi filtreleyebilirsin.
+    </p>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body p-0">
+        <div id="world-map"></div>
+    </div>
+</div>
+
+<form method="get" class="row g-2 mb-3" id="searchForm">
+  <div class="col-sm-4 col-md-3">
+    <input
+      type="text"
+      class="form-control"
+      name="q"
+      id="searchInput"
+      placeholder="Search by name or code..."
+      value="{{ search }}"
+    />
+  </div>
+  <div class="col-sm-auto">
+    <button type="submit" class="btn btn-secondary">Search</button>
+  </div>
+  {% if search %}
+    <div class="col-sm-auto align-self-center">
+      <a href="{{ url_for('countries.list_countries') }}" class="btn btn-link p-0">
+        Clear Filter ({{ search }})
+      </a>
+    </div>
+  {% endif %}
+</form>
+
+<div class="table-responsive">
+  <table class="table table-striped table-hover align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Country</th>
+        <th>Code</th>
+        <th>Region</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td>{{ row.country_id }}</td>
+          <td>{{ row.country_name }}</td>
+          <td><span class="badge bg-primary">{{ row.country_code }}</span></td>
+          <td>{{ row.region }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  
+  {% if not rows %}
+    <div class="alert alert-warning text-center">
+        No country found for "<strong>{{ search }}</strong>". 
+        <a href="{{ url_for('countries.list_countries') }}">Show All</a>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/js/jsvectormap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
+
+<script>
+    // Haritayı Başlat
+    const map = new jsVectorMap({
+        selector: '#world-map',
+        map: 'world',
+        
+        // Yakınlaştırma butonları
+        zoomButtons: true,
+        zoomOnScroll: false,
+        
+        // Görsel Stil
+        regionStyle: {
+            initial: {
+                fill: '#d1d5db',
+                stroke: '#fff',
+                strokeWidth: 0.5,
+                fillOpacity: 1
+            },
+            hover: {
+                fill: '#0d6efd', // Mouse üzerine gelince Mavi
+                cursor: 'pointer'
+            },
+            selected: {
+                fill: '#198754'
+            }
+        },
+
+        // TIKLAMA FONKSİYONU
+        onRegionClick: function(event, code) {
+            // Harita kütüphanesinden ülke adını al (örn: Turkey)
+            const countryName = window.jsVectorMap.maps.world.paths[code].name;
+            
+            // Arama kutusunu bul ve doldur
+            const searchInput = document.getElementById('searchInput');
+            const searchForm = document.getElementById('searchForm');
+            
+            if (searchInput && searchForm) {
+                searchInput.value = countryName;
+                searchForm.submit(); // Formu gönder (Sayfa yenilenir ve filtreler)
+            }
+        }
+    });
+</script>
+{% endblock %}
