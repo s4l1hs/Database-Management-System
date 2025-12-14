@@ -1,111 +1,134 @@
 {% extends "base.html" %}
-
-{% block title %}Energy Indicators{% endblock %}
+{% block title %}Energy Data{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h1 class="h3 mb-1">Energy Usage Indicators</h1>
+    <h1 class="h3 text-warning">
+      <i class="fa-solid fa-bolt me-2"></i>Energy Indicators
+    </h1>
     <p class="text-muted mb-0">
-      Country-based energy indicators with year and source notes.
+      Country-based energy statistics, generation, and usage data.
     </p>
   </div>
-
+  
   {% if session.get("team_no")|int == 1 %}
-    <a href="{{ url_for('energy.add_energy') }}" class="btn btn-primary">
-      <i class="fa-solid fa-plus"></i> Add New Record
-    </a>
+  <a href="{{ url_for('energy.add_energy') }}" class="btn btn-warning shadow-sm">
+    <i class="fa-solid fa-plus"></i> Add New Record
+  </a>
   {% endif %}
 </div>
 
-<form id="sortForm" class="d-flex flex-wrap gap-3 mb-3">
-  <div>
-    <label class="form-label fw-semibold">Sort By</label>
-    <select id="sortColumn" class="form-select">
-      <option value="0">ID</option>
-      <option value="1">Country</option>
-      <option value="2">Region</option>
-      <option value="3">Code</option>
-      <option value="4">Indicator</option>
-      <option value="5">Unit</option>
-      <option value="6">Year</option>
-      <option value="7">Value</option>
-      <option value="8">Source Notes</option>
-    </select>
+<div class="card shadow-sm mb-4 border-0 bg-light">
+  <div class="card-body py-3">
+    <form id="sortForm" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label fw-bold small text-muted text-uppercase">Sort Column</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-filter text-secondary"></i></span>
+          <select id="sortColumn" class="form-select border-start-0 ps-0">
+            <option value="0">ID</option>
+            <option value="1">Country</option>
+            <option value="2">Region</option>
+            <option value="3">Code</option>
+            <option value="4">Indicator</option>
+            <option value="5">Unit</option>
+            <option value="6">Year</option>
+            <option value="7">Value</option>
+            <option value="8">Source Notes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label fw-bold small text-muted text-uppercase">Order</label>
+        <select id="sortOrder" class="form-select">
+          <option value="asc">Ascending (A-Z)</option>
+          <option value="desc">Descending (Z-A)</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <button type="button" class="btn btn-outline-secondary w-100" onclick="applySort()">
+          Apply
+        </button>
+      </div>
+    </form>
   </div>
+</div>
 
-  <div>
-    <label class="form-label fw-semibold">Order</label>
-    <select id="sortOrder" class="form-select">
-      <option value="asc">Ascending</option>
-      <option value="desc">Descending</option>
-    </select>
+<div class="card shadow-sm border-0">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle mb-0">
+        <thead class="table-warning">
+          <tr>
+            <th>#</th>
+            <th>Country</th>
+            <th>Region</th>
+            <th>Code</th>
+            <th>Indicator</th>
+            <th>Unit</th>
+            <th>Year</th>
+            <th>Value</th>
+            <th>Source Note</th>
+            {% if session.get("team_no")|int == 1 %}
+            <th class="text-end">Actions</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td class="text-muted small">{{ row.data_id }}</td>
+            <td>
+              <strong>{{ row.country_name }}</strong>
+            </td>
+            <td>
+              <span class="badge bg-white text-secondary border">{{ row.region or '-' }}</span>
+            </td>
+            <td><small class="text-monospace">{{ row.country_code }}</small></td>
+            
+            <td title="{{ row.indicator_name }}">
+              {{ row.indicator_name }}
+            </td>
+            <td>{{ row.measurement_unit or '-' }}</td>
+            <td>
+              <span class="badge bg-light text-dark border">{{ row.year }}</span>
+            </td>
+            <td class="fw-bold text-dark">{{ row.indicator_value }}</td>
+            <td><small class="text-muted">{{ row.data_source or '-' }}</small></td>
+            
+            {% if session.get("team_no")|int == 1 %}
+            <td class="text-end">
+              <a href="{{ url_for('energy.edit_energy', id=row.data_id) }}" 
+                 class="btn btn-sm btn-outline-primary me-1" title="Edit">
+                <i class="fa-solid fa-pen"></i>
+              </a>
+              
+              <form action="{{ url_for('energy.delete_energy', id=row.data_id) }}" 
+                    method="post" class="d-inline" 
+                    onsubmit="return confirm('Are you sure you want to delete this energy record?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+            </td>
+            {% endif %}
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="10" class="text-center py-5 text-muted">
+              <i class="fa-solid fa-plug-circle-xmark fa-3x mb-3 text-secondary opacity-50"></i>
+              <p>No energy data found.</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
-
-  <div class="align-self-end">
-    <button type="button" class="btn btn-secondary" onclick="applySort()">
-      Apply Sort
-    </button>
-  </div>
-</form>
-
-<table class="table table-striped table-hover align-middle">
-  <thead class="table-dark">
-    <tr>
-      <th>#</th>
-      <th>Country</th>
-      <th>Region</th>
-      <th>Code</th>
-      <th>Indicator</th>
-      <th>Unit</th>
-      <th>Year</th>
-      <th>Value</th>
-      <th>Source Notes</th>
-      {% if session.get("team_no")|int == 1 %}
-        <th>Actions</th>
-      {% endif %}
-    </tr>
-  </thead>
-
-  <tbody>
-    {# Loop through the dictionary rows returned by Raw SQL #}
-    {% for row in rows %}
-      <tr>
-        <td>{{ row.data_id }}</td>
-        <td>{{ row.country_name }}</td>
-        <td>{{ row.region or '-' }}</td>
-        <td>{{ row.country_code }}</td>
-        <td>{{ row.indicator_name }}</td>
-        <td>{{ row.measurement_unit or '-' }}</td>
-        <td>{{ row.year }}</td>
-        <td>{{ row.indicator_value }}</td>
-        <td>{{ row.data_source or '' }}</td>
-
-        {% if session.get("team_no")|int == 1 %}
-          <td>
-            <a
-              href="{{ url_for('energy.edit_energy', id=row.data_id) }}"
-              class="btn btn-sm btn-outline-secondary me-1"
-            >
-              Edit
-            </a>
-
-            <form
-              action="{{ url_for('energy.delete_energy', id=row.data_id) }}"
-              method="post"
-              style="display:inline-block"
-              onsubmit="return confirm('Delete this record?');"
-            >
-              <button type="submit" class="btn btn-sm btn-outline-danger">
-                Delete
-              </button>
-            </form>
-          </td>
-        {% endif %}
-      </tr>
-    {% endfor %}
-  </tbody>
-</table>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -118,6 +141,9 @@ function applySort() {
   const rows = Array.from(tbody.querySelectorAll("tr"));
 
   const sorted = rows.sort((a, b) => {
+    // Safety check: ensure columns exist before trying to read them
+    if (!a.children[colIndex] || !b.children[colIndex]) return 0;
+
     let A = a.children[colIndex].innerText.trim();
     let B = b.children[colIndex].innerText.trim();
 
@@ -128,9 +154,7 @@ function applySort() {
     if (isNumeric) {
       return order === "asc" ? numA - numB : numB - numA;
     } else {
-      return order === "asc"
-        ? A.localeCompare(B)
-        : B.localeCompare(A);
+      return order === "asc" ? A.localeCompare(B) : B.localeCompare(A);
     }
   });
 
