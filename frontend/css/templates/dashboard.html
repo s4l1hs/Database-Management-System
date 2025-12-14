@@ -2,50 +2,135 @@
 
 {% block title %}Dashboard{% endblock %}
 
+{% block extra_head %}
+<style>
+  .hero-panel {
+    position: relative;
+    background: radial-gradient(circle at 20% 20%, rgba(59,130,246,0.18), transparent 35%),
+                radial-gradient(circle at 80% 0%, rgba(16,185,129,0.18), transparent 32%),
+                linear-gradient(120deg, #0f172a, #1d4ed8);
+    color: #f8fafc;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .hero-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+  }
+  .hero-content { position: relative; z-index: 1; }
+  .badge-soft { background: rgba(255,255,255,0.2); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.25); }
+  .text-muted-70 { color: rgba(226,232,240,0.7); }
+  .chip { background: rgba(255,255,255,0.15); color: #e2e8f0; padding: 6px 10px; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); }
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat-card { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px; color: #e5e7eb; }
+  .stat-label { font-size: 13px; color: rgba(229,231,235,0.75); }
+  .stat-value { font-size: 20px; font-weight: 700; color: #fff; }
+
+  .domain-card { border: 1px solid rgba(15,23,42,0.05); transition: transform 160ms ease, box-shadow 160ms ease; }
+  .domain-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(15,23,42,0.12); }
+  .icon-circle { width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+
+  .mini-card { border: 1px solid rgba(15,23,42,0.06); border-radius: 14px; padding: 16px; background: #fff; box-shadow: 0 8px 30px rgba(0,0,0,0.05); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #eef2ff; color: #312e81; font-weight: 600; font-size: 13px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
 
   <div class="hero-panel mb-4 p-4 p-md-5">
-    <div class="row align-items-center g-4">
-      <div class="col-md-7">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <span class="badge badge-soft">Live</span>
-          <span class="text-uppercase small text-muted-70">World Development Indicators</span>
+    <div class="hero-content">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="badge badge-soft">Live</span>
+            <span class="text-uppercase small text-muted-70">World Development Indicators</span>
+          </div>
+          <h1 class="fw-bold display-6 mb-2">Explore, compare, and manage the data that matters.</h1>
+          <p class="mb-3 text-muted-70">Navigate countries, health, emissions, water, energy, and sustainability from one clean cockpit.</p>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="chip">5 domains</span>
+            <span class="chip">Map-first navigation</span>
+            <span class="chip">Admin {{ 'enabled' if is_admin else 'off' }}</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-light btn-sm" href="{{ url_for('dashboard.dashboard') }}"><i class="fa-solid fa-gauge-high me-1"></i> Overview</a>
+            <a class="btn btn-outline-light btn-sm" href="{{ url_for('countries.list_countries') }}"><i class="fa-solid fa-map me-1"></i> Countries</a>
+            <a class="btn btn-outline-light btn-sm" href="{{ url_for('energy.list_energy') }}"><i class="fa-solid fa-bolt me-1"></i> Energy</a>
+          </div>
         </div>
-        <h1 class="fw-bold display-5 mb-2">Explore and govern data</h1>
-        <p class="mb-3 text-muted-70">Browse domains, compare countries, and manage data-driven decisions with ease.</p>
-        <div class="d-flex flex-wrap gap-2">
-          <span class="chip">5 domains</span>
-          <span class="chip">Countries</span>
-          <span class="chip">Sustainability</span>
-        </div>
-      </div>
-      <div class="col-md-5">
-        <div class="stat-grid">
-          <div class="stat-card">
-            <div class="stat-label">Countries</div>
-            <div class="stat-value"><i class="fa-solid fa-flag me-2"></i>190+</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Domains</div>
-            <div class="stat-value"><i class="fa-solid fa-layer-group me-2"></i>5</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Indicators</div>
-            <div class="stat-value"><i class="fa-solid fa-chart-simple me-2"></i>100+</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Admin</div>
-            <div class="stat-value"><i class="fa-solid fa-user-shield me-2"></i>{{ 'On' if session.get('team_no')|int == 1 else 'Off' }}</div>
+        <div class="col-lg-5">
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Countries</div>
+              <div class="stat-value"><i class="fa-solid fa-flag me-2"></i>190+</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Domains</div>
+              <div class="stat-value"><i class="fa-solid fa-layer-group me-2"></i>5</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Indicators</div>
+              <div class="stat-value"><i class="fa-solid fa-chart-simple me-2"></i>100+</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Admin</div>
+              <div class="stat-value"><i class="fa-solid fa-user-shield me-2"></i>{{ 'On' if is_admin else 'Off' }}</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="row g-4">
+  <div class="row g-4 mb-4">
+    <div class="col-lg-4">
+      <div class="mini-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="pill"><i class="fa-solid fa-compass"></i> Quick access</span>
+          <i class="fa-solid fa-arrow-trend-up text-primary"></i>
+        </div>
+        <p class="text-muted small mb-3">Jump to the most used sections.</p>
+        <div class="d-grid gap-2">
+          <a class="btn btn-outline-primary" href="{{ url_for('countries.list_countries') }}">Countries map</a>
+          <a class="btn btn-outline-primary" href="{{ url_for('health.list_health') }}">Health indicators</a>
+          <a class="btn btn-outline-primary" href="{{ url_for('ghg.list_ghg') }}">GHG emissions</a>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="mini-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="pill" style="background:#ecfdf3; color:#166534;"><i class="fa-solid fa-earth-europe"></i> Coverage</span>
+          <i class="fa-solid fa-database text-success"></i>
+        </div>
+        <p class="text-muted small mb-3">Current scope of your dataset.</p>
+        <ul class="list-unstyled mb-0 small text-muted">
+          <li class="mb-1"><i class="fa-regular fa-circle-check text-success me-2"></i>Countries onboarded: 190+</li>
+          <li class="mb-1"><i class="fa-regular fa-circle-check text-success me-2"></i>Energy, water, health, GHG, sustainability</li>
+          <li><i class="fa-regular fa-circle-check text-success me-2"></i>Role based admin actions</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="mini-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="pill" style="background:#fff7ed; color:#9a3412;"><i class="fa-solid fa-screwdriver-wrench"></i> Actions</span>
+          <i class="fa-solid fa-rocket text-warning"></i>
+        </div>
+        <p class="text-muted small mb-3">Admin shortcuts.</p>
+        <div class="d-grid gap-2">
+          <a class="btn btn-outline-secondary" href="{{ url_for('energy.add_energy') }}">Add energy record</a>
+          <a class="btn btn-outline-secondary" href="{{ url_for('freshwater.add_freshwater') }}">Add freshwater record</a>
+          <a class="btn btn-outline-secondary" href="{{ url_for('sustainability.add_sustainability') }}">Add sustainability record</a>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    <!-- Countries -->
+  <div class="row g-4">
     <div class="col-md-4">
       <a href="{{ url_for('countries.list_countries') }}" class="text-decoration-none">
         <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,199,92,0.18) 0%, rgba(255,243,207,0.3) 100%);">
@@ -54,13 +139,12 @@
               <div class="icon-circle text-warning"><i class="fa-solid fa-flag"></i></div>
               <h5 class="mb-0 ms-2">Countries</h5>
             </div>
-            <p class="text-muted small mb-0">Country list, codes, regions and map filter.</p>
+            <p class="text-muted small mb-0">Map filters, country codes, and regions.</p>
           </div>
         </div>
       </a>
     </div>
 
-    <!-- Health -->
     <div class="col-md-4">
       <a href="{{ url_for('health.list_health') }}" class="text-decoration-none">
         <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,118,140,0.14) 0%, rgba(255,240,245,0.4) 100%);">
@@ -69,13 +153,12 @@
               <div class="icon-circle text-danger"><i class="fa-solid fa-heart-pulse"></i></div>
               <h5 class="mb-0 ms-2">Health</h5>
             </div>
-            <p class="text-muted small mb-0">Country health system indicators.</p>
+            <p class="text-muted small mb-0">Health system indicators by country.</p>
           </div>
         </div>
       </a>
     </div>
 
-    <!-- Sustainability -->
     <div class="col-md-4">
       <a href="{{ url_for('sustainability.list_sustainability') }}" class="text-decoration-none">
         <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(46,204,113,0.12) 0%, rgba(234,255,241,0.35) 100%);">
@@ -90,7 +173,6 @@
       </a>
     </div>
 
-    <!-- Energy (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('energy.list_energy') }}" class="text-decoration-none">
         <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,206,86,0.18) 0%, rgba(255,244,209,0.38) 100%);">
@@ -105,7 +187,6 @@
       </a>
     </div>
 
-    <!-- Freshwater (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('freshwater.list_freshwater') }}" class="text-decoration-none">
         <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(0,174,239,0.14) 0%, rgba(232,246,255,0.4) 100%);">
@@ -114,13 +195,12 @@
               <div class="icon-circle text-info"><i class="fa-solid fa-droplet"></i></div>
               <h5 class="mb-0 ms-2">Freshwater</h5>
             </div>
-            <p class="text-muted small mb-0">Water usage & quality indicators.</p>
+            <p class="text-muted small mb-0">Water usage and quality indicators.</p>
           </div>
         </div>
       </a>
     </div>
 
-    <!-- GHG (now active) -->
     <div class="col-md-4">
       <a href="{{ url_for('ghg.list_ghg') }}" class="text-decoration-none">
         <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(128,139,150,0.12) 0%, rgba(240,242,243,0.35) 100%);">
@@ -129,12 +209,11 @@
               <div class="icon-circle text-secondary"><i class="fa-solid fa-smog"></i></div>
               <h5 class="mb-0 ms-2">GHG (Greenhouse Gas)</h5>
             </div>
-            <p class="text-muted small mb-0">Greenhouse gas emissions by country.</p>
+            <p class="text-muted small mb-0">Emissions and share of totals.</p>
           </div>
         </div>
       </a>
     </div>
-
   </div>
 
 </div>
