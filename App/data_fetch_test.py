@@ -1,13 +1,6 @@
-import sys
 from App.db import db
 from App.models import EnergyIndicatorDetails, SustainabilityIndicatorDetails
-from sqlalchemy import text
-
-try:
-    from run import app 
-except ImportError:
-    print("FATAL ERROR: Could not import the main Flask app. Ensure your startup file is named 'run.py' or similar.")
-    sys.exit(1)
+from main import app
 
 def test_energy_data_fetch():
     with app.app_context():
