@@ -3,7 +3,7 @@
 {% block title %}Freshwater Indicators{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h1 class="h3 mb-1">Freshwater Usage Indicators</h1>
     <p class="text-muted mb-0">
@@ -17,6 +17,59 @@
     </a>
   {% endif %}
 </div>
+
+<form method="get" action="{{ url_for('freshwater.list_freshwater') }}" class="row g-2 align-items-end mb-4">
+  <div class="col-md-4">
+    <label class="form-label">Search</label>
+    <input
+      type="text"
+      class="form-control"
+      name="q"
+      placeholder="Country / Code / Indicator..."
+      value="{{ filters.q }}"
+    />
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Country</label>
+    <select class="form-select" name="country_id">
+      <option value="">All countries</option>
+      {% for c in countries %}
+        <option value="{{ c.country_id }}" {% if filters.country_id == (c.country_id|string) %}selected{% endif %}>
+          {{ c.country_name }} ({{ c.country_code }})
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label">Indicator</label>
+    <select class="form-select" name="indicator_id">
+      <option value="">All indicators</option>
+      {% for ind in indicators %}
+        <option value="{{ ind.freshwater_indicator_id }}" {% if filters.indicator_id == (ind.freshwater_indicator_id|string) %}selected{% endif %}>
+          {{ ind.indicator_name }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <label class="form-label">Year</label>
+    <input
+      type="number"
+      class="form-control"
+      name="year"
+      placeholder="e.g. 2020"
+      value="{{ filters.year }}"
+    />
+  </div>
+
+  <div class="col-12 d-flex gap-2">
+    <button type="submit" class="btn btn-dark">Apply</button>
+    <a href="{{ url_for('freshwater.list_freshwater') }}" class="btn btn-outline-secondary">Reset</a>
+  </div>
+</form>
 
 <table class="table table-striped table-hover align-middle">
   <thead class="table-dark">
@@ -36,28 +89,28 @@
     </tr>
   </thead>
   <tbody>
-    {% for fw, country, indicator in rows %}
+    {% for row in rows %}
       <tr>
-        <td>{{ fw.data_id }}</td>
-        <td>{{ country.country_name }}</td>
-        <td>{{ country.region or '-' }}</td>
-        <td>{{ country.country_code }}</td>
-        <td>{{ indicator.indicator_name }}</td>
-        <td>{{ indicator.unit_of_measure or '-' }}</td>
-        <td>{{ fw.year }}</td>
-        <td>{{ fw.indicator_value }}</td>
-        <td>{{ fw.source_notes or '' }}</td>
+        <td>{{ row.data_id }}</td>
+        <td>{{ row.country_name }}</td>
+        <td>{{ row.region or '-' }}</td>
+        <td>{{ row.country_code }}</td>
+        <td>{{ row.indicator_name }}</td>
+        <td>{{ row.unit_of_measure or '-' }}</td>
+        <td>{{ row.year }}</td>
+        <td>{{ row.indicator_value }}</td>
+        <td>{{ row.source_notes or '' }}</td>
 
         {% if session.get("team_no")|int == 1 %}
           <td>
             <a
-              href="{{ url_for('freshwater.edit_freshwater', id=fw.data_id) }}"
+              href="{{ url_for('freshwater.edit_freshwater', id=row.data_id) }}"
               class="btn btn-sm btn-outline-secondary me-1"
             >
               Edit
             </a>
             <form
-              action="{{ url_for('freshwater.delete_freshwater', id=fw.data_id) }}"
+              action="{{ url_for('freshwater.delete_freshwater', id=row.data_id) }}"
               method="post"
               style="display:inline-block"
               onsubmit="return confirm('Delete this record?');"
@@ -70,6 +123,14 @@
         {% endif %}
       </tr>
     {% endfor %}
+
+    {% if rows|length == 0 %}
+      <tr>
+        <td colspan="10" class="text-center text-muted py-4">
+          No records found for the selected filters.
+        </td>
+      </tr>
+    {% endif %}
   </tbody>
 </table>
 {% endblock %}

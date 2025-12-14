@@ -9,14 +9,67 @@ freshwater_bp = Blueprint("freshwater", __name__, url_prefix="/freshwater")
 
 
 # ---------------------------------------------------------
-# LIST PAGE
+# Helper queries for dropdowns
+# ---------------------------------------------------------
+def _get_countries():
+    conn = get_db()
+    cur = conn.cursor(dictionary=True)
+    cur.execute(
+        """
+        SELECT country_id, country_name, country_code, region
+        FROM countries
+        ORDER BY country_name
+        """
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
+
+def _get_indicators():
+    conn = get_db()
+    cur = conn.cursor(dictionary=True)
+    cur.execute(
+        """
+        SELECT freshwater_indicator_id, indicator_name, unit_of_measure
+        FROM freshwater_indicator_details
+        ORDER BY indicator_name
+        """
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
+
+def _get_students():
+    conn = get_db()
+    cur = conn.cursor(dictionary=True)
+    cur.execute(
+        """
+        SELECT student_id, student_number, full_name, team_no
+        FROM students
+        ORDER BY student_number
+        """
+    )
+    rows = cur.fetchall()
+    cur.close()
+    return rows
+
+
+# ---------------------------------------------------------
+# LIST PAGE (with filters/search)
 # ---------------------------------------------------------
 @freshwater_bp.route("/", methods=["GET"])
 def list_freshwater():
+    country_id = request.args.get("country_id", "").strip()
+    indicator_id = request.args.get("indicator_id", "").strip()
+    year = request.args.get("year", "").strip()
+    q = request.args.get("q", "").strip()
+
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
 
-    query = """
+    sql = """
         SELECT
             fd.data_id,
             fd.country_id,
@@ -31,58 +84,47 @@ def list_freshwater():
             fi.unit_of_measure
         FROM freshwater_data AS fd
         JOIN countries AS c ON fd.country_id = c.country_id
-        JOIN freshwater_indicator_details AS fi 
+        JOIN freshwater_indicator_details AS fi
             ON fd.freshwater_indicator_id = fi.freshwater_indicator_id
-        ORDER BY c.country_name, fi.indicator_name, fd.year;
+        WHERE 1=1
     """
+    params = []
 
-    cursor.execute(query)
+    if country_id:
+        sql += " AND fd.country_id = %s"
+        params.append(country_id)
+
+    if indicator_id:
+        sql += " AND fd.freshwater_indicator_id = %s"
+        params.append(indicator_id)
+
+    if year:
+        sql += " AND fd.year = %s"
+        params.append(year)
+
+    if q:
+        sql += " AND (c.country_name LIKE %s OR c.country_code LIKE %s OR fi.indicator_name LIKE %s)"
+        like = f"%{q}%"
+        params.extend([like, like, like])
+
+    sql += " ORDER BY c.country_name, fi.indicator_name, fd.year;"
+
+    cursor.execute(sql, params)
     rows = cursor.fetchall()
     cursor.close()
 
-    return render_template("freshwater_list.html", rows=rows)
-
-
-# ---------------------------------------------------------
-# HELPER FUNCTIONS (dropdown lists)
-# ---------------------------------------------------------
-def _get_countries():
-    conn = get_db()
-    cur = conn.cursor(dictionary=True)
-    cur.execute("""
-        SELECT country_id, country_name, country_code, region
-        FROM countries
-        ORDER BY country_name
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    return rows
-
-
-def _get_indicators():
-    conn = get_db()
-    cur = conn.cursor(dictionary=True)
-    cur.execute("""
-        SELECT freshwater_indicator_id, indicator_name, unit_of_measure
-        FROM freshwater_indicator_details
-        ORDER BY indicator_name
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    return rows
-
-
-def _get_students():
-    conn = get_db()
-    cur = conn.cursor(dictionary=True)
-    cur.execute("""
-        SELECT student_id, student_number, full_name, team_no
-        FROM students
-        ORDER BY student_number
-    """)
-    rows = cur.fetchall()
-    cur.close()
-    return rows
+    return render_template(
+        "freshwater_list.html",
+        rows=rows,
+        countries=_get_countries(),
+        indicators=_get_indicators(),
+        filters={
+            "country_id": country_id,
+            "indicator_id": indicator_id,
+            "year": year,
+            "q": q,
+        },
+    )
 
 
 # ---------------------------------------------------------
@@ -109,11 +151,9 @@ def add_freshwater():
                     (country_id, freshwater_indicator_id, year, indicator_value, source_notes)
                 VALUES (%s, %s, %s, %s, %s)
             """
-
             cur.execute(insert_sql, (c_id, i_id, year, val, note))
             new_id = cur.lastrowid
 
-            # Audit log entry
             if student_id:
                 audit_sql = """
                     INSERT INTO audit_logs (student_id, action_type, table_name, record_id)
@@ -137,15 +177,11 @@ def add_freshwater():
             flash(f"Error: {e}", "danger")
             return redirect(url_for("freshwater.add_freshwater"))
 
-    countries = _get_countries()
-    indicators = _get_indicators()
-    students = _get_students()
-
     return render_template(
         "freshwater_form.html",
-        countries=countries,
-        indicators=indicators,
-        students=students,
+        countries=_get_countries(),
+        indicators=_get_indicators(),
+        students=_get_students(),
         action="Add",
         record=None,
     )
@@ -159,6 +195,7 @@ def add_freshwater():
 def edit_freshwater(id):
     conn = get_db()
 
+    # Fetch current record
     cur = conn.cursor(dictionary=True)
     cur.execute(
         """
@@ -190,10 +227,8 @@ def edit_freshwater(id):
                     source_notes = %s
                 WHERE data_id = %s
             """
-
             cur.execute(update_sql, (indicator_value, year, source_notes, id))
 
-            # Audit log entry
             if student_id:
                 audit_sql = """
                     INSERT INTO audit_logs (student_id, action_type, table_name, record_id)
@@ -211,39 +246,11 @@ def edit_freshwater(id):
             conn.rollback()
             return f"Update Error (freshwater): {e}"
 
-    countries = _get_countries()
-    indicators = _get_indicators()
-    students = _get_students()
-
     return render_template(
         "freshwater_form.html",
         record=record,
-        countries=countries,
-        indicators=indicators,
-        students=students,
+        countries=_get_countries(),
+        indicators=_get_indicators(),
+        students=_get_students(),
         action="Edit",
     )
-
-
-# ---------------------------------------------------------
-# DELETE
-# ---------------------------------------------------------
-@freshwater_bp.route("/delete/<int:id>", methods=["POST"])
-@admin_required
-def delete_freshwater(id):
-    conn = get_db()
-
-    try:
-        cur = conn.cursor()
-        delete_sql = "DELETE FROM freshwater_data WHERE data_id = %s"
-        cur.execute(delete_sql, (id,))
-        conn.commit()
-        cur.close()
-
-        flash("Record deleted successfully.", "success")
-
-    except Exception as e:
-        conn.rollback()
-        return f"Delete Error (freshwater): {e}"
-
-    return redirect(url_for("freshwater.list_freshwater"))
