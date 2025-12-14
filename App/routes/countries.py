@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, abort
+from flask import Blueprint, render_template, request, jsonify, abort,redirect,url_for
 from App.db import get_db
 
 # Blueprint tanımı
@@ -199,3 +199,386 @@ def get_region_stats():
         cur.close()
 
     return jsonify(stats)
+
+@countries_bp.route("/profile/<int:country_id>", methods=["GET"])
+def country_profile(country_id: int):
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    # Country header
+    cur.execute("""
+        SELECT country_id, country_name, country_code, region
+        FROM countries
+        WHERE country_id = %s
+        LIMIT 1
+    """, (country_id,))
+    country = cur.fetchone()
+    if not country:
+        abort(404)
+
+    # HEALTH
+    cur.execute("""
+        SELECT
+            hs.row_id AS id,
+            hs.year,
+            hs.indicator_value AS value,
+            hs.source_notes AS note,
+            hid.indicator_name AS indicator,
+            hid.unit_symbol AS unit
+        FROM health_system hs
+        JOIN health_indicator_details hid
+          ON hid.health_indicator_id = hs.health_indicator_id
+        WHERE hs.country_id = %s
+        ORDER BY hs.year DESC, hid.indicator_name
+        LIMIT 500
+    """, (country_id,))
+    health = cur.fetchall()
+
+    # ENERGY
+    cur.execute("""
+        SELECT
+            ed.data_id AS id,
+            ed.year,
+            ed.indicator_value AS value,
+            ed.data_source AS note,
+            eid.indicator_name AS indicator,
+            eid.measurement_unit AS unit
+        FROM energy_data ed
+        JOIN energy_indicator_details eid
+          ON eid.energy_indicator_id = ed.energy_indicator_id
+        WHERE ed.country_id = %s
+        ORDER BY ed.year DESC, eid.indicator_name
+        LIMIT 500
+    """, (country_id,))
+    energy = cur.fetchall()
+
+    # FRESHWATER
+    cur.execute("""
+        SELECT
+            fd.data_id AS id,
+            fd.year,
+            fd.indicator_value AS value,
+            fd.source_notes AS note,
+            fid.indicator_name AS indicator,
+            fid.unit_of_measure AS unit
+        FROM freshwater_data fd
+        JOIN freshwater_indicator_details fid
+          ON fid.freshwater_indicator_id = fd.freshwater_indicator_id
+        WHERE fd.country_id = %s
+        ORDER BY fd.year DESC, fid.indicator_name
+        LIMIT 500
+    """, (country_id,))
+    freshwater = cur.fetchall()
+
+    # GHG
+    cur.execute("""
+        SELECT
+            ge.row_id AS id,
+            ge.year,
+            ge.indicator_value AS value,
+            ge.source_notes AS note,
+            gid.indicator_name AS indicator,
+            gid.unit_symbol AS unit
+        FROM greenhouse_emissions ge
+        JOIN ghg_indicator_details gid
+          ON gid.ghg_indicator_id = ge.ghg_indicator_id
+        WHERE ge.country_id = %s
+        ORDER BY ge.year DESC, gid.indicator_name
+        LIMIT 500
+    """, (country_id,))
+    ghg = cur.fetchall()
+
+    # SUSTAINABILITY
+    cur.execute("""
+        SELECT
+            sd.data_id AS id,
+            sd.year,
+            sd.indicator_value AS value,
+            sd.source_note AS note,
+            sid.indicator_name AS indicator,
+            NULL AS unit
+        FROM sustainability_data sd
+        JOIN sustainability_indicator_details sid
+          ON sid.sus_indicator_id = sd.sus_indicator_id
+        WHERE sd.country_id = %s
+        ORDER BY sd.year DESC, sid.indicator_name
+        LIMIT 500
+    """, (country_id,))
+    sustainability = cur.fetchall()
+
+    return render_template(
+        "country_profile.html",
+        country=country,
+        health=health,
+        energy=energy,
+        freshwater=freshwater,
+        ghg=ghg,
+        sustainability=sustainability,
+    )
+
+@countries_bp.route("/resolve/<string:iso2>", methods=["GET"])
+def resolve_country(iso2):
+    iso2 = iso2.upper()
+    iso3 = ISO2_TO_ISO3.get(iso2)
+    if not iso3:
+        abort(404, description=f"ISO2 not mapped: {iso2}")
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    # DB'de ISO3 tutuluyor diye country_code üzerinden arıyoruz
+    cur.execute("""
+        SELECT country_id
+        FROM countries
+        WHERE UPPER(country_code) = %s
+        LIMIT 1
+    """, (iso3,))
+
+    row = cur.fetchone()
+    if not row:
+        abort(404, description=f"Country not found for ISO3: {iso3}")
+
+    return redirect(url_for("countries.country_profile", country_id=row["country_id"]))
+
+ISO2_TO_ISO3 ={
+  "AF": "AFG",
+  "AL": "ALB",
+  "DZ": "DZA",
+  "AS": "ASM",
+  "AD": "AND",
+  "AO": "AGO",
+  "AI": "AIA",
+  "AQ": "ATA",
+  "AG": "ATG",
+  "AR": "ARG",
+  "AM": "ARM",
+  "AW": "ABW",
+  "AU": "AUS",
+  "AT": "AUT",
+  "AZ": "AZE",
+  "BS": "BHS",
+  "BH": "BHR",
+  "BD": "BGD",
+  "BB": "BRB",
+  "BY": "BLR",
+  "BE": "BEL",
+  "BZ": "BLZ",
+  "BJ": "BEN",
+  "BM": "BMU",
+  "BT": "BTN",
+  "BO": "BOL",
+  "BA": "BIH",
+  "BW": "BWA",
+  "BR": "BRA",
+  "IO": "IOT",
+  "BN": "BRN",
+  "BG": "BGR",
+  "BF": "BFA",
+  "BI": "BDI",
+  "KH": "KHM",
+  "CM": "CMR",
+  "CA": "CAN",
+  "CV": "CPV",
+  "KY": "CYM",
+  "CF": "CAF",
+  "TD": "TCD",
+  "CL": "CHL",
+  "CN": "CHN",
+  "CX": "CXR",
+  "CC": "CCK",
+  "CO": "COL",
+  "KM": "COM",
+  "CG": "COG",
+  "CD": "COD",
+  "CK": "COK",
+  "CR": "CRI",
+  "CI": "CIV",
+  "HR": "HRV",
+  "CU": "CUB",
+  "CY": "CYP",
+  "CZ": "CZE",
+  "DK": "DNK",
+  "DJ": "DJI",
+  "DM": "DMA",
+  "DO": "DOM",
+  "EC": "ECU",
+  "EG": "EGY",
+  "SV": "SLV",
+  "GQ": "GNQ",
+  "ER": "ERI",
+  "EE": "EST",
+  "SZ": "SWZ",
+  "ET": "ETH",
+  "FK": "FLK",
+  "FO": "FRO",
+  "FJ": "FJI",
+  "FI": "FIN",
+  "FR": "FRA",
+  "GF": "GUF",
+  "PF": "PYF",
+  "TF": "ATF",
+  "GA": "GAB",
+  "GM": "GMB",
+  "GE": "GEO",
+  "DE": "DEU",
+  "GH": "GHA",
+  "GI": "GIB",
+  "GR": "GRC",
+  "GL": "GRL",
+  "GD": "GRD",
+  "GP": "GLP",
+  "GU": "GUM",
+  "GT": "GTM",
+  "GG": "GGY",
+  "GN": "GIN",
+  "GW": "GNB",
+  "GY": "GUY",
+  "HT": "HTI",
+  "HN": "HND",
+  "HK": "HKG",
+  "HU": "HUN",
+  "IS": "ISL",
+  "IN": "IND",
+  "ID": "IDN",
+  "IR": "IRN",
+  "IQ": "IRQ",
+  "IE": "IRL",
+  "IM": "IMN",
+  "IL": "ISR",
+  "IT": "ITA",
+  "JM": "JAM",
+  "JP": "JPN",
+  "JE": "JEY",
+  "JO": "JOR",
+  "KZ": "KAZ",
+  "KE": "KEN",
+  "KI": "KIR",
+  "KP": "PRK",
+  "KR": "KOR",
+  "KW": "KWT",
+  "KG": "KGZ",
+  "LA": "LAO",
+  "LV": "LVA",
+  "LB": "LBN",
+  "LS": "LSO",
+  "LR": "LBR",
+  "LY": "LBY",
+  "LI": "LIE",
+  "LT": "LTU",
+  "LU": "LUX",
+  "MO": "MAC",
+  "MG": "MDG",
+  "MW": "MWI",
+  "MY": "MYS",
+  "MV": "MDV",
+  "ML": "MLI",
+  "MT": "MLT",
+  "MH": "MHL",
+  "MQ": "MTQ",
+  "MR": "MRT",
+  "MU": "MUS",
+  "YT": "MYT",
+  "MX": "MEX",
+  "FM": "FSM",
+  "MD": "MDA",
+  "MC": "MCO",
+  "MN": "MNG",
+  "ME": "MNE",
+  "MS": "MSR",
+  "MA": "MAR",
+  "MZ": "MOZ",
+  "MM": "MMR",
+  "NA": "NAM",
+  "NR": "NRU",
+  "NP": "NPL",
+  "NL": "NLD",
+  "NC": "NCL",
+  "NZ": "NZL",
+  "NI": "NIC",
+  "NE": "NER",
+  "NG": "NGA",
+  "NU": "NIU",
+  "NF": "NFK",
+  "MK": "MKD",
+  "MP": "MNP",
+  "NO": "NOR",
+  "OM": "OMN",
+  "PK": "PAK",
+  "PW": "PLW",
+  "PS": "PSE",
+  "PA": "PAN",
+  "PG": "PNG",
+  "PY": "PRY",
+  "PE": "PER",
+  "PH": "PHL",
+  "PN": "PCN",
+  "PL": "POL",
+  "PT": "PRT",
+  "PR": "PRI",
+  "QA": "QAT",
+  "RE": "REU",
+  "RO": "ROU",
+  "RU": "RUS",
+  "RW": "RWA",
+  "BL": "BLM",
+  "SH": "SHN",
+  "KN": "KNA",
+  "LC": "LCA",
+  "MF": "MAF",
+  "PM": "SPM",
+  "VC": "VCT",
+  "WS": "WSM",
+  "SM": "SMR",
+  "ST": "STP",
+  "SA": "SAU",
+  "SN": "SEN",
+  "RS": "SRB",
+  "SC": "SYC",
+  "SL": "SLE",
+  "SG": "SGP",
+  "SX": "SXM",
+  "SK": "SVK",
+  "SI": "SVN",
+  "SB": "SLB",
+  "SO": "SOM",
+  "ZA": "ZAF",
+  "GS": "SGS",
+  "SS": "SSD",
+  "ES": "ESP",
+  "LK": "LKA",
+  "SD": "SDN",
+  "SR": "SUR",
+  "SE": "SWE",
+  "CH": "CHE",
+  "SY": "SYR",
+  "TW": "TWN",
+  "TJ": "TJK",
+  "TZ": "TZA",
+  "TH": "THA",
+  "TL": "TLS",
+  "TG": "TGO",
+  "TK": "TKL",
+  "TO": "TON",
+  "TT": "TTO",
+  "TN": "TUN",
+  "TR": "TUR",
+  "TM": "TKM",
+  "TC": "TCA",
+  "TV": "TUV",
+  "UG": "UGA",
+  "UA": "UKR",
+  "AE": "ARE",
+  "GB": "GBR",
+  "US": "USA",
+  "UY": "URY",
+  "UZ": "UZB",
+  "VU": "VUT",
+  "VE": "VEN",
+  "VN": "VNM",
+  "VG": "VGB",
+  "VI": "VIR",
+  "YE": "YEM",
+  "ZM": "ZMB",
+  "ZW": "ZWE",
+  "XK": "XKX"
+}

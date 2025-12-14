@@ -209,6 +209,7 @@
           }
         },
         onRegionClick: function(event, code) {
+          window.location.href = `/countries/resolve/${code.toUpperCase()}`;
           const countryName = window.jsVectorMap.maps.world.paths[code].name;
           const regionName = continentMap[code.toUpperCase()];
             if (mode === 'countries') {
