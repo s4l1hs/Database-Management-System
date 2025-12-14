@@ -174,13 +174,19 @@
     let mode = 'countries';
 
     const regionList = ['Africa','Europe','Asia','North America','South America','Oceania','Antarctica'];
-    const palette = ['#a0522d', '#ffd54f', '#10b981', '#2563eb', '#f97316', '#0ea5e9', '#94a3b8'];
-    const regionIndex = {}; regionList.forEach((r, idx) => { regionIndex[r] = idx % palette.length; });
-    const countryRegionIndex = {}; Object.entries(continentMap).forEach(([code, region]) => { if (regionIndex[region] !== undefined) countryRegionIndex[code] = regionIndex[region]; });
+    const regionColors = {
+      'Africa': '#a0522d', // brown
+      'Europe': '#ffd54f', // yellow
+      'Asia': '#10b981',
+      'North America': '#2563eb',
+      'South America': '#f97316',
+      'Oceania': '#0ea5e9',
+      'Antarctica': '#94a3b8'
+    };
 
     function buildLegend() {
       const legend = document.getElementById('regionLegend');
-      legend.innerHTML = regionList.map(r => `<span class="small text-muted"><span class="legend-dot" style="background:${palette[regionIndex[r]]}"></span>${r}</span>`).join('');
+      legend.innerHTML = regionList.map(r => `<span class="small text-muted"><span class="legend-dot" style="background:${regionColors[r]}"></span>${r}</span>`).join('');
     }
 
     const map = new jsVectorMap({
@@ -194,7 +200,7 @@
           selected: { fill: '#198754' }
         },
         series: {
-          regions: [{ values: {}, scale: palette, normalizeFunction: 'polynomial' }]
+          regions: [{ values: {}, scale: regionColors, normalizeFunction: 'polynomial' }]
         },
         onRegionTooltipShow: function(event, label, code) {
           if (mode === 'regions') {
@@ -220,7 +226,8 @@
         const series = map.series.regions[0];
         if (!series) return;
         if (enable) {
-          series.setValues(countryRegionIndex);
+          // Map code -> continent name; scale maps continent -> color
+          series.setValues(continentMap);
         } else {
             if (typeof series.clear === 'function') series.clear();
             series.setValues({});
