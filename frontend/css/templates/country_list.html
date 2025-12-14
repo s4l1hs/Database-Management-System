@@ -1,95 +1,124 @@
 {% extends "base.html" %}
 
-{% block title %}Countries Map{% endblock %}
+{% block title %}Countries & Regions{% endblock %}
 
 {% block extra_head %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" />
 <style>
-    #world-map {
-        width: 100%;
-        height: 400px;
-        margin-bottom: 20px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #f8f9fa; /* Light blue/gray tone */
-    }
-    .jvm-tooltip {
-        background-color: #333;
-        border-radius: 3px;
-        padding: 5px 10px;
-        font-family: sans-serif;
-        z-index: 999; 
-    }
+  .panel-soft {
+    border: 1px solid rgba(15,23,42,0.06);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 18px 50px rgba(15,23,42,0.06);
+  }
+  #world-map { width: 100%; height: 460px; border-radius: 18px; }
+  .map-shell { background: linear-gradient(135deg, #e0f2fe 0%, #eef2ff 60%, #ffffff 100%); padding: 16px; border-radius: 20px; border: 1px solid rgba(15,23,42,0.05); }
+  .jvm-tooltip { background: #111827; border-radius: 6px; padding: 6px 10px; font-family: 'Manrope', system-ui, sans-serif; color: #f9fafb; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #eef2ff; color: #312e81; font-weight: 700; font-size: 13px; border: 1px solid rgba(37,99,235,0.2); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .region-legend { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tab-btn { border: 1px solid rgba(15,23,42,0.08); padding: 8px 14px; border-radius: 999px; background: #fff; color: #0f172a; font-weight: 700; }
+  .tab-btn.active { background: linear-gradient(90deg, #2563eb, #1d4ed8); color: #fff; border-color: #2563eb; box-shadow: 0 10px 30px rgba(37,99,235,0.25); }
+  .search-card { border: 1px solid rgba(15,23,42,0.05); border-radius: 14px; background: #fff; box-shadow: 0 10px 30px rgba(15,23,42,0.05); }
+  .table thead { background: linear-gradient(90deg, #eef2ff 0%, #e0f2fe 100%); }
+  .badge-soft { background: #eef2ff; color: #1d4ed8; border: 1px solid rgba(37,99,235,0.2); }
+  .region-stats-card { border: 1px solid rgba(15,23,42,0.06); border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.06); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
   <div>
-    <h1 class="h3 mb-1">Countries & Map</h1>
-    <p class="text-muted mb-0">
-      Click a country on the map to filter the list below.
-    </p>
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="pill"><i class="fa-solid fa-globe"></i> Interactive map</span>
+      <span class="pill" style="background:#ecfdf3;color:#166534;border-color:rgba(22,101,52,0.2);">{{ regions|length }} regions</span>
+      <span class="pill" style="background:#fff7ed;color:#9a3412;border-color:rgba(234,88,12,0.2);">{{ rows|length }} countries</span>
+    </div>
+    <h1 class="h3 fw-bold mb-1">Countries & Regions Explorer</h1>
+    <p class="text-muted mb-0">Hover to see details, click to filter or load region averages.</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <button class="tab-btn active" id="tab-countries" data-mode="countries">Countries</button>
+    <button class="tab-btn" id="tab-regions" data-mode="regions">Regions</button>
   </div>
 </div>
 
-<div class="card shadow-sm mb-4">
-    <div class="card-body p-0">
-        <div id="world-map"></div>
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="map-shell">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="text-muted small" id="modeHint">Country mode: hover to see country names, click to filter the list.</div>
+        <div class="region-legend" id="regionLegend"></div>
+      </div>
+      <div id="world-map"></div>
     </div>
-</div>
-
-<form method="get" class="row g-2 mb-3" id="searchForm">
-  <div class="col-sm-4 col-md-3">
-    <input
-      type="text"
-      class="form-control"
-      name="q"
-      id="searchInput"
-      placeholder="Search by name or code..."
-      value="{{ search }}"
-    />
   </div>
-  <div class="col-sm-auto">
-    <button type="submit" class="btn btn-secondary">Search</button>
-  </div>
-  {% if search %}
-    <div class="col-sm-auto align-self-center">
-      <a href="{{ url_for('countries.list_countries') }}" class="btn btn-link p-0">
-        Clear Filter ({{ search }})
-      </a>
+  <div class="col-lg-5">
+    <div class="search-card p-3 mb-3">
+      <form method="get" class="row g-2 align-items-center" id="searchForm">
+        <div class="col-sm-7">
+          <input
+            type="text"
+            class="form-control"
+            name="q"
+            id="searchInput"
+            placeholder="Search by name or code..."
+            value="{{ search }}"
+          />
+        </div>
+        <div class="col-sm-auto">
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass me-1"></i>Search</button>
+        </div>
+        {% if search %}
+          <div class="col-sm-auto">
+            <a href="{{ url_for('countries.list_countries') }}" class="btn btn-outline-secondary">Clear ({{ search }})</a>
+          </div>
+        {% endif %}
+      </form>
     </div>
-  {% endif %}
-</form>
 
-<div class="table-responsive">
-  <table class="table table-striped table-hover align-middle">
-    <thead class="table-dark">
-      <tr>
-        <th>#</th>
-        <th>Country</th>
-        <th>Code</th>
-        <th>Region</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for row in rows %}
-        <tr>
-          <td>{{ row.country_id }}</td>
-          <td>{{ row.country_name }}</td>
-          <td><span class="badge bg-primary">{{ row.country_code }}</span></td>
-          <td>{{ row.region }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  
-  {% if not rows %}
-    <div class="alert alert-warning text-center">
-        No country found for "<strong>{{ search }}</strong>". 
-        <a href="{{ url_for('countries.list_countries') }}">Show All</a>
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="panel-countries" role="tabpanel">
+        <div class="table-responsive panel-soft p-2">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Country</th>
+                <th>Code</th>
+                <th>Region</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                <tr title="{{ row.region }}">
+                  <td>{{ row.country_id }}</td>
+                  <td class="fw-semibold">{{ row.country_name }}</td>
+                  <td><span class="badge bg-primary">{{ row.country_code }}</span></td>
+                  <td><span class="badge badge-soft">{{ row.region or '-' }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% if not rows %}
+          <div class="alert alert-warning text-center mt-3">
+            No country found for "<strong>{{ search }}</strong>".
+            <a href="{{ url_for('countries.list_countries') }}">Show All</a>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="tab-pane fade" id="panel-regions" role="tabpanel">
+        <div class="mb-3 d-flex flex-wrap gap-2" id="regionChips">
+          {% for r in regions %}
+            <button type="button" class="btn btn-outline-primary btn-sm" data-region="{{ r }}">{{ r }}</button>
+          {% endfor %}
+        </div>
+        <div id="regionStats" class="region-stats-card p-3 d-none"></div>
+      </div>
     </div>
-  {% endif %}
+  </div>
 </div>
 {% endblock %}
 
@@ -99,46 +128,147 @@
 <script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
 
 <script>
-    // Initialize map
+    // Continent mapping (ISO2 -> continent)
+    const continentMap = {
+      AF:'Asia',AL:'Europe',DZ:'Africa',AS:'Oceania',AD:'Europe',AO:'Africa',AI:'North America',AQ:'Antarctica',AG:'North America',AR:'South America',AM:'Asia',AW:'North America',AU:'Oceania',AT:'Europe',AZ:'Asia',BS:'North America',BH:'Asia',BD:'Asia',BB:'North America',BY:'Europe',BE:'Europe',BZ:'North America',BJ:'Africa',BM:'North America',BT:'Asia',BO:'South America',BA:'Europe',BW:'Africa',BV:'Antarctica',BR:'South America',IO:'Asia',VG:'North America',BN:'Asia',BG:'Europe',BF:'Africa',BI:'Africa',KH:'Asia',CM:'Africa',CA:'North America',CV:'Africa',KY:'North America',CF:'Africa',TD:'Africa',CL:'South America',CN:'Asia',CX:'Asia',CC:'Asia',CO:'South America',KM:'Africa',CG:'Africa',CD:'Africa',CK:'Oceania',CR:'North America',CI:'Africa',HR:'Europe',CU:'North America',CY:'Asia',CZ:'Europe',DK:'Europe',DJ:'Africa',DM:'North America',DO:'North America',EC:'South America',EG:'Africa',SV:'North America',GQ:'Africa',ER:'Africa',EE:'Europe',SZ:'Africa',ET:'Africa',FK:'South America',FO:'Europe',FJ:'Oceania',FI:'Europe',FR:'Europe',GF:'South America',PF:'Oceania',TF:'Antarctica',GA:'Africa',GM:'Africa',GE:'Asia',DE:'Europe',GH:'Africa',GI:'Europe',GR:'Europe',GL:'North America',GD:'North America',GP:'North America',GU:'Oceania',GT:'North America',GG:'Europe',GN:'Africa',GW:'Africa',GY:'South America',HT:'North America',HM:'Antarctica',VA:'Europe',HN:'North America',HK:'Asia',HU:'Europe',IS:'Europe',IN:'Asia',ID:'Asia',IR:'Asia',IQ:'Asia',IE:'Europe',IM:'Europe',IL:'Asia',IT:'Europe',JM:'North America',JP:'Asia',JE:'Europe',JO:'Asia',KZ:'Asia',KE:'Africa',KI:'Oceania',KP:'Asia',KR:'Asia',KW:'Asia',KG:'Asia',LA:'Asia',LV:'Europe',LB:'Asia',LS:'Africa',LR:'Africa',LY:'Africa',LI:'Europe',LT:'Europe',LU:'Europe',MO:'Asia',MK:'Europe',MG:'Africa',MW:'Africa',MY:'Asia',MV:'Asia',ML:'Africa',MT:'Europe',MH:'Oceania',MQ:'North America',MR:'Africa',MU:'Africa',YT:'Africa',MX:'North America',FM:'Oceania',MD:'Europe',MC:'Europe',MN:'Asia',ME:'Europe',MS:'North America',MA:'Africa',MZ:'Africa',MM:'Asia',NA:'Africa',NR:'Oceania',NP:'Asia',NL:'Europe',NC:'Oceania',NZ:'Oceania',NI:'North America',NE:'Africa',NG:'Africa',NU:'Oceania',NF:'Oceania',MP:'Oceania',NO:'Europe',OM:'Asia',PK:'Asia',PW:'Oceania',PS:'Asia',PA:'North America',PG:'Oceania',PY:'South America',PE:'South America',PH:'Asia',PN:'Oceania',PL:'Europe',PT:'Europe',PR:'North America',QA:'Asia',RE:'Africa',RO:'Europe',RU:'Europe',RW:'Africa',BL:'North America',SH:'Africa',KN:'North America',LC:'North America',MF:'North America',PM:'North America',VC:'North America',WS:'Oceania',SM:'Europe',ST:'Africa',SA:'Asia',SN:'Africa',RS:'Europe',SC:'Africa',SL:'Africa',SG:'Asia',SX:'North America',SK:'Europe',SI:'Europe',SB:'Oceania',SO:'Africa',ZA:'Africa',GS:'Antarctica',SS:'Africa',ES:'Europe',LK:'Asia',SD:'Africa',SR:'South America',SJ:'Europe',SE:'Europe',CH:'Europe',SY:'Asia',TW:'Asia',TJ:'Asia',TZ:'Africa',TH:'Asia',TL:'Asia',TG:'Africa',TK:'Oceania',TO:'Oceania',TT:'North America',TN:'Africa',TR:'Asia',TM:'Asia',TC:'North America',TV:'Oceania',UG:'Africa',UA:'Europe',AE:'Asia',GB:'Europe',US:'North America',UM:'Oceania',UY:'South America',UZ:'Asia',VU:'Oceania',VE:'South America',VN:'Asia',VI:'North America',WF:'Oceania',EH:'Africa',YE:'Asia',ZM:'Africa',ZW:'Africa',AX:'Europe'
+    };
+
+    const regionStatsUrl = "{{ url_for('countries.get_region_stats') }}";
+    let mode = 'countries';
+
+    const palette = ['#2563eb','#f59e0b','#10b981','#ef4444','#8b5cf6','#0ea5e9','#22c55e','#f97316','#14b8a6','#a855f7'];
+    const regionList = ['Africa','Europe','Asia','North America','South America','Oceania','Antarctica'];
+    const regionIndex = {}; regionList.forEach((r, idx) => { regionIndex[r] = idx % palette.length; });
+    const countryRegionIndex = {}; Object.entries(continentMap).forEach(([code, region]) => { if (regionIndex[region] !== undefined) countryRegionIndex[code] = regionIndex[region]; });
+
+    function buildLegend() {
+      const legend = document.getElementById('regionLegend');
+      legend.innerHTML = regionList.map(r => `<span class="small text-muted"><span class="legend-dot" style="background:${palette[regionIndex[r]]}"></span>${r}</span>`).join('');
+    }
+
     const map = new jsVectorMap({
         selector: '#world-map',
         map: 'world',
-        
-        // Zoom buttons
         zoomButtons: true,
         zoomOnScroll: false,
-        
-        // Visual style
         regionStyle: {
-            initial: {
-                fill: '#d1d5db',
-                stroke: '#fff',
-                strokeWidth: 0.5,
-                fillOpacity: 1
-            },
-            hover: {
-                fill: '#0d6efd', // Use blue on hover
-                cursor: 'pointer'
-            },
-            selected: {
-                fill: '#198754'
-            }
+          initial: { fill: '#d1d5db', stroke: '#f8fafc', strokeWidth: 0, fillOpacity: 1 },
+          hover: { fill: '#0d6efd', cursor: 'pointer', strokeWidth: 0.4 },
+          selected: { fill: '#198754' }
         },
-
-        // Click handler
+        series: {
+            regions: [{ values: {}, scale: palette, normalizeFunction: 'linear' }]
+        },
+        onRegionTooltipShow: function(event, label, code) {
+          if (mode === 'regions') {
+            const regionName = continentMap[code.toUpperCase()];
+            label.html(regionName || 'No region');
+          }
+        },
         onRegionClick: function(event, code) {
-          // Get country name from the map library (e.g., Turkey)
-            const countryName = window.jsVectorMap.maps.world.paths[code].name;
-            
-            // Arama kutusunu bul ve doldur
-            const searchInput = document.getElementById('searchInput');
-            const searchForm = document.getElementById('searchForm');
-            
-            if (searchInput && searchForm) {
-                searchInput.value = countryName;
-              searchForm.submit(); // Submit the form (refreshes and filters)
+          const countryName = window.jsVectorMap.maps.world.paths[code].name;
+          const regionName = continentMap[code.toUpperCase()];
+            if (mode === 'countries') {
+                const searchInput = document.getElementById('searchInput');
+                const searchForm = document.getElementById('searchForm');
+                if (searchInput && searchForm) { searchInput.value = countryName; searchForm.submit(); }
+            } else {
+                if (!regionName) return;
+                fetchRegionStats(regionName);
             }
         }
     });
+
+    function applyRegionColors(enable) {
+        const series = map.series.regions[0];
+        if (!series) return;
+        series.setValues(enable ? countryRegionIndex : {});
+    }
+
+    const hint = document.getElementById('modeHint');
+    const regionStatsBox = document.getElementById('regionStats');
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            mode = btn.dataset.mode;
+            document.getElementById('panel-countries').classList.toggle('show', mode === 'countries');
+            document.getElementById('panel-countries').classList.toggle('active', mode === 'countries');
+            document.getElementById('panel-regions').classList.toggle('show', mode === 'regions');
+            document.getElementById('panel-regions').classList.toggle('active', mode === 'regions');
+            hint.textContent = mode === 'countries'
+              ? 'Country mode: hover to see country names, click to filter the list.'
+              : 'Region mode: hover to see the region, click to load region averages.';
+            applyRegionColors(mode === 'regions');
+            if (mode === 'countries') regionStatsBox.classList.add('d-none');
+        });
+    });
+
+    document.querySelectorAll('#regionChips [data-region]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            mode = 'regions';
+            document.getElementById('tab-regions').classList.add('active');
+            document.getElementById('tab-countries').classList.remove('active');
+            document.getElementById('panel-regions').classList.add('show','active');
+            document.getElementById('panel-countries').classList.remove('show','active');
+            hint.textContent = 'Region mode: hover to see the region, click to load region averages.';
+            applyRegionColors(true);
+            fetchRegionStats(btn.dataset.region);
+        });
+    });
+
+    async function fetchRegionStats(regionName) {
+        regionStatsBox.classList.remove('d-none');
+        regionStatsBox.innerHTML = `
+          <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status"></div>
+            <div class="mt-2 text-muted">Loading ${regionName} averages...</div>
+          </div>`;
+        try {
+            const res = await fetch(`${regionStatsUrl}?region=${encodeURIComponent(regionName)}`);
+            if (!res.ok) throw new Error('Failed to load region stats');
+            const data = await res.json();
+            renderRegionStats(data);
+        } catch (err) {
+            regionStatsBox.innerHTML = `<div class="alert alert-danger mb-0">${err.message}</div>`;
+        }
+    }
+
+    function renderRegionStats(data) {
+        const averages = [
+          { label: 'Energy', value: data.avg_energy },
+          { label: 'Freshwater', value: data.avg_freshwater },
+          { label: 'Health', value: data.avg_health },
+          { label: 'GHG', value: data.avg_ghg },
+          { label: 'Sustainability', value: data.avg_sustainability }
+        ];
+        const cards = averages.map(item => {
+            const val = item.value === null || item.value === undefined ? '—' : Number(item.value).toFixed(2);
+            return `
+              <div class="col-md-4 mb-3">
+                <div class="card h-100 border-0 shadow-sm">
+                  <div class="card-body text-center">
+                    <h6 class="text-uppercase text-muted mb-2" style="letter-spacing:0.5px;">${item.label}</h6>
+                    <div class="fs-4 fw-bold">${val}</div>
+                  </div>
+                </div>
+              </div>`;
+        }).join('');
+
+        const countriesList = (data.countries || []).map(c => `<span class="badge bg-light text-dark me-1 mb-1">${c}</span>`).join('');
+
+        regionStatsBox.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0">${data.region}</h5>
+            <span class="badge bg-primary">${data.country_count || 0} countries</span>
+          </div>
+          <div class="row">${cards}</div>
+          <div class="mt-2">
+            <small class="text-muted">Countries in this region</small>
+            <div class="mt-2 d-flex flex-wrap gap-1">${countriesList || '<span class="text-muted">No countries found.</span>'}</div>
+          </div>`;
+    }
+
+    buildLegend();
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, abort
 from App.db import get_db
 
 # Blueprint tanımı
@@ -37,11 +37,42 @@ def list_countries():
     base_sql += " ORDER BY region, country_name;"
 
     conn = get_db()
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)
+    region_map = {}
+    region_name_map = {}
+    regions = []
+
     try:
         cur.execute(base_sql, params)
         rows = cur.fetchall()
         colnames = [d[0] for d in cur.description]
+
+        # country_code -> region map
+        cur.execute(
+            """
+            SELECT country_code, region
+            FROM countries
+            WHERE region IS NOT NULL AND region != ''
+            """
+        )
+        code_rows = cur.fetchall()
+        region_map = {(r.get("country_code") or "").upper(): r.get("region") for r in code_rows}
+
+        # country_name -> region map (fallback for tooltip names)
+        region_name_map = {
+            (r.get("country_name") or ""): r.get("region") for r in rows if r.get("region")
+        }
+
+        # distinct region list
+        cur.execute(
+            """
+            SELECT DISTINCT region
+            FROM countries
+            WHERE region IS NOT NULL AND region != ''
+            ORDER BY region
+            """
+        )
+        regions = [r["region"] for r in cur.fetchall()]
     finally:
         cur.close()
 
@@ -49,6 +80,9 @@ def list_countries():
         "country_list.html",
         rows=rows,
         colnames=colnames,
+        regions=regions,
+        region_map=region_map,
+        region_name_map=region_name_map,
         search=search or "",
     )
 
@@ -84,6 +118,83 @@ def get_global_stats():
 
     except Exception as e:
         stats = {'error': str(e)}
+    finally:
+        cur.close()
+
+    return jsonify(stats)
+
+
+@countries_bp.route("/api/region-stats", methods=["GET"])
+def get_region_stats():
+    """Return aggregated stats for a given region."""
+    region = request.args.get("region")
+    if not region:
+        abort(400, description="region parameter is required")
+
+    conn = get_db()
+    cur = conn.cursor(dictionary=True)
+    stats = {"region": region}
+
+    try:
+        cur.execute("SELECT COUNT(*) AS cnt FROM countries WHERE region = %s", (region,))
+        stats["country_count"] = cur.fetchone().get("cnt", 0)
+
+        cur.execute(
+            "SELECT country_name FROM countries WHERE region = %s ORDER BY country_name",
+            (region,),
+        )
+        stats["countries"] = [r["country_name"] for r in cur.fetchall()]
+
+        def _avg(query: str):
+            cur.execute(query, (region,))
+            val = cur.fetchone()["avg_val"]
+            return float(val) if val is not None else None
+
+        stats["avg_energy"] = _avg(
+            """
+            SELECT AVG(e.indicator_value) AS avg_val
+            FROM energy_data e
+            JOIN countries c ON c.country_id = e.country_id
+            WHERE c.region = %s
+            """
+        )
+
+        stats["avg_freshwater"] = _avg(
+            """
+            SELECT AVG(f.indicator_value) AS avg_val
+            FROM freshwater_data f
+            JOIN countries c ON c.country_id = f.country_id
+            WHERE c.region = %s
+            """
+        )
+
+        stats["avg_health"] = _avg(
+            """
+            SELECT AVG(h.indicator_value) AS avg_val
+            FROM health_system h
+            JOIN countries c ON c.country_id = h.country_id
+            WHERE c.region = %s
+            """
+        )
+
+        stats["avg_ghg"] = _avg(
+            """
+            SELECT AVG(g.indicator_value) AS avg_val
+            FROM greenhouse_emissions g
+            JOIN countries c ON c.country_id = g.country_id
+            WHERE c.region = %s
+            """
+        )
+
+        stats["avg_sustainability"] = _avg(
+            """
+            SELECT AVG(s.indicator_value) AS avg_val
+            FROM sustainability_data s
+            JOIN countries c ON c.country_id = s.country_id
+            WHERE c.region = %s
+            """
+        )
+
     finally:
         cur.close()
 
