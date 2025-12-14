@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from App.db import db
+from App.db import get_db
 
 # Blueprint tanımı
 countries_bp = Blueprint("countries", __name__, url_prefix="/countries")
@@ -36,15 +36,14 @@ def list_countries():
 
     base_sql += " ORDER BY region, country_name;"
 
-    conn = db.engine.raw_connection()
+    conn = get_db()
+    cur = conn.cursor()
     try:
-        cur = conn.cursor()
         cur.execute(base_sql, params)
         rows = cur.fetchall()
         colnames = [d[0] for d in cur.description]
     finally:
         cur.close()
-        conn.close()
 
     return render_template(
         "country_list.html",
@@ -61,7 +60,7 @@ def get_global_stats():
     """
     Navbar'daki widget için genel istatistikleri JSON olarak döner.
     """
-    conn = db.engine.raw_connection()
+    conn = get_db()
     stats = {}
     
     try:
@@ -87,6 +86,5 @@ def get_global_stats():
         stats = {'error': str(e)}
     finally:
         cur.close()
-        conn.close()
 
     return jsonify(stats)

@@ -10,9 +10,10 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 
 def create_app():
+    # Templates currently live under frontend/css/templates
     app = Flask(
         __name__,
-        template_folder=os.path.join(BASE_DIR, "frontend", "templates"),
+        template_folder=os.path.join(BASE_DIR, "frontend", "css", "templates"),
         static_folder=os.path.join(BASE_DIR, "frontend", "css"),
     )
 
