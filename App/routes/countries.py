@@ -127,79 +127,96 @@ def get_global_stats():
 
 @countries_bp.route("/api/region-stats", methods=["GET"])
 def get_region_stats():
-    """Return aggregated stats for a given region."""
+    """Return aggregated stats for a given region, grouped by indicator type."""
     region = request.args.get("region")
     if not region:
         abort(400, description="region parameter is required")
 
     conn = get_db()
     cur = conn.cursor(dictionary=True)
-    stats = {"region": region}
+    
+    stats = {
+        "region": region,
+        "countries": [], 
+        "energy": [],
+        "health": [],
+        "freshwater": [],
+        "ghg": [],
+        "sustainability": []
+    }
 
     try:
-        cur.execute("SELECT COUNT(*) AS cnt FROM countries WHERE region = %s", (region,))
-        stats["country_count"] = cur.fetchone().get("cnt", 0)
+        # --- 0. List of Countries ---
+        cur.execute("SELECT country_name FROM countries WHERE region = %s ORDER BY country_name", (region,))
+        country_rows = cur.fetchall()
+        stats["countries"] = [row["country_name"] for row in country_rows]
 
-        cur.execute(
-            "SELECT country_name FROM countries WHERE region = %s ORDER BY country_name",
-            (region,),
-        )
-        stats["countries"] = [r["country_name"] for r in cur.fetchall()]
 
-        def _avg(query: str):
-            cur.execute(query, (region,))
-            val = cur.fetchone()["avg_val"]
-            return float(val) if val is not None else None
-
-        stats["avg_energy"] = _avg(
-            """
-            SELECT AVG(e.indicator_value) AS avg_val
+        # --- 1. Energy Stats ---
+        cur.execute("""
+            SELECT d.indicator_name, d.measurement_unit as unit, AVG(e.indicator_value) as avg_val
             FROM energy_data e
-            JOIN countries c ON c.country_id = e.country_id
+            JOIN energy_indicator_details d ON e.energy_indicator_id = d.energy_indicator_id
+            JOIN countries c ON e.country_id = c.country_id
             WHERE c.region = %s
-            """
-        )
+            GROUP BY d.indicator_name, d.measurement_unit
+            ORDER BY d.indicator_name
+        """, (region,))
+        stats["energy"] = cur.fetchall()
 
-        stats["avg_freshwater"] = _avg(
-            """
-            SELECT AVG(f.indicator_value) AS avg_val
-            FROM freshwater_data f
-            JOIN countries c ON c.country_id = f.country_id
-            WHERE c.region = %s
-            """
-        )
-
-        stats["avg_health"] = _avg(
-            """
-            SELECT AVG(h.indicator_value) AS avg_val
+        # --- 2. Health Stats ---
+        cur.execute("""
+            SELECT d.indicator_name, d.unit_symbol as unit, AVG(h.indicator_value) as avg_val
             FROM health_system h
-            JOIN countries c ON c.country_id = h.country_id
+            JOIN health_indicator_details d ON h.health_indicator_id = d.health_indicator_id
+            JOIN countries c ON h.country_id = c.country_id
             WHERE c.region = %s
-            """
-        )
+            GROUP BY d.indicator_name, d.unit_symbol
+            ORDER BY d.indicator_name
+        """, (region,))
+        stats["health"] = cur.fetchall()
 
-        stats["avg_ghg"] = _avg(
-            """
-            SELECT AVG(g.indicator_value) AS avg_val
+        # --- 3. Freshwater Stats ---
+        cur.execute("""
+            SELECT d.indicator_name, d.unit_of_measure as unit, AVG(f.indicator_value) as avg_val
+            FROM freshwater_data f
+            JOIN freshwater_indicator_details d ON f.freshwater_indicator_id = d.freshwater_indicator_id
+            JOIN countries c ON f.country_id = c.country_id
+            WHERE c.region = %s
+            GROUP BY d.indicator_name, d.unit_of_measure
+            ORDER BY d.indicator_name
+        """, (region,))
+        stats["freshwater"] = cur.fetchall()
+
+        # --- 4. GHG Stats ---
+        cur.execute("""
+            SELECT d.indicator_name, d.unit_symbol as unit, AVG(g.indicator_value) as avg_val
             FROM greenhouse_emissions g
-            JOIN countries c ON c.country_id = g.country_id
+            JOIN ghg_indicator_details d ON g.ghg_indicator_id = d.ghg_indicator_id
+            JOIN countries c ON g.country_id = c.country_id
             WHERE c.region = %s
-            """
-        )
+            GROUP BY d.indicator_name, d.unit_symbol
+            ORDER BY d.indicator_name
+        """, (region,))
+        stats["ghg"] = cur.fetchall()
 
-        stats["avg_sustainability"] = _avg(
-            """
-            SELECT AVG(s.indicator_value) AS avg_val
+        # --- 5. Sustainability Stats ---
+        cur.execute("""
+            SELECT d.indicator_name, 'Index' as unit, AVG(s.indicator_value) as avg_val
             FROM sustainability_data s
-            JOIN countries c ON c.country_id = s.country_id
+            JOIN sustainability_indicator_details d ON s.sus_indicator_id = d.sus_indicator_id
+            JOIN countries c ON s.country_id = c.country_id
             WHERE c.region = %s
-            """
-        )
+            GROUP BY d.indicator_name
+            ORDER BY d.indicator_name
+        """, (region,))
+        stats["sustainability"] = cur.fetchall()
 
     finally:
         cur.close()
 
     return jsonify(stats)
+
 
 @countries_bp.route("/profile/<int:country_id>", methods=["GET"])
 def country_profile(country_id: int):
