@@ -1,7 +1,7 @@
 import os
 import sys
 import csv
-from sqlalchemy import create_engine, text
+import mysql.connector
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,13 +14,13 @@ if REPO_ROOT not in sys.path:
 DB_USER = os.getenv("DB_USER", "root")
 DB_PASS = os.getenv("DB_PASSWORD", "db_pass")
 DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "3306")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_NAME = os.getenv("DB_NAME", "wdi_project")
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 DATA_DIR = os.path.join(BASE_DIR, 'Data')
 
-engine = create_engine(f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+
 
 
 def _clean_val(v):
@@ -44,7 +44,7 @@ def _clean_val(v):
             return v
 
 
-def load_csv_to_table(csv_path, table_name, column_order=None, dedupe_key=None, id_map=None, id_map_col=None, unique_cols=None):
+def load_csv_to_table(csv_path, table_name, column_order=None, dedupe_key=None, id_map=None, id_map_col=None, unique_cols=None, conn=None):
     rows = []
     with open(csv_path, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
@@ -53,15 +53,12 @@ def load_csv_to_table(csv_path, table_name, column_order=None, dedupe_key=None, 
             row = {}
             for k, v in r.items():
                 key = k.strip()
-                # some CSV headers include spaces after comma
                 key = key.replace(' ', '_') if ' ' in key and key.lower().endswith('_id') else key
                 row[key] = _clean_val(v)
-            # if column_order provided, ensure dict only has those keys
             if column_order:
                 filtered = {col: row.get(col) for col in column_order}
             else:
                 filtered = row
-            # apply id remapping if provided (e.g., map duplicate indicator ids to canonical)
             if id_map and id_map_col and id_map_col in filtered:
                 original = filtered.get(id_map_col)
                 if original in id_map:
@@ -70,25 +67,22 @@ def load_csv_to_table(csv_path, table_name, column_order=None, dedupe_key=None, 
 
     if not rows:
         print(f"No rows found in {csv_path}")
-        return
+        return {}
 
     # optionally deduplicate rows by a key (useful for indicator detail tables)
     id_mapping_result = {}
     if dedupe_key:
         seen = {}
         deduped = []
-        # assume first column in column_order is the id column
         id_col = column_order[0] if column_order else None
         for r in rows:
             val = r.get(dedupe_key)
             rid = r.get(id_col) if id_col else None
             if val in seen:
-                # map this row's id to the canonical id for this key
                 canonical = seen[val]
                 if rid is not None:
                     id_mapping_result[rid] = canonical
                 continue
-            # first occurrence becomes canonical
             seen[val] = rid
             deduped.append(r)
         rows = deduped
@@ -96,29 +90,36 @@ def load_csv_to_table(csv_path, table_name, column_order=None, dedupe_key=None, 
     # optionally deduplicate data rows by unique columns (prevent UNIQUE constraint errors)
     if unique_cols:
         seen_keys = set()
-        filtered = []
+        filtered_rows = []
         for r in rows:
             key = tuple(r.get(c) for c in unique_cols)
             if key in seen_keys:
                 continue
             seen_keys.add(key)
-            filtered.append(r)
-        rows = filtered
+            filtered_rows.append(r)
+        rows = filtered_rows
 
     cols = list(rows[0].keys())
-    placeholders = ', '.join([f":{c}" for c in cols])
     cols_sql = ', '.join(cols)
-    insert_sql = text(f"INSERT INTO {table_name} ({cols_sql}) VALUES ({placeholders})")
+    placeholders = ', '.join(['%s'] * len(cols))
+    insert_sql = f"INSERT INTO {table_name} ({cols_sql}) VALUES ({placeholders})"
 
-    with engine.begin() as conn:
+    if conn is None:
+        raise RuntimeError("Database connection (conn) must be provided to load_csv_to_table")
+
+    cur = conn.cursor()
+    try:
         try:
-            conn.execute(text(f"TRUNCATE TABLE {table_name};"))
+            cur.execute(f"TRUNCATE TABLE {table_name};")
         except Exception:
-            # ignore if table doesn't exist or can't truncate
             pass
 
-        # bulk insert
-        conn.execute(insert_sql, rows)
+        data_tuples = [tuple(r.get(c) for c in cols) for r in rows]
+        if data_tuples:
+            cur.executemany(insert_sql, data_tuples)
+            conn.commit()
+    finally:
+        cur.close()
 
     print(f"Loaded {len(rows)} rows into {table_name} from {csv_path}")
     return id_mapping_result
@@ -133,9 +134,13 @@ def main():
     except Exception as e:
         print(f"Warning: could not run setup_nuclear(): {e}")
 
-    # disable foreign key checks for the duration of the bulk load
-    with engine.begin() as conn:
-        conn.execute(text("SET FOREIGN_KEY_CHECKS=0;"))
+    # open a DB connection and disable foreign key checks for the duration of the bulk load
+    conn = mysql.connector.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, database=DB_NAME, port=DB_PORT)
+    cur = conn.cursor()
+    try:
+        cur.execute("SET FOREIGN_KEY_CHECKS=0;")
+    finally:
+        cur.close()
 
     # mapping: csv filename -> (table_name, column_order)
     mapping = {
@@ -169,7 +174,7 @@ def main():
         id_map_col = None
         # if this table is a detail table and returns mappings, capture them
         if dedupe_key:
-            res = load_csv_to_table(csv_path, table, column_order=cols, dedupe_key=dedupe_key, unique_cols=unique_cols)
+            res = load_csv_to_table(csv_path, table, column_order=cols, dedupe_key=dedupe_key, unique_cols=unique_cols, conn=conn)
             # res maps old_id -> canonical_id for this detail table
             if res:
                 # store mapping keyed by its id column name (first column)
@@ -183,11 +188,13 @@ def main():
                     id_map = global_id_map[possible_id_col]
                     id_map_col = possible_id_col
                     break
-            load_csv_to_table(csv_path, table, column_order=cols, id_map=id_map, id_map_col=id_map_col, unique_cols=unique_cols)
+            load_csv_to_table(csv_path, table, column_order=cols, id_map=id_map, id_map_col=id_map_col, unique_cols=unique_cols, conn=conn)
 
     # re-enable foreign key checks after loading
-    with engine.begin() as conn:
-        conn.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
+    with conn.cursor() as cur:
+        cur.execute("SET FOREIGN_KEY_CHECKS=1;")
+    conn.commit()
+    conn.close()
 
 
 if __name__ == '__main__':
