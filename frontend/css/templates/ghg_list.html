@@ -2,12 +2,316 @@
 
 {% block title %}Greenhouse Gas Emissions{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Align with Countries table style */
+  .table-container {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+  }
+  
+  /* Match Countries table header style */
+  .table thead {
+    background: linear-gradient(90deg, #eef2ff 0%, #e0f2fe 100%);
+  }
+  
+  .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+    font-size: 0.875rem;
+    padding: 0.75rem 0.5rem;
+    line-height: 1.4;
+  }
+  
+  .table thead th:hover {
+    background: linear-gradient(90deg, #e0f2fe 0%, #dbeafe 100%);
+  }
+  
+  /* Region badge styling - match Countries table */
+  .badge-soft {
+    background: #eef2ff;
+    color: #1d4ed8;
+    border: 1px solid rgba(37,99,235,0.2);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  /* Match Countries table body style */
+  .table tbody td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  .table tbody tr {
+    height: auto;
+  }
+  
+  .table thead th.sort-asc::after {
+    content: " ▲";
+    font-size: 0.8em;
+  }
+  
+  .table thead th.sort-desc::after {
+    content: " ▼";
+    font-size: 0.8em;
+  }
+  
+  .detail-row {
+    display: none !important;
+  }
+  
+  .detail-row.show {
+    display: table-row !important;
+  }
+  
+  .expand-btn {
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.2s;
+  }
+  
+  .expand-btn:hover {
+    opacity: 0.7;
+  }
+  
+  .expand-btn i {
+    transition: transform 0.2s;
+  }
+  
+  .number-format {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  
+  /* Grouped country rows */
+  .summary-row.country-group-start {
+    border-top: 2px solid #dee2e6;
+  }
+  
+  .summary-row.country-group-continued {
+    background-color: #f8f9fa !important;
+  }
+  
+  .summary-row.country-group-continued td:first-child {
+    padding-left: 2rem;
+  }
+  
+  .summary-row.country-group-continued .country-name-cell {
+    font-weight: normal;
+    color: #6c757d;
+  }
+  
+  /* Year column styling */
+  .year-cell {
+    font-size: 0.875rem;
+    color: #6c757d;
+  }
+  
+  .year-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  
+  /* Trend column styling */
+  .trend-column {
+    position: sticky;
+    background-color: inherit;
+    z-index: 1;
+    box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  thead .trend-column {
+    background: linear-gradient(90deg, #eef2ff 0%, #e0f2fe 100%);
+  }
+  
+  thead .trend-column:hover {
+    background: linear-gradient(90deg, #e0f2fe 0%, #dbeafe 100%);
+  }
+  
+  /* Simplified trend indicator - only icon and color */
+  .trend-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 0.875rem;
+  }
+  
+  .trend-indicator.trend-increase {
+    background-color: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+  }
+  
+  .trend-indicator.trend-decrease {
+    background-color: rgba(25, 135, 84, 0.15);
+    color: #198754;
+  }
+  
+  .trend-indicator.trend-no-change {
+    background-color: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+  }
+  
+  .trend-indicator.trend-no-data {
+    background-color: transparent;
+    color: #6c757d;
+  }
+  
+  .trend-indicator i {
+    font-size: 1rem;
+  }
+  
+  /* Header normalization - two-line labels */
+  .table thead th.header-two-line {
+    line-height: 1.3;
+    padding: 0.5rem 0.5rem;
+    vertical-align: middle;
+  }
+  
+  .table thead th .header-main {
+    display: block;
+    font-weight: 600;
+    font-size: 0.875rem;
+    line-height: 1.2;
+  }
+  
+  .table thead th .header-unit {
+    display: block;
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 0.125rem;
+    line-height: 1.2;
+  }
+  
+  /* Match Countries table font and spacing */
+  .table {
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  
+  .table tbody td {
+    font-weight: 400;
+  }
+  
+  .table tbody .fw-semibold {
+    font-weight: 600;
+  }
+  
+  /* Match Countries table hover and zebra striping */
+  .table-hover > tbody > tr:hover > td {
+    background-color: rgba(37, 99, 235, 0.05) !important;
+  }
+  
+  .table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: rgba(0, 0, 0, 0.02);
+  }
+  
+  .table-striped > tbody > tr:nth-of-type(even) > td {
+    background-color: rgba(0, 0, 0, 0.01);
+  }
+  
+  .summary-row:hover > td {
+    background-color: rgba(37, 99, 235, 0.05) !important;
+  }
+  
+  .summary-row.expanded > td {
+    background-color: rgba(37, 99, 235, 0.08) !important;
+  }
+  
+  /* Unit legend */
+  .unit-legend {
+    font-size: 0.75rem;
+    color: #6c757d;
+    padding: 0.5rem;
+    background-color: #f8f9fa;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .unit-legend-item {
+    display: inline-block;
+    margin-right: 1rem;
+  }
+  
+  /* Missing data - visually de-emphasized */
+  .missing-data {
+    color: #adb5bd;
+    font-weight: 300;
+    font-style: normal;
+    cursor: help;
+  }
+  
+  /* Data coverage indicator */
+  .data-coverage {
+    font-size: 0.7rem;
+    color: #adb5bd;
+    font-weight: 300;
+  }
+  
+  /* Header tooltips */
+  .header-tooltip {
+    cursor: help;
+    border-bottom: 1px dotted #6c757d;
+  }
+  
+  .autocomplete-container {
+    position: relative;
+  }
+  
+  .autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+  }
+  
+  .autocomplete-results.show {
+    display: block;
+  }
+  
+  .autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  
+  .autocomplete-item:hover {
+    background-color: #f0f0f0;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
     <h1 class="h3 mb-1">Greenhouse Gas Emissions</h1>
     <p class="text-muted mb-0">
-      Country-based greenhouse gas emission indicators with year and source notes.
+      Summary view grouped by country and year. Click to expand for detailed indicators.
     </p>
   </div>
 
@@ -19,168 +323,448 @@
 </div>
 
 <!-- FILTER FORM -->
-<form method="get" class="row g-3 mb-3">
+<form method="get" id="filterForm" class="row g-3 mb-3">
   <div class="col-md-4">
     <label class="form-label fw-semibold">Country</label>
+    <div class="autocomplete-container">
     <input
       type="text"
       name="country"
-      class="form-control form-control-sm"
-      placeholder="e.g. Turkey"
-      value="{{ current_country or '' }}"
-    />
+        id="countryInput"
+        class="form-control form-control-sm"
+        placeholder="Start typing country name..."
+        value="{{ current_country or '' }}"
+        autocomplete="off"
+      />
+      <div class="autocomplete-results" id="autocompleteResults"></div>
+    </div>
   </div>
 
-  <div class="col-md-2">
-    <label class="form-label fw-semibold">Year</label>
+  <div class="col-md-3">
+    <label class="form-label fw-semibold">Year From</label>
     <input
       type="number"
-      name="year"
+      name="year_min"
       class="form-control form-control-sm"
-      placeholder="e.g. 2012"
-      value="{{ current_year or '' }}"
+      placeholder="e.g. 2010"
+      value="{{ current_year_min or '' }}"
+      min="1900"
+      max="2100"
     />
   </div>
 
-  <div class="col-md-3 d-flex align-items-end gap-2">
-    <button type="submit" class="btn btn-sm btn-outline-primary">
-      Apply Filter
-    </button>
-    <a href="{{ url_for('ghg.list_ghg') }}" class="btn btn-sm btn-outline-secondary">
+  <div class="col-md-3">
+    <label class="form-label fw-semibold">Year To</label>
+    <input
+      type="number"
+      name="year_max"
+      class="form-control form-control-sm"
+      placeholder="e.g. 2020"
+      value="{{ current_year_max or '' }}"
+      min="1900"
+      max="2100"
+    />
+  </div>
+
+  <div class="col-md-2 d-flex align-items-end">
+    <a href="{{ url_for('ghg.list_ghg') }}" class="btn btn-sm btn-outline-secondary w-100">
       Clear
     </a>
   </div>
 </form>
 
-<!-- SORT PANEL (client-side) -->
-<form id="sortForm" class="d-flex flex-wrap gap-3 mb-3">
-  <div>
-    <label class="form-label fw-semibold">Sort By</label>
-    <select id="sortColumn" class="form-select form-select-sm">
-      <option value="0">ID</option>
-      <option value="1">Country</option>
-      <option value="2">Region</option>
-      <option value="3">Code</option>
-      <option value="4">Indicator</option>
-      <option value="5">Unit</option>
-      <option value="6">Year</option>
-      <option value="7">Value</option>
-      <option value="8">Share of Total (%)</option>
-      <option value="9">Uncertainty (%)</option>
-      <option value="10">Source Notes</option>
-    </select>
+<!-- PAGINATION INFO -->
+{% if total_pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <div class="text-muted small">
+    Page {{ page }} of {{ total_pages }}
   </div>
+  <nav>
+    <ul class="pagination pagination-sm mb-0" id="pagination">
+      {% if page > 1 %}
+        <li class="page-item">
+          <a class="page-link" href="#" data-page="{{ page - 1 }}">Previous</a>
+        </li>
+      {% endif %}
+      {% set max_show = [total_pages, 10]|min %}
+      {% for p in range(1, max_show + 1) %}
+        {% if p == page %}
+          <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+        {% elif p <= 2 or p >= max_show - 1 or (p >= page - 1 and p <= page + 1) %}
+          <li class="page-item">
+            <a class="page-link" href="#" data-page="{{ p }}">{{ p }}</a>
+          </li>
+        {% elif p == 3 and page > 4 %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% elif p == max_show - 2 and page < max_show - 3 %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+        <li class="page-item">
+          <a class="page-link" href="#" data-page="{{ page + 1 }}">Next</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endif %}
 
-  <div>
-    <label class="form-label fw-semibold">Order</label>
-    <select id="sortOrder" class="form-select form-select-sm">
-      <option value="asc">Ascending</option>
-      <option value="desc">Descending</option>
-    </select>
+<!-- Global CO₂ per capita Trend Chart -->
+{% if global_avg_by_year %}
+<div class="card mb-3 shadow-sm">
+  <div class="card-body p-3">
+    <h6 class="mb-3">Global CO₂ per capita Trend</h6>
+    <div style="position: relative; height: 250px;">
+      <canvas id="globalTrendChart"></canvas>
+    </div>
+    <p class="text-muted small mt-2 mb-0">
+      Each point represents the global average for that year using countries with available data only. No interpolation is applied.
+    </p>
   </div>
+</div>
+{% endif %}
 
-  <div class="align-self-end">
-    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="applySort()">
-      Apply Sort
+<!-- Top Risers/Decliners Panel (B1) -->
+{% if top_risers or top_decliners %}
+<div class="card mb-3 shadow-sm">
+  <div class="card-body p-3">
+    <div class="row">
+      {% if top_risers %}
+      <div class="col-md-6">
+        <h6 class="text-danger mb-2"><i class="fa-solid fa-arrow-trend-up"></i> Top 5 Risers</h6>
+        <div class="list-group list-group-flush">
+          {% for riser in top_risers %}
+          <div class="list-group-item px-0 py-1 border-0">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold">{{ riser.country_name }}</span>
+              <span class="badge bg-danger">{{ "%+.1f"|format(riser.percent_change) }}%</span>
+            </div>
+            <small class="text-muted">{{ riser.earliest_year }} → {{ riser.latest_year }}</small>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if top_decliners %}
+      <div class="col-md-6">
+        <h6 class="text-success mb-2"><i class="fa-solid fa-arrow-trend-down"></i> Top 5 Decliners</h6>
+        <div class="list-group list-group-flush">
+          {% for decliner in top_decliners %}
+          <div class="list-group-item px-0 py-1 border-0">
+            <div class="d-flex justify-content-between align-items-center">
+              <span class="fw-semibold">{{ decliner.country_name }}</span>
+              <span class="badge bg-success">{{ "%+.1f"|format(decliner.percent_change) }}%</span>
+            </div>
+            <small class="text-muted">{{ decliner.earliest_year }} → {{ decliner.latest_year }}</small>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Controls: Latest Year Toggle (A2) and Export (E1) -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="form-check form-switch">
+    <input class="form-check-input" type="checkbox" id="latestYearOnly" {% if latest_year_only %}checked{% endif %} onchange="toggleLatestYear()">
+    <label class="form-check-label" for="latestYearOnly">Latest year only</label>
+  </div>
+  <div>
+    <button class="btn btn-sm btn-outline-secondary" onclick="exportToCSV()" title="Export current view to CSV">
+      <i class="fa-solid fa-download"></i> Export CSV
     </button>
   </div>
-</form>
+  </div>
 
-<div class="table-responsive">
-  <table class="table table-sm table-striped table-hover align-middle">
-    <thead class="table-dark">
+<div class="d-flex justify-content-between align-items-start mb-2 flex-wrap gap-2">
+  <div class="unit-legend">
+    <strong>Units:</strong>
+    <span class="unit-legend-item"><strong>t</strong> = metric tons</span>
+    <span class="unit-legend-item"><strong>kt</strong> = kilotons (1,000 metric tons)</span>
+    <span class="unit-legend-item"><strong>kt CO₂-eq</strong> = kilotons of CO₂ equivalent</span>
+  </div>
+  <div class="unit-legend">
+    <strong>Trend Symbols:</strong>
+    <span class="unit-legend-item" style="color: #dc3545;">🔺</span> = Increase (red)
+    <span class="unit-legend-item" style="color: #198754;">🔻</span> = Decrease (green)
+    <span class="unit-legend-item" style="color: #6c757d;">➖</span> = No change (gray)
+    <span class="unit-legend-item" style="color: #6c757d;">❓</span> = No data (gray)
+    <span class="unit-legend-item">— = Missing value</span>
+    <button class="btn btn-link btn-sm p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#trendMethodology" title="How trends are calculated">
+      <i class="fa-solid fa-circle-info"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Trend Methodology Info (D1) -->
+<div class="collapse mb-2" id="trendMethodology">
+  <div class="card card-body bg-light">
+    <h6 class="mb-2">Trend Calculation Methodology</h6>
+    <p class="mb-0 small">Trends compare the earliest available year to the latest available year for each country. The percentage change is calculated as: <code>((latest - earliest) / earliest) × 100</code>. Missing data points are excluded from calculations. Trends are only displayed for the most recent year per country.</p>
+  </div>
+</div>
+
+<!-- How to read this table -->
+<div class="card mb-3 shadow-sm">
+  <div class="card-header bg-light">
+    <button class="btn btn-link text-decoration-none p-0 w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#howToReadTable" aria-expanded="false">
+      <i class="fa-solid fa-circle-info me-2"></i> How to read this table
+      <i class="fa-solid fa-chevron-down float-end"></i>
+    </button>
+  </div>
+  <div class="collapse" id="howToReadTable">
+    <div class="card-body small">
+      <ul class="mb-0">
+        <li><strong>Each row</strong> represents a country-year record with aggregated GHG emissions data.</li>
+        <li><strong>Trends</strong> compare the earliest vs latest available years for each country, showing percentage change.</li>
+        <li><strong>—</strong> indicates missing values that are not reported in the WDI dataset for that country and year.</li>
+        <li><strong>Trend arrows</strong> (🔺 🔻 ➖) show percentage change over time, with color indicating direction (red=increase, green=decrease, gray=no change).</li>
+        <li><strong>Regions</strong> represent continental groupings used for aggregation and comparison purposes.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="table-container">
+  <table class="table table-hover align-middle">
+    <thead>
       <tr>
-        <th style="width: 60px;">#</th>
-        <th style="width: 140px;">Country</th>
-        <th style="width: 120px;">Region</th>
-        <th style="width: 80px;">Code</th>
-        <th style="min-width: 260px;">Indicator</th>
-        <th style="min-width: 140px;">Unit</th>
-        <th class="text-center" style="width: 80px;">Year</th>
-        <th class="text-end" style="width: 110px;">Value</th>
-        <th class="text-end" style="width: 120px;">Share of Total (%)</th>
-        <th class="text-end" style="width: 120px;">Uncertainty (%)</th>
-        <th style="min-width: 180px;">Source Notes</th>
+        <th style="width: 40px;"></th>
+        <th data-sort="country" style="min-width: 150px;">Country</th>
+        <th data-sort="region" style="min-width: 120px;">Region</th>
+        <th data-sort="year" style="width: 80px;" class="text-center">Year</th>
+        <th data-sort="co2_per_capita" style="width: 140px;" class="text-end header-tooltip" title="Carbon dioxide emissions per person">
+          CO₂ per capita
+        </th>
+        <th data-sort="trend" style="width: 130px; {% if session.get('team_no')|int == 1 %}right: 100px;{% else %}right: 0;{% endif %}" class="text-center trend-column header-tooltip" title="Change in CO₂ per capita from earliest to latest available year">
+          Trend (Δ)
+        </th>
+        <th data-sort="co2_total" style="width: 140px;" class="text-end header-tooltip" title="Total carbon dioxide emissions">
+          CO₂ Total
+        </th>
+        <th data-sort="total_ghg" style="width: 140px;" class="text-end header-tooltip" title="Total greenhouse gas emissions including CO₂, methane, and other gases">
+          Total GHG
+        </th>
         {% if session.get("team_no")|int == 1 %}
-          <th style="width: 130px;">Actions</th>
+          <th style="width: 100px;">Actions</th>
         {% endif %}
       </tr>
     </thead>
+    <tfoot>
+      <tr>
+        <td colspan="{% if session.get('team_no')|int == 1 %}9{% else %}8{% endif %}" class="text-muted small py-2 px-3" style="background-color: #f8f9fa;">
+          <strong>Units:</strong> CO₂ per capita is measured in metric tons per person per year. CO₂ Total and Total GHG are shown in kilotons (kt).
+        </td>
+      </tr>
+    </tfoot>
 
-    <tbody>
-      {% for ghg, country, indicator in rows %}
-        <tr>
-          <td class="text-muted">{{ ghg.row_id }}</td>
-
-          <td class="fw-semibold text-truncate" style="max-width: 140px;" title="{{ country.country_name }}">
-            {{ country.country_name }}
+    <tbody id="ghgTableBody">
+      {% for row in summary_rows %}
+        {% set detail_key = row.country_id|string + '-' + row.year|string %}
+        <tr class="summary-row" data-key="{{ detail_key }}" {% if row.get('data_coverage') %}title="Data coverage: {{ row.data_coverage.reported }} / {{ row.data_coverage.total }} indicators reported"{% endif %}>
+          <td class="expand-btn text-center" onclick="toggleDetails('{{ detail_key }}')">
+            <i class="fa-solid fa-chevron-right" id="icon-{{ detail_key }}"></i>
           </td>
-
-          <td class="text-truncate" style="max-width: 120px;" title="{{ country.region or '-' }}">
-            {{ country.region or '-' }}
+          <td class="fw-semibold">
+            {{ row.country_name|default('—', true) }}
           </td>
-
-          <td class="text-uppercase text-muted">{{ country.country_code }}</td>
-
-          <td class="text-truncate" style="max-width: 260px;" title="{{ indicator.indicator_name }}">
-            {{ indicator.indicator_name }}
-          </td>
-
-          <td class="text-truncate" style="max-width: 140px;" title="{{ indicator.unit_symbol or '-' }}">
-            {{ indicator.unit_symbol or '-' }}
-          </td>
-
-          <td class="text-center">{{ ghg.year }}</td>
-
-          <td class="text-end">
-            {% if ghg.indicator_value is not none %}
-              {{ ghg.indicator_value }}
+          <td>
+            {% if row.region %}
+              {% set region_emoji = {
+                'Asia': '🌏',
+                'Europe': '🌍',
+                'Africa': '🌍',
+                'North America': '🌎',
+                'South America': '🌎',
+                'Oceania': '🌊',
+                'Antarctica': '❄️'
+              }.get(row.region, '🌍') %}
+              <span class="badge badge-soft" title="Regions represent continental groupings used for aggregation and comparison purposes">{{ region_emoji }} {{ row.region }}</span>
             {% else %}
-              <span class="text-muted">n/a</span>
+              <span class="badge badge-soft">—</span>
             {% endif %}
           </td>
-
-          <td class="text-end">
-            {% if ghg.share_of_total_pct is not none %}
-              {{ ghg.share_of_total_pct }}
+          <td class="text-center year-cell">
+            <span class="year-badge">{{ row.year|int }}</span>
+          </td>
+          <td class="text-end number-format" data-value="{{ row.co2_per_capita or '' }}">
+            {% if row.co2_per_capita is not none and row.co2_per_capita is number %}
+              <span class="formatted-number-decimal">{{ "%.2f"|format(row.co2_per_capita) }}</span> <span class="text-muted small">{{ unit_symbols.get(6, 't') }}</span>
             {% else %}
-              <span class="text-muted">n/a</span>
+              <span class="missing-data" title="Not reported. This indicator is not available for this country and year in the WDI dataset.">—</span>
             {% endif %}
           </td>
-
-          <td class="text-end">
-            {% if ghg.uncertainty_pct is not none %}
-              {{ ghg.uncertainty_pct }}
+          <td class="text-center trend-column" style="right: {% if session.get('team_no')|int == 1 %}100px{% else %}0{% endif %};">
+            {% if row.get('is_earliest_year') %}
+              <span class="trend-indicator trend-no-data" style="color: #6c757d; font-size: 1.1em;" title="Trend cannot be calculated because no earlier data point exists.">
+                ❓ <span style="font-size: 0.875rem; margin-left: 4px;">No data</span>
+              </span>
+            {% elif row.get('is_latest_year') and row.get('show_trend') %}
+              {% set trends_dict = row.get('trends', {}) or {} %}
+              {% set trend = trends_dict.get('co2_per_capita') if trends_dict else None %}
+              {% if trend and trend.get('change') is not none and trend.get('change') is number %}
+                {% set change_val = trend.get('change')|float %}
+                {% set percent_val = trend.get('percent')|float if trend.get('percent') is not none else None %}
+                {% set earliest_year = trend.get('earliest_year')|int if trend.get('earliest_year') is not none else '' %}
+                {% set latest_year_trend = trend.get('latest_year')|int if trend.get('latest_year') is not none else '' %}
+                {% set tooltip_text = "Change calculated between the earliest and latest available years for this country. Change: " + earliest_year|string + " → " + latest_year_trend|string %}
+                {% if latest_year_only %}
+                  {% set tooltip_text = tooltip_text + " (Trend calculated using historical data not shown in this view.)" %}
+                {% endif %}
+                {% if percent_val is not none %}
+                  {% set tooltip_text = tooltip_text + " (" + ("%+.1f"|format(percent_val)) + "%)" %}
+                {% endif %}
+                {% if change_val > 0.01 %}
+                  <span class="trend-indicator trend-increase" title="{{ tooltip_text }}" style="color: #dc3545; font-size: 1.1em;">
+                    🔺 <span style="font-size: 0.875rem; margin-left: 4px; color: #dc3545;">{% if percent_val is not none %}{{ "%+.1f"|format(percent_val) }}%{% else %}—{% endif %}</span>
+                  </span>
+                {% elif change_val < -0.01 %}
+                  <span class="trend-indicator trend-decrease" title="{{ tooltip_text }}" style="color: #198754; font-size: 1.1em;">
+                    🔻 <span style="font-size: 0.875rem; margin-left: 4px; color: #198754;">{% if percent_val is not none %}{{ "%+.1f"|format(percent_val) }}%{% else %}—{% endif %}</span>
+                  </span>
+                {% else %}
+                  <span class="trend-indicator trend-no-change" title="{{ tooltip_text }}" style="color: #6c757d; font-size: 1.1em;">
+                    ➖ <span style="font-size: 0.875rem; margin-left: 4px; color: #6c757d;">—</span>
+                  </span>
+                {% endif %}
+              {% else %}
+                <span class="trend-indicator trend-no-data" title="Trend cannot be calculated because no earlier data point exists." style="color: #6c757d; font-size: 1.1em;">
+                  ❓ <span style="font-size: 0.875rem; margin-left: 4px;">No data</span>
+                </span>
+              {% endif %}
             {% else %}
-              <span class="text-muted">n/a</span>
+              <span class="trend-indicator trend-no-data" title="Trend shown only for the most recent year" style="color: #6c757d; font-size: 1.1em;">
+                ❓ <span style="font-size: 0.875rem; margin-left: 4px;">No data</span>
+              </span>
             {% endif %}
           </td>
-
-          <td class="text-truncate" style="max-width: 180px;" title="{{ ghg.source_notes or '' }}">
-            {{ ghg.source_notes or '' }}
+          <td class="text-end number-format" data-value="{{ row.co2_total or '' }}">
+            {% if row.co2_total is not none and row.co2_total is number %}
+              <span class="formatted-number">{{ "%.0f"|format(row.co2_total) }}</span> <span class="text-muted small">{{ unit_symbols.get(5, 'kt') }}</span>
+            {% else %}
+              <span class="missing-data" title="Not reported. This indicator is not available for this country and year in the WDI dataset.">—</span>
+            {% endif %}
           </td>
-
+          <td class="text-end number-format" data-value="{{ row.total_ghg or '' }}">
+            {% if row.total_ghg is not none and row.total_ghg is number %}
+              <span class="formatted-number">{{ "%.0f"|format(row.total_ghg) }}</span> <span class="text-muted small">{{ unit_symbols.get(1, 'kt CO₂-eq') }}</span>
+            {% else %}
+              <span class="missing-data" title="Not reported. This indicator is not available for this country and year in the WDI dataset.">—</span>
+            {% endif %}
+          </td>
           {% if session.get("team_no")|int == 1 %}
             <td>
-              <div class="d-flex gap-1">
-                <a
-                  href="{{ url_for('ghg.edit_ghg', id=ghg.row_id) }}"
-                  class="btn btn-sm btn-outline-secondary"
-                >
-                  Edit
+              <div class="btn-group">
+                <a href="{{ url_for('ghg.add_ghg') }}?country_id={{ row.country_id }}&year={{ row.year }}" 
+                   class="btn btn-sm btn-outline-primary" title="Add new indicator">
+                  <i class="fa-solid fa-plus"></i>
                 </a>
-                <form
-                  action="{{ url_for('ghg.delete_ghg', id=ghg.row_id) }}"
-                  method="post"
-                  onsubmit="return confirm('Delete this record?');"
-                >
-                  <button type="submit" class="btn btn-sm btn-outline-danger">
-                    Delete
-                  </button>
-                </form>
               </div>
             </td>
           {% endif %}
+        </tr>
+        
+        <!-- Detail Row -->
+        <tr class="detail-row" id="detail-{{ detail_key }}" data-expanded="false">
+          <td colspan="{% if session.get('team_no')|int == 1 %}9{% else %}8{% endif %}" class="bg-light">
+            <div class="p-3">
+              <!-- Time-Series Chart Section -->
+              <div id="chart-container-{{ detail_key }}" class="mb-4" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="mb-0">Emissions Over Time</h6>
+                  <div class="d-flex gap-2 align-items-center">
+                    <div class="btn-group btn-group-sm" role="group" id="metric-selector-{{ detail_key }}">
+                      <!-- Metric selector will be populated dynamically by JavaScript -->
+                    </div>
+                    {% if time_series_data[row.country_id].region %}
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="region-overlay-{{ detail_key }}">
+                        <label class="form-check-label small" for="region-overlay-{{ detail_key }}">Region Avg</label>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+                <div id="chart-message-{{ detail_key }}" class="alert alert-info mb-0" style="display: none;"></div>
+                <canvas id="chart-{{ detail_key }}" style="max-height: 300px;"></canvas>
+              </div>
+              
+              <h6 class="mb-3">Detailed Indicators</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead class="table-secondary">
+                    <tr>
+                      <th>Indicator</th>
+                      <th class="text-end">Value</th>
+                      <th class="text-end">Share of Total (%)</th>
+                      <th class="text-end">Uncertainty (%)</th>
+                      <th>Source Notes</th>
+                      {% if session.get("team_no")|int == 1 %}
+                        <th>Actions</th>
+                      {% endif %}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% if detailed_data[detail_key] %}
+                      {% for detail in detailed_data[detail_key] %}
+                        <tr>
+                          <td>
+                            <strong>{{ detail.indicator_name }}</strong><br>
+                            <small class="text-muted">{{ detail.unit_symbol or '-' }}</small>
+                          </td>
+                          <td class="text-end number-format">
+                            {% if detail.indicator_value is not none %}
+                              <span class="formatted-number">{{ detail.indicator_value }}</span>
+                            {% else %}
+                              <span class="missing-data">—</span>
+                            {% endif %}
+                          </td>
+                          <td class="text-end number-format">
+                            {% if detail.share_of_total_pct is not none %}
+                              {{ detail.share_of_total_pct }}%
+                            {% else %}
+                              <span class="missing-data">—</span>
+                            {% endif %}
+                          </td>
+                          <td class="text-end number-format">
+                            {% if detail.uncertainty_pct is not none %}
+                              {{ detail.uncertainty_pct }}%
+                            {% else %}
+                              <span class="missing-data">—</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            <small>{{ detail.source_notes or '-' }}</small>
+                          </td>
+                          {% if session.get("team_no")|int == 1 %}
+                            <td>
+                              {% if detail.row_id %}
+                                <a href="{{ url_for('ghg.edit_ghg', id=detail.row_id) }}" 
+                                   class="btn btn-sm btn-outline-secondary">
+                                  <i class="fa-solid fa-edit"></i>
+                                </a>
+                              {% else %}
+                                <span class="text-muted">-</span>
+                              {% endif %}
+                            </td>
+                          {% endif %}
+                        </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="{% if session.get('team_no')|int == 1 %}6{% else %}5{% endif %}" class="text-center text-muted">
+                          No detailed data available
+                        </td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </td>
         </tr>
       {% endfor %}
     </tbody>
@@ -190,30 +774,621 @@
 
 {% block extra_js %}
 <script>
-function applySort() {
-  const colIndex = parseInt(document.getElementById("sortColumn").value);
-  const order = document.getElementById("sortOrder").value;
+// Format numbers with thousand separators
+function formatNumber(num, decimals = 0) {
+  if (num === null || num === undefined || num === '') return 'n/a';
+  const n = parseFloat(num);
+  if (isNaN(n)) return 'n/a';
+  return n.toLocaleString('en-US', { 
+    minimumFractionDigits: decimals, 
+    maximumFractionDigits: decimals 
+  });
+}
 
-  const tbody = document.querySelector("table tbody");
-  const rows = Array.from(tbody.querySelectorAll("tr"));
-
-  const sorted = rows.sort((a, b) => {
-    let A = a.children[colIndex].innerText.trim();
-    let B = b.children[colIndex].innerText.trim();
-
-    const numA = parseFloat(A);
-    const numB = parseFloat(B);
-    const isNumeric = !isNaN(numA) && !isNaN(numB);
-
-    if (isNumeric) {
-      return order === "asc" ? numA - numB : numB - numA;
-    } else {
-      return order === "asc" ? A.localeCompare(B) : B.localeCompare(A);
+// Apply formatting on page load
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.formatted-number').forEach(el => {
+    const num = parseFloat(el.textContent);
+    if (!isNaN(num)) {
+      el.textContent = formatNumber(num, 0);
     }
   });
+  
+  document.querySelectorAll('.formatted-number-decimal').forEach(el => {
+    const num = parseFloat(el.textContent);
+    if (!isNaN(num)) {
+      el.textContent = formatNumber(num, 2);
+    }
+  });
+  
+  // Format trend percentages with + sign
+  document.querySelectorAll('.trend-percent[data-percent]').forEach(el => {
+    const num = parseFloat(el.getAttribute('data-percent'));
+    if (!isNaN(num)) {
+      el.textContent = (num > 0 ? '+' : '') + num.toFixed(1) + '%';
+    }
+  });
+});
 
-  tbody.innerHTML = "";
-  sorted.forEach(row => tbody.appendChild(row));
+let sortColumn = '{{ sort_by }}';
+let sortOrder = '{{ sort_order }}';
+
+// Update sort indicators
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  if (th.dataset.sort === sortColumn) {
+    th.classList.add(sortOrder === 'asc' ? 'sort-asc' : 'sort-desc');
+  }
+});
+
+// Table header sorting - only for sortable columns
+const sortableColumns = ['country', 'year', 'region', 'total_ghg', 'co2_total', 'co2_per_capita', 'trend'];
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  const sortKey = th.dataset.sort;
+  if (sortableColumns.includes(sortKey)) {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function() {
+      const newSort = this.dataset.sort;
+      const newOrder = (sortColumn === newSort && sortOrder === 'asc') ? 'desc' : 'asc';
+      
+      const url = new URL(window.location);
+      url.searchParams.set('sort', newSort);
+      url.searchParams.set('order', newOrder);
+      url.searchParams.set('page', '1');
+      window.location.href = url.toString();
+    });
+  } else {
+    th.style.cursor = 'default';
+  }
+});
+
+// Chart instances storage
+const chartInstances = {};
+
+// Toggle detail rows with proper state management
+function toggleDetails(key) {
+  const detailRow = document.getElementById('detail-' + key);
+  const icon = document.getElementById('icon-' + key);
+  
+  if (!detailRow || !icon) {
+    console.error('Element not found for key:', key);
+    return;
+  }
+  
+  // Check current state using data attribute
+  const isExpanded = detailRow.getAttribute('data-expanded') === 'true';
+  
+  if (isExpanded) {
+    // Collapse
+    detailRow.classList.remove('show');
+    detailRow.setAttribute('data-expanded', 'false');
+    detailRow.style.display = 'none';
+    icon.classList.remove('fa-chevron-down');
+    icon.classList.add('fa-chevron-right');
+    
+    // Destroy chart if exists
+    if (chartInstances[key]) {
+      chartInstances[key].destroy();
+      delete chartInstances[key];
+    }
+    } else {
+    // Expand
+    detailRow.classList.add('show');
+    detailRow.setAttribute('data-expanded', 'true');
+    detailRow.style.display = 'table-row';
+    icon.classList.remove('fa-chevron-right');
+    icon.classList.add('fa-chevron-down');
+    
+    // Render chart if data exists
+    renderChart(key);
+  }
 }
+
+// Render time-series chart for a country
+function renderChart(key) {
+  const chartContainer = document.getElementById('chart-container-' + key);
+  const chartCanvas = document.getElementById('chart-' + key);
+  const chartMessage = document.getElementById('chart-message-' + key);
+  
+  if (!chartContainer || !chartCanvas) return;
+  
+  // Get country_id from key (format: "country_id-year")
+  const countryId = parseInt(key.split('-')[0]);
+  const timeSeriesData = {{ time_series_data|tojson }};
+  
+  if (!timeSeriesData[countryId] || !timeSeriesData[countryId].country_data) {
+    chartContainer.style.display = 'none';
+    return;
+  }
+  
+  // Populate metric selector dynamically on first render
+  const selectorContainer = document.getElementById(`metric-selector-${key}`);
+  if (selectorContainer && selectorContainer.children.length === 0) {
+    const defaultIndicator = populateMetricSelector(key, timeSeriesData, countryId);
+    // If default indicator was set, trigger render
+    if (defaultIndicator) {
+      const defaultRadio = document.getElementById(`metric-${defaultIndicator}-${key}`);
+      if (defaultRadio) defaultRadio.checked = true;
+    }
+  }
+  
+  const indicators = timeSeriesData[countryId].indicators || {};
+  const countryData = timeSeriesData[countryId].country_data || {};
+  const regionAvgData = timeSeriesData[countryId].region_avg || {};
+  const region = timeSeriesData[countryId].region;
+  const allYears = timeSeriesData[countryId].years || [];
+  
+  // Get current metric selection (indicator ID)
+  const selectedMetricRadio = document.querySelector(`input[name="metric-${key}"]:checked`);
+  if (!selectedMetricRadio) {
+    chartContainer.style.display = 'none';
+    return;
+  }
+  
+  const selectedIndicatorId = parseInt(selectedMetricRadio.value);
+  const showRegionAvg = document.getElementById(`region-overlay-${key}`)?.checked || false;
+  
+  // Get indicator info
+  const indicator = indicators[selectedIndicatorId];
+  if (!indicator) {
+    console.error('Invalid indicator selected:', selectedIndicatorId);
+    return;
+  }
+  
+  // Get time-series data for selected indicator
+  const indicatorTimeSeries = countryData[selectedIndicatorId] || [];
+  const validDataPoints = indicatorTimeSeries.filter(d => d.value !== null && d.value !== undefined).length;
+  
+  // Check data point requirements: need at least 2 for time-series
+  if (validDataPoints < 2) {
+    chartContainer.style.display = 'block';
+    chartCanvas.style.display = 'none';
+    chartMessage.style.display = 'block';
+    
+    if (validDataPoints === 0) {
+      chartMessage.textContent = `No data available for ${indicator.name}.`;
+    } else if (validDataPoints === 1) {
+      chartMessage.textContent = `Insufficient data: Only 1 data point available for ${indicator.name}. At least 2 data points are required to display a time-series chart.`;
+    }
+    return;
+  }
+  
+  chartContainer.style.display = 'block';
+  chartCanvas.style.display = 'block';
+  chartMessage.style.display = 'none';
+  
+  // Prepare chart data (works for any selected indicator dynamically)
+  const years = allYears;
+  const values = years.map(year => {
+    const dataPoint = indicatorTimeSeries.find(d => d.year === year);
+    return dataPoint ? dataPoint.value : null;
+  });
+  
+  // Build label with unit
+  const indicatorLabel = `${indicator.name}${indicator.unit ? ` (${indicator.unit})` : ''}`;
+  
+  // Main dataset for selected indicator
+  const datasets = [{
+    label: indicatorLabel,
+    data: values,
+    borderColor: 'rgb(37, 99, 235)',
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    tension: 0.1,
+    fill: false,
+    spanGaps: false  // Leave gaps for missing years
+  }];
+  
+  // Add region average overlay if enabled (for selected indicator)
+  if (showRegionAvg && region && regionAvgData[selectedIndicatorId]) {
+    const regionIndicatorData = regionAvgData[selectedIndicatorId] || [];
+    const regionValues = years.map(year => {
+      const dataPoint = regionIndicatorData.find(d => d.year === year);
+      return dataPoint ? dataPoint.value : null;
+    });
+    
+    datasets.push({
+      label: `${region} Average (${indicatorLabel})`,
+      data: regionValues,
+      borderColor: 'rgb(156, 163, 175)',
+      backgroundColor: 'rgba(156, 163, 175, 0.1)',
+      borderDash: [5, 5],
+      tension: 0.1,
+      fill: false,
+      spanGaps: false
+    });
+  }
+  
+  // Destroy existing chart if any
+  if (chartInstances[key]) {
+    chartInstances[key].destroy();
+  }
+  
+  // Create new chart
+  chartInstances[key] = new Chart(chartCanvas, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: function(context) {
+              const value = context.parsed.y;
+              if (value == null) return `${context.dataset.label}: —`;
+              const formatted = typeof value === 'number' 
+                ? value.toLocaleString('en-US', { maximumFractionDigits: 2 }) 
+                : value;
+              return `${context.dataset.label}: ${formatted}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Year'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: indicatorLabel
+          },
+          beginAtZero: false,
+          ticks: {
+            callback: function(value) {
+              if (value == null) return '—';
+              return typeof value === 'number' ? value.toLocaleString('en-US', { maximumFractionDigits: 2 }) : value;
+            }
+          }
+        }
+      },
+      interaction: {
+        mode: 'nearest',
+        axis: 'x',
+        intersect: false
+      }
+    }
+  });
+  
+  // Rebind event listeners for metric switcher (all indicators)
+  document.querySelectorAll(`input[name="metric-${key}"]`).forEach(radio => {
+    // Remove and re-add to prevent duplicates
+    const newRadio = radio.cloneNode(true);
+    radio.parentNode.replaceChild(newRadio, radio);
+    newRadio.addEventListener('change', function() {
+      renderChart(key); // Re-render chart with new indicator selection
+    });
+  });
+  
+  // Rebind region overlay toggle
+  const regionOverlay = document.getElementById(`region-overlay-${key}`);
+  if (regionOverlay) {
+    const newOverlay = regionOverlay.cloneNode(true);
+    regionOverlay.parentNode.replaceChild(newOverlay, regionOverlay);
+    newOverlay.addEventListener('change', function() {
+      renderChart(key); // Re-render chart with region overlay toggle
+    });
+  }
+}
+
+// Ensure all detail rows are collapsed on page load
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.detail-row').forEach(row => {
+    row.setAttribute('data-expanded', 'false');
+    row.classList.remove('show');
+    row.style.display = 'none';
+  });
+});
+
+// Autocomplete for country input
+let autocompleteTimeout;
+const countryInput = document.getElementById('countryInput');
+const autocompleteResults = document.getElementById('autocompleteResults');
+
+countryInput.addEventListener('input', function() {
+  clearTimeout(autocompleteTimeout);
+  const query = this.value.trim();
+  
+  if (query.length < 2) {
+    autocompleteResults.classList.remove('show');
+    return;
+  }
+  
+  autocompleteTimeout = setTimeout(() => {
+    fetch(`{{ url_for('ghg.autocomplete_countries') }}?q=${encodeURIComponent(query)}`)
+      .then(response => response.json())
+      .then(data => {
+        autocompleteResults.innerHTML = '';
+        if (data.countries && data.countries.length > 0) {
+          data.countries.forEach(country => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.textContent = `${country.country_name} (${country.country_code})`;
+            item.addEventListener('click', () => {
+              countryInput.value = country.country_name;
+              autocompleteResults.classList.remove('show');
+              document.getElementById('filterForm').submit();
+            });
+            autocompleteResults.appendChild(item);
+          });
+          autocompleteResults.classList.add('show');
+        } else {
+          autocompleteResults.classList.remove('show');
+        }
+      })
+      .catch(() => {
+        autocompleteResults.classList.remove('show');
+      });
+  }, 300);
+});
+
+// Close autocomplete when clicking outside
+document.addEventListener('click', function(e) {
+  if (!countryInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+    autocompleteResults.classList.remove('show');
+  }
+});
+
+// Auto-submit filter form on change
+document.querySelectorAll('#filterForm input').forEach(input => {
+  input.addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+  });
+});
+
+// Pagination links
+document.querySelectorAll('#pagination a[data-page]').forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    const page = this.dataset.page;
+    const url = new URL(window.location);
+    url.searchParams.set('page', page);
+    window.location.href = url.toString();
+  });
+});
+
+
+// A2: Toggle latest year only
+function toggleLatestYear() {
+  const checkbox = document.getElementById('latestYearOnly');
+  const url = new URL(window.location);
+  
+  if (checkbox.checked) {
+    url.searchParams.set('latest_year_only', 'true');
+  } else {
+    url.searchParams.delete('latest_year_only');
+  }
+  
+  // Reset to page 1 when toggling
+  url.searchParams.set('page', '1');
+  window.location.href = url.toString();
+}
+
+// C1: Render sparklines for CO2 per capita
+function renderSparklines() {
+  const sparklineCanvases = document.querySelectorAll('.sparkline-canvas');
+  const timeSeriesData = {{ time_series_data|tojson }};
+  
+  sparklineCanvases.forEach(canvas => {
+    const countryId = parseInt(canvas.dataset.countryId);
+    if (!timeSeriesData[countryId]) return;
+    
+    const indicatorId = 6; // CO2 per capita
+    const countryData = timeSeriesData[countryId].country_data[indicatorId] || [];
+    if (countryData.length < 2) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Get values
+    const values = countryData.map(d => d.value).filter(v => v !== null && v !== undefined);
+    if (values.length < 2) return;
+    
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    
+    // Draw sparkline
+    ctx.clearRect(0, 0, width, height);
+    ctx.strokeStyle = '#6c757d';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    
+    values.forEach((val, idx) => {
+      const x = (idx / (values.length - 1)) * width;
+      const y = height - ((val - min) / range) * height;
+      if (idx === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+    
+    ctx.stroke();
+  });
+}
+
+// E1: Export to CSV
+function exportToCSV() {
+  const table = document.querySelector('.table-container table');
+  if (!table) return;
+  
+  let csv = [];
+  const rows = table.querySelectorAll('tr');
+  
+  rows.forEach(row => {
+    const cols = row.querySelectorAll('th, td');
+    const rowData = [];
+    cols.forEach(col => {
+      let text = col.innerText.trim();
+      // Remove emoji and extra formatting
+      text = text.replace(/[🔺🔻➖❓]/g, '').trim();
+      // Escape quotes
+      text = text.replace(/"/g, '""');
+      rowData.push('"' + text + '"');
+    });
+    csv.push(rowData.join(','));
+  });
+  
+  const csvContent = csv.join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'ghg_emissions_' + new Date().toISOString().split('T')[0] + '.csv');
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+
+// Initialize sparklines on page load
+document.addEventListener('DOMContentLoaded', function() {
+  renderSparklines();
+  
+  // Initialize global trend chart
+  {% if global_avg_by_year %}
+  const globalTrendData = {{ global_avg_by_year|tojson|safe }};
+  if (globalTrendData && globalTrendData.length > 0) {
+    const ctx = document.getElementById('globalTrendChart');
+    if (ctx) {
+      const years = globalTrendData.map(d => d.year);
+      const values = globalTrendData.map(d => d.avg_value);
+      const countryCounts = globalTrendData.map(d => d.country_count);
+      
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: years,
+          datasets: [{
+            label: 'Global average (countries with data)',
+            data: values,
+            borderColor: 'rgba(40, 167, 69, 0.8)',
+            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0,  // No smoothing - show natural gaps between years
+            spanGaps: false,  // Don't connect points across gaps
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            pointBackgroundColor: 'rgba(40, 167, 69, 0.8)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: {
+                font: {
+                  size: 12,
+                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                },
+                padding: 10
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              padding: 12,
+              titleFont: {
+                size: 13,
+                weight: 'bold',
+                family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+              },
+              bodyFont: {
+                size: 12,
+                family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+              },
+              callbacks: {
+                title: function(context) {
+                  const index = context[0].dataIndex;
+                  return `Year: ${years[index]}`;
+                },
+                label: function(context) {
+                  const index = context.dataIndex;
+                  const avgValue = context.parsed.y.toFixed(2);
+                  const countryCount = countryCounts[index];
+                  return [
+                    `Countries included: ${countryCount}`,
+                    `Global avg CO₂ per capita: ${avgValue} t`
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Year',
+                font: {
+                  size: 12,
+                  weight: '500',
+                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                },
+                padding: { top: 10 }
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                font: {
+                  size: 11,
+                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                }
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Average CO₂ per capita (metric tons per person)',
+                font: {
+                  size: 12,
+                  weight: '500',
+                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                },
+                padding: { bottom: 10 }
+              },
+              grid: {
+                display: true,
+                color: 'rgba(0, 0, 0, 0.05)'
+              },
+              ticks: {
+                font: {
+                  size: 11,
+                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+                },
+                callback: function(value) {
+                  return value.toFixed(1) + ' t';
+                }
+              },
+              beginAtZero: false
+            }
+          }
+        }
+      });
+    }
+  }
+  {% endif %}
+});
 </script>
 {% endblock %}
