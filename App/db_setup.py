@@ -31,16 +31,21 @@ def setup_nuclear():
     try:
         with open(SQL_FILE_PATH, 'r', encoding='utf-8') as f:
             sql_script = f.read()
-            
+
+        # Remove SQL single-line comments (--) and block comments (/* */) to avoid
+        # splitting/mis-parsing multi-line statements that include inline comments.
+        import re
+        sql_clean = re.sub(r'--.*\n', '\n', sql_script)
+        sql_clean = re.sub(r'/\*.*?\*/', '', sql_clean, flags=re.S)
+
         with engine_db.connect() as conn:
-            commands = sql_script.split(';')
+            conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
+            # split into statements safely (after removing comments)
+            commands = sql_clean.split(';')
             for command in commands:
                 if command.strip():
-                    conn.execute(text("SET FOREIGN_KEY_CHECKS = 0;"))
                     conn.execute(text(command))
-            
             conn.execute(text("SET FOREIGN_KEY_CHECKS = 1;"))
-            conn.commit()
 
     except FileNotFoundError:
         print(f"error:'{SQL_FILE_PATH}' could not be found.")
