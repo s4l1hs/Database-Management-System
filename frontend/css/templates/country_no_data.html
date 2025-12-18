@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}No Data{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="card shadow-sm border-0">
+    <div class="card-body text-center py-5">
+          <p class="text-muted mb-3">There is no recorded data for this country.</p>
+          <div class="mt-4">
+            <a href="{{ url_for('countries.list_countries') }}" class="btn btn-outline-secondary">Back to map</a>
+          </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

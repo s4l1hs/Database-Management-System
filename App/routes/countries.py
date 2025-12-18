@@ -338,7 +338,53 @@ def resolve_country(iso2):
     if not row:
         abort(404, description=f"Country not found for ISO3: {iso3}")
 
-    return redirect(url_for("countries.country_profile", country_id=row["country_id"]))
+    country_id = row["country_id"]
+
+    # Check whether this country has any recorded data across main data tables
+    total = 0
+    try:
+        for tbl in (
+            'health_system',
+            'energy_data',
+            'freshwater_data',
+            'greenhouse_emissions',
+            'sustainability_data',
+        ):
+            try:
+                cur.execute(f"SELECT COUNT(*) AS cnt FROM {tbl} WHERE country_id = %s", (country_id,))
+                cnt = cur.fetchone().get('cnt', 0)
+                total += int(cnt or 0)
+            except Exception:
+                # ignore missing tables or other issues and continue
+                continue
+    finally:
+        cur.close()
+
+    if total == 0:
+        # No data: show a friendly message instead of redirecting to an empty profile
+        db2 = get_db()
+        cur2 = db2.cursor(dictionary=True)
+        try:
+            cur2.execute(
+                """
+                SELECT country_id, country_name, country_code, region
+                FROM countries
+                WHERE country_id = %s
+                LIMIT 1
+                """,
+                (country_id,)
+            )
+            country = cur2.fetchone()
+        finally:
+            cur2.close()
+
+        return render_template(
+            "country_no_data.html",
+            country=country,
+            message="There is no recorded data for this country."
+        )
+
+    return redirect(url_for("countries.country_profile", country_id=country_id))
 
 ISO2_TO_ISO3 ={
   "AF": "AFG",
