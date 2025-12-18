@@ -107,7 +107,8 @@ def list_freshwater():
         like = f"%{q}%"
         params.extend([like, like, like])
 
-    sql += " ORDER BY c.country_name, fi.indicator_name, fd.year;"
+    # Default ordering: by primary id ascending
+    sql += " ORDER BY fd.data_id ASC;"
 
     cursor.execute(sql, params)
     rows = cursor.fetchall()

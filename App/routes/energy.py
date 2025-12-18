@@ -70,7 +70,8 @@ def list_energy():
     if conditions:
         base_sql += " WHERE " + " AND ".join(conditions)
     
-    base_sql += " ORDER BY c.country_name, e.year LIMIT 500"
+    # Default ordering: by primary id ascending
+    base_sql += " ORDER BY e.data_id ASC LIMIT 500"
 
     cur.execute(base_sql, params)
     rows = cur.fetchall()

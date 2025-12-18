@@ -65,8 +65,8 @@ def list_ghg():
             query += " AND g.year = %s"
             params.append(year)
 
-        # Order and limit
-        query += " ORDER BY c.country_name, g.year LIMIT 500"
+        # Default ordering: by primary id ascending
+        query += " ORDER BY g.row_id ASC LIMIT 500"
 
         cursor.execute(query, params)
         rows_data = cursor.fetchall()

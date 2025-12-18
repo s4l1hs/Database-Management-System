@@ -63,6 +63,7 @@ def list_sustainability():
     # Sorting
     # whitelist allowed sort columns to avoid SQL injection
     allowed_sorts = {
+        'id': 'sd.data_id',
         'country': 'c.country_name',
         'region': 'c.region',
         'indicator': 'si.indicator_name',
@@ -70,10 +71,11 @@ def list_sustainability():
         'value': 'sd.indicator_value'
     }
 
-    sort_expr = allowed_sorts.get(sort_by, 'c.country_name')
+    # default to id ascending
+    sort_expr = allowed_sorts.get(sort_by, 'sd.data_id')
     order_keyword = 'DESC' if (order and order.lower() == 'desc') else 'ASC'
 
-    base_sql += f" ORDER BY {sort_expr} {order_keyword}, c.country_name LIMIT 500"
+    base_sql += f" ORDER BY {sort_expr} {order_keyword} LIMIT 500"
 
     cur.execute(base_sql, params)
     rows = cur.fetchall()
@@ -83,9 +85,9 @@ def list_sustainability():
         rows=rows,
         current_country=country_name,
         current_year=year,
-        current_sort=sort_by or 'country',
+        current_sort=sort_by or 'id',
         current_order=(order or 'asc').lower(),
-        sort_options=[('country','Country'),('region','Region'),('indicator','Indicator'),('year','Year'),('value','Value')],
+        sort_options=[('id','ID'),('country','Country'),('region','Region'),('indicator','Indicator'),('year','Year'),('value','Value')],
     )
 
 

@@ -58,7 +58,8 @@ def list_health():
     if conditions:
         base_sql += " WHERE " + " AND ".join(conditions)
 
-    base_sql += " ORDER BY c.country_name, hs.year LIMIT 500"
+    # Default ordering: by primary id ascending
+    base_sql += " ORDER BY hs.row_id ASC LIMIT 500"
 
     cur.execute(base_sql, params)
     rows = cur.fetchall()

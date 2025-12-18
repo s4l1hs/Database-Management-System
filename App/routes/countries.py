@@ -34,7 +34,8 @@ def list_countries():
     if where_clauses:
         base_sql += " WHERE " + " AND ".join(where_clauses)
 
-    base_sql += " ORDER BY region, country_name;"
+    # Default ordering: by primary id ascending
+    base_sql += " ORDER BY country_id ASC;"
 
     conn = get_db()
     cur = conn.cursor(dictionary=True)
