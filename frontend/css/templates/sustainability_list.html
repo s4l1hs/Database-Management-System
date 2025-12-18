@@ -12,6 +12,31 @@
   {% endif %}
 </div>
 
+<form method="get" class="row g-2 align-items-center mb-3">
+  <div class="col-auto">
+    <input type="text" name="country" class="form-control" placeholder="Country filter" value="{{ current_country or '' }}">
+  </div>
+  <div class="col-auto">
+    <input type="number" name="year" class="form-control" placeholder="Year" value="{{ current_year or '' }}">
+  </div>
+  <div class="col-auto">
+    <select name="sort_by" class="form-select">
+      {% for key,label in sort_options %}
+        <option value="{{ key }}" {% if key==current_sort %}selected{% endif %}>Sort: {{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-auto">
+    <select name="order" class="form-select">
+      <option value="asc" {% if current_order=='asc' %}selected{% endif %}>Ascending</option>
+      <option value="desc" {% if current_order=='desc' %}selected{% endif %}>Descending</option>
+    </select>
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Apply</button>
+  </div>
+</form>
+
 <div class="card shadow-sm">
   <div class="card-body p-0">
     <div class="table-responsive">
