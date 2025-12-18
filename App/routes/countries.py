@@ -214,7 +214,11 @@ def country_profile(country_id: int):
     """, (country_id,))
     country = cur.fetchone()
     if not country:
-        abort(404)
+        cur.close()
+        return render_template(
+            "country_no_data.html",
+            message="Country not found."
+        )
 
     # HEALTH
     cur.execute("""
@@ -321,7 +325,11 @@ def resolve_country(iso2):
     iso2 = iso2.upper()
     iso3 = ISO2_TO_ISO3.get(iso2)
     if not iso3:
-        abort(404, description=f"ISO2 not mapped: {iso2}")
+        # show friendly no-data page instead of 404 for unmapped codes
+        return render_template(
+            "country_no_data.html",
+            message=f"Country code not mapped: {iso2}"
+        )
 
     db = get_db()
     cur = db.cursor(dictionary=True)
@@ -336,7 +344,11 @@ def resolve_country(iso2):
 
     row = cur.fetchone()
     if not row:
-        abort(404, description=f"Country not found for ISO3: {iso3}")
+        cur.close()
+        return render_template(
+            "country_no_data.html",
+            message=f"Country not found for ISO3: {iso3}"
+        )
 
     country_id = row["country_id"]
 
