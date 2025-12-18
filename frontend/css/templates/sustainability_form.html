@@ -42,7 +42,7 @@
                 <option value="" disabled selected>🌍 Select a country...</option>
                 {% for c in countries %}
                 <option value="{{ c.country_id }}" {% if record and record.country_id == c.country_id %}selected{% endif %}>
-                  {{ c.country_name }} ({{ c.country_code }})
+                  {{ c.country_name }}
                 </option>
                 {% endfor %}
               </select>
