@@ -135,14 +135,57 @@
     background-color: inherit;
     z-index: 1;
     box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+    font-weight: 600;
   }
   
   thead .trend-column {
     background: linear-gradient(90deg, #eef2ff 0%, #e0f2fe 100%);
+    font-weight: 600;
   }
   
   thead .trend-column:hover {
     background: linear-gradient(90deg, #e0f2fe 0%, #dbeafe 100%);
+  }
+  
+  /* Trend indicator styling - bold and prominent */
+  .trend-indicator {
+    font-weight: 600;
+    font-size: 1em;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  .trend-indicator.trend-increase {
+    color: #dc3545;
+    font-weight: 600;
+  }
+  
+  .trend-indicator.trend-decrease {
+    color: #198754;
+    font-weight: 600;
+  }
+  
+  .trend-indicator.trend-no-data {
+    color: #6c757d;
+    font-weight: 600;
+  }
+  
+  .trend-percent {
+    font-size: 0.875rem;
+    margin-left: 2px;
+    font-weight: 600;
+  }
+  
+  .trend-increase .trend-percent {
+    color: #dc3545;
+  }
+  
+  .trend-decrease .trend-percent {
+    color: #198754;
+  }
+  
+  .trend-no-data .trend-percent {
+    color: #6c757d;
   }
   
   /* Simplified trend indicator - only icon and color */
@@ -315,10 +358,10 @@
     </p>
   </div>
 
-  {% if session.get("team_no")|int == 1 %}
-    <a href="{{ url_for('ghg.add_ghg') }}" class="btn btn-primary">
+  {% if current_role in ['editor', 'admin'] %}
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ghgModal" onclick="openAddModal()">
       <i class="fa-solid fa-plus"></i> Add New Record
-    </a>
+    </button>
   {% endif %}
 </div>
 
@@ -373,42 +416,6 @@
   </div>
 </form>
 
-<!-- PAGINATION INFO -->
-{% if total_pages > 1 %}
-<div class="d-flex justify-content-between align-items-center mb-2">
-  <div class="text-muted small">
-    Page {{ page }} of {{ total_pages }}
-  </div>
-  <nav>
-    <ul class="pagination pagination-sm mb-0" id="pagination">
-      {% if page > 1 %}
-        <li class="page-item">
-          <a class="page-link" href="#" data-page="{{ page - 1 }}">Previous</a>
-        </li>
-      {% endif %}
-      {% set max_show = [total_pages, 10]|min %}
-      {% for p in range(1, max_show + 1) %}
-        {% if p == page %}
-          <li class="page-item active"><span class="page-link">{{ p }}</span></li>
-        {% elif p <= 2 or p >= max_show - 1 or (p >= page - 1 and p <= page + 1) %}
-          <li class="page-item">
-            <a class="page-link" href="#" data-page="{{ p }}">{{ p }}</a>
-          </li>
-        {% elif p == 3 and page > 4 %}
-          <li class="page-item disabled"><span class="page-link">...</span></li>
-        {% elif p == max_show - 2 and page < max_show - 3 %}
-          <li class="page-item disabled"><span class="page-link">...</span></li>
-        {% endif %}
-      {% endfor %}
-      {% if page < total_pages %}
-        <li class="page-item">
-          <a class="page-link" href="#" data-page="{{ page + 1 }}">Next</a>
-        </li>
-      {% endif %}
-    </ul>
-  </nav>
-</div>
-{% endif %}
 
 <!-- Global CO₂ per capita Trend Chart -->
 {% if global_avg_by_year %}
@@ -419,7 +426,7 @@
       <canvas id="globalTrendChart"></canvas>
     </div>
     <p class="text-muted small mt-2 mb-0">
-      Each point represents the global average for that year using countries with available data only. No interpolation is applied.
+      Each point represents the global average for that year using countries with available data.
     </p>
   </div>
 </div>
@@ -540,7 +547,7 @@
         <th data-sort="co2_per_capita" style="width: 140px;" class="text-end header-tooltip" title="Carbon dioxide emissions per person">
           CO₂ per capita
         </th>
-        <th data-sort="trend" style="width: 130px; {% if session.get('team_no')|int == 1 %}right: 100px;{% else %}right: 0;{% endif %}" class="text-center trend-column header-tooltip" title="Change in CO₂ per capita from earliest to latest available year">
+        <th data-sort="trend" style="width: 130px;" class="text-center trend-column header-tooltip" title="Change in CO₂ per capita from earliest to latest available year">
           Trend (Δ)
         </th>
         <th data-sort="co2_total" style="width: 140px;" class="text-end header-tooltip" title="Total carbon dioxide emissions">
@@ -549,14 +556,14 @@
         <th data-sort="total_ghg" style="width: 140px;" class="text-end header-tooltip" title="Total greenhouse gas emissions including CO₂, methane, and other gases">
           Total GHG
         </th>
-        {% if session.get("team_no")|int == 1 %}
+        {% if current_role in ['editor', 'admin'] %}
           <th style="width: 100px;">Actions</th>
         {% endif %}
       </tr>
     </thead>
     <tfoot>
       <tr>
-        <td colspan="{% if session.get('team_no')|int == 1 %}9{% else %}8{% endif %}" class="text-muted small py-2 px-3" style="background-color: #f8f9fa;">
+        <td colspan="{% if current_role in ['editor', 'admin'] %}9{% else %}8{% endif %}" class="text-muted small py-2 px-3" style="background-color: #f8f9fa;">
           <strong>Units:</strong> CO₂ per capita is measured in metric tons per person per year. CO₂ Total and Total GHG are shown in kilotons (kt).
         </td>
       </tr>
@@ -598,47 +605,44 @@
               <span class="missing-data" title="Not reported. This indicator is not available for this country and year in the WDI dataset.">—</span>
             {% endif %}
           </td>
-          <td class="text-center trend-column" style="right: {% if session.get('team_no')|int == 1 %}100px{% else %}0{% endif %};">
-            {% if row.get('is_earliest_year') %}
-              <span class="trend-indicator trend-no-data" style="color: #6c757d; font-size: 1.1em;" title="Trend cannot be calculated because no earlier data point exists.">
-                ❓ <span style="font-size: 0.875rem; margin-left: 4px;">No data</span>
-              </span>
-            {% elif row.get('is_latest_year') and row.get('show_trend') %}
+          <td class="text-center trend-column">
+            {% if row.get('show_trend') %}
               {% set trends_dict = row.get('trends', {}) or {} %}
               {% set trend = trends_dict.get('co2_per_capita') if trends_dict else None %}
               {% if trend and trend.get('change') is not none and trend.get('change') is number %}
                 {% set change_val = trend.get('change')|float %}
                 {% set percent_val = trend.get('percent')|float if trend.get('percent') is not none else None %}
-                {% set earliest_year = trend.get('earliest_year')|int if trend.get('earliest_year') is not none else '' %}
-                {% set latest_year_trend = trend.get('latest_year')|int if trend.get('latest_year') is not none else '' %}
-                {% set tooltip_text = "Change calculated between the earliest and latest available years for this country. Change: " + earliest_year|string + " → " + latest_year_trend|string %}
-                {% if latest_year_only %}
-                  {% set tooltip_text = tooltip_text + " (Trend calculated using historical data not shown in this view.)" %}
+                {% set comparison_year = trend.get('comparison_year')|int if trend.get('comparison_year') is not none else '' %}
+                {% set comparison_type = trend.get('comparison_type', 'previous') %}
+                {% if comparison_type == 'previous' %}
+                  {% set tooltip_text = "Compared to previous year (" + comparison_year|string + ")" %}
+                {% else %}
+                  {% set tooltip_text = "Compared to next available year (" + comparison_year|string + ")" %}
                 {% endif %}
                 {% if percent_val is not none %}
-                  {% set tooltip_text = tooltip_text + " (" + ("%+.1f"|format(percent_val)) + "%)" %}
+                  {% set tooltip_text = tooltip_text + ". Change: " + ("%+.1f"|format(percent_val)) + "%" %}
                 {% endif %}
                 {% if change_val > 0.01 %}
-                  <span class="trend-indicator trend-increase" title="{{ tooltip_text }}" style="color: #dc3545; font-size: 1.1em;">
-                    🔺 <span style="font-size: 0.875rem; margin-left: 4px; color: #dc3545;">{% if percent_val is not none %}{{ "%+.1f"|format(percent_val) }}%{% else %}—{% endif %}</span>
+                  <span class="trend-indicator trend-increase" title="{{ tooltip_text }}">
+                    🔺 <span class="trend-percent">{% if percent_val is not none %}{{ "%+.1f"|format(percent_val) }}%{% else %}—{% endif %}</span>
                   </span>
                 {% elif change_val < -0.01 %}
-                  <span class="trend-indicator trend-decrease" title="{{ tooltip_text }}" style="color: #198754; font-size: 1.1em;">
-                    🔻 <span style="font-size: 0.875rem; margin-left: 4px; color: #198754;">{% if percent_val is not none %}{{ "%+.1f"|format(percent_val) }}%{% else %}—{% endif %}</span>
+                  <span class="trend-indicator trend-decrease" title="{{ tooltip_text }}">
+                    🔻 <span class="trend-percent">{% if percent_val is not none %}{{ "%+.1f"|format(percent_val) }}%{% else %}—{% endif %}</span>
                   </span>
                 {% else %}
-                  <span class="trend-indicator trend-no-change" title="{{ tooltip_text }}" style="color: #6c757d; font-size: 1.1em;">
-                    ➖ <span style="font-size: 0.875rem; margin-left: 4px; color: #6c757d;">—</span>
+                  <span class="trend-indicator trend-no-change" title="{{ tooltip_text }}">
+                    ➖ <span class="trend-percent">—</span>
                   </span>
                 {% endif %}
               {% else %}
-                <span class="trend-indicator trend-no-data" title="Trend cannot be calculated because no earlier data point exists." style="color: #6c757d; font-size: 1.1em;">
-                  ❓ <span style="font-size: 0.875rem; margin-left: 4px;">No data</span>
+                <span class="trend-indicator trend-no-data" title="Trend cannot be calculated because no comparison data point exists.">
+                  ❓ <span class="trend-percent">No data</span>
                 </span>
               {% endif %}
             {% else %}
-              <span class="trend-indicator trend-no-data" title="Trend shown only for the most recent year" style="color: #6c757d; font-size: 1.1em;">
-                ❓ <span style="font-size: 0.875rem; margin-left: 4px;">No data</span>
+              <span class="trend-indicator trend-no-data" title="Trend cannot be calculated because no comparison data point exists.">
+                ❓ <span class="trend-percent">No data</span>
               </span>
             {% endif %}
           </td>
@@ -656,13 +660,14 @@
               <span class="missing-data" title="Not reported. This indicator is not available for this country and year in the WDI dataset.">—</span>
             {% endif %}
           </td>
-          {% if session.get("team_no")|int == 1 %}
+          {% if current_role in ['editor', 'admin'] %}
             <td>
               <div class="btn-group">
-                <a href="{{ url_for('ghg.add_ghg') }}?country_id={{ row.country_id }}&year={{ row.year }}" 
-                   class="btn btn-sm btn-outline-primary" title="Add new indicator">
+                <button type="button" class="btn btn-sm btn-outline-primary" 
+                        title="Add new indicator"
+                        onclick="openAddModal({{ row.country_id }}, {{ row.year }})">
                   <i class="fa-solid fa-plus"></i>
-                </a>
+                </button>
               </div>
             </td>
           {% endif %}
@@ -670,7 +675,7 @@
         
         <!-- Detail Row -->
         <tr class="detail-row" id="detail-{{ detail_key }}" data-expanded="false">
-          <td colspan="{% if session.get('team_no')|int == 1 %}9{% else %}8{% endif %}" class="bg-light">
+          <td colspan="{% if current_role in ['editor', 'admin'] %}9{% else %}8{% endif %}" class="bg-light">
             <div class="p-3">
               <!-- Time-Series Chart Section -->
               <div id="chart-container-{{ detail_key }}" class="mb-4" style="display: none;">
@@ -702,7 +707,7 @@
                       <th class="text-end">Share of Total (%)</th>
                       <th class="text-end">Uncertainty (%)</th>
                       <th>Source Notes</th>
-                      {% if session.get("team_no")|int == 1 %}
+                      {% if current_role in ['editor', 'admin'] %}
                         <th>Actions</th>
                       {% endif %}
                     </tr>
@@ -739,13 +744,23 @@
                           <td>
                             <small>{{ detail.source_notes or '-' }}</small>
                           </td>
-                          {% if session.get("team_no")|int == 1 %}
+                          {% if current_role in ['editor', 'admin'] %}
                             <td>
                               {% if detail.row_id %}
-                                <a href="{{ url_for('ghg.edit_ghg', id=detail.row_id) }}" 
-                                   class="btn btn-sm btn-outline-secondary">
-                                  <i class="fa-solid fa-edit"></i>
-                                </a>
+                                <div class="btn-group">
+                                  <button type="button" class="btn btn-sm btn-outline-secondary" 
+                                          title="Edit"
+                                          onclick="openEditModal({{ detail.row_id }})">
+                                    <i class="fa-solid fa-edit"></i>
+                                  </button>
+                                  {% if current_role == 'admin' %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            title="Delete"
+                                            onclick="confirmDelete({{ detail.row_id }})">
+                                      <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                  {% endif %}
+                                </div>
                               {% else %}
                                 <span class="text-muted">-</span>
                               {% endif %}
@@ -755,7 +770,7 @@
                       {% endfor %}
                     {% else %}
                       <tr>
-                        <td colspan="{% if session.get('team_no')|int == 1 %}6{% else %}5{% endif %}" class="text-center text-muted">
+                        <td colspan="{% if current_role in ['editor', 'admin'] %}6{% else %}5{% endif %}" class="text-center text-muted">
                           No detailed data available
                         </td>
                       </tr>
@@ -770,6 +785,115 @@
     </tbody>
   </table>
 </div>
+
+<!-- PAGINATION - Tablonun altında -->
+{% if total_pages > 1 %}
+<div class="d-flex justify-content-end align-items-center mt-3 mb-3">
+  <nav>
+    <ul class="pagination pagination-sm mb-0" id="pagination">
+      {% if page > 1 %}
+        <li class="page-item">
+          <a class="page-link" href="#" data-page="{{ page - 1 }}">Previous</a>
+        </li>
+      {% endif %}
+      {% set max_show = [total_pages, 10]|min %}
+      {% for p in range(1, max_show + 1) %}
+        {% if p == page %}
+          <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+        {% elif p <= 2 or p >= max_show - 1 or (p >= page - 1 and p <= page + 1) %}
+          <li class="page-item">
+            <a class="page-link" href="#" data-page="{{ p }}">{{ p }}</a>
+          </li>
+        {% elif p == 3 and page > 4 %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% elif p == max_show - 2 and page < max_show - 3 %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+        <li class="page-item">
+          <a class="page-link" href="#" data-page="{{ page + 1 }}">Next</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endif %}
+
+<!-- GHG Record Modal -->
+<div class="modal fade" id="ghgModal" tabindex="-1" aria-labelledby="ghgModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ghgModalLabel">
+          <i class="fa-solid fa-plus"></i> Add New Record
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="ghgForm">
+          <input type="hidden" id="ghgRowId" name="row_id">
+          
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="ghgCountry" class="form-label fw-semibold">Country <span class="text-danger">*</span></label>
+              <select class="form-select" id="ghgCountry" name="country_id" required>
+                <option value="">Select a country...</option>
+                {% for country in countries %}
+                  <option value="{{ country.country_id }}">{{ country.country_name }} ({{ country.country_code }})</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label for="ghgIndicator" class="form-label fw-semibold">Indicator <span class="text-danger">*</span></label>
+              <select class="form-select" id="ghgIndicator" name="ghg_indicator_id" required>
+                <option value="">Select an indicator...</option>
+                {% for indicator in indicators %}
+                  <option value="{{ indicator.ghg_indicator_id }}">
+                    {{ indicator.indicator_name }} {% if indicator.unit_symbol %}({{ indicator.unit_symbol }}){% endif %}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label for="ghgYear" class="form-label fw-semibold">Year <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="ghgYear" name="year" required min="1900" max="2100">
+            </div>
+
+            <div class="col-md-6">
+              <label for="ghgValue" class="form-label fw-semibold">Value <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="ghgValue" name="indicator_value" required step="any">
+            </div>
+
+            <div class="col-md-6">
+              <label for="ghgShare" class="form-label fw-semibold">Share of Total (%)</label>
+              <input type="number" class="form-control" id="ghgShare" name="share_of_total_pct" step="any" min="0" max="100">
+            </div>
+
+            <div class="col-md-6">
+              <label for="ghgUncertainty" class="form-label fw-semibold">Uncertainty (%)</label>
+              <input type="number" class="form-control" id="ghgUncertainty" name="uncertainty_pct" step="any" min="0" max="100">
+            </div>
+
+            <div class="col-12">
+              <label for="ghgSourceNotes" class="form-label fw-semibold">Source Notes</label>
+              <textarea class="form-control" id="ghgSourceNotes" name="source_notes" rows="3"></textarea>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitGhgForm()">
+          <i class="fa-solid fa-save"></i> Save
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -893,7 +1017,7 @@ function renderChart(key) {
   
   // Get country_id from key (format: "country_id-year")
   const countryId = parseInt(key.split('-')[0]);
-  const timeSeriesData = {{ time_series_data|tojson }};
+  const timeSeriesData = JSON.parse('{{ time_series_data|tojson|safe }}');
   
   if (!timeSeriesData[countryId] || !timeSeriesData[countryId].country_data) {
     chartContainer.style.display = 'none';
@@ -1178,7 +1302,7 @@ function toggleLatestYear() {
 // C1: Render sparklines for CO2 per capita
 function renderSparklines() {
   const sparklineCanvases = document.querySelectorAll('.sparkline-canvas');
-  const timeSeriesData = {{ time_series_data|tojson }};
+  const timeSeriesData = JSON.parse('{{ time_series_data|tojson|safe }}');
   
   sparklineCanvases.forEach(canvas => {
     const countryId = parseInt(canvas.dataset.countryId);
@@ -1256,36 +1380,80 @@ function exportToCSV() {
 }
 
 
-// Initialize sparklines on page load
+// Initialize sparklines and global trend chart on page load
 document.addEventListener('DOMContentLoaded', function() {
   renderSparklines();
   
-  // Initialize global trend chart
-  {% if global_avg_by_year %}
-  const globalTrendData = {{ global_avg_by_year|tojson|safe }};
-  if (globalTrendData && globalTrendData.length > 0) {
+  const globalTrendData = JSON.parse('{{ global_avg_by_year|tojson|safe }}');
+  if (Array.isArray(globalTrendData) && globalTrendData.length > 0) {
     const ctx = document.getElementById('globalTrendChart');
     if (ctx) {
       const years = globalTrendData.map(d => d.year);
       const values = globalTrendData.map(d => d.avg_value);
       const countryCounts = globalTrendData.map(d => d.country_count);
       
+      // Internal smoothing (polynomial regression) - not exposed in UI
+      function fitQuadratic(xs, ys) {
+        const n = xs.length;
+        if (n < 3) return { a: 0, b: 0, c: ys[0] || 0 };
+        
+        let Sx = 0, Sx2 = 0, Sx3 = 0, Sx4 = 0, Sy = 0, Sxy = 0, Sx2y = 0;
+        for (let i = 0; i < n; i++) {
+          const x = xs[i], y = ys[i], x2 = x * x;
+          Sx += x; Sx2 += x2; Sx3 += x2 * x; Sx4 += x2 * x2;
+          Sy += y; Sxy += x * y; Sx2y += x2 * y;
+        }
+        
+        let A = [[n, Sx, Sx2], [Sx, Sx2, Sx3], [Sx2, Sx3, Sx4]];
+        let B = [Sy, Sxy, Sx2y];
+        
+        for (let i = 0; i < 3; i++) {
+          let maxRow = i;
+          for (let k = i + 1; k < 3; k++) {
+            if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+          }
+          if (maxRow !== i) {
+            [A[i], A[maxRow]] = [A[maxRow], A[i]];
+            [B[i], B[maxRow]] = [B[maxRow], B[i]];
+          }
+          const pivot = A[i][i] || 1e-12;
+          for (let k = i + 1; k < 3; k++) {
+            const factor = A[k][i] / pivot;
+            for (let j = i; j < 3; j++) A[k][j] -= factor * A[i][j];
+            B[k] -= factor * B[i];
+          }
+        }
+        
+        const coef = [0, 0, 0];
+        for (let i = 2; i >= 0; i--) {
+          let sum = B[i];
+          for (let j = i + 1; j < 3; j++) sum -= A[i][j] * coef[j];
+          coef[i] = sum / (A[i][i] || 1e-12);
+        }
+        return { a: coef[2], b: coef[1], c: coef[0] };
+      }
+      
+      const xs = years.map(y => Number(y));
+      const ys = values.map(v => Number(v));
+      const quad = fitQuadratic(xs, ys);
+      const smoothedData = xs.map(x => quad.a * x * x + quad.b * x + quad.c);
+      
       new Chart(ctx, {
         type: 'line',
         data: {
           labels: years,
           datasets: [{
-            label: 'Global average (countries with data)',
-            data: values,
-            borderColor: 'rgba(40, 167, 69, 0.8)',
-            backgroundColor: 'rgba(40, 167, 69, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0,  // No smoothing - show natural gaps between years
-            spanGaps: false,  // Don't connect points across gaps
-            pointRadius: 3,
-            pointHoverRadius: 5,
-            pointBackgroundColor: 'rgba(40, 167, 69, 0.8)',
+            label: 'Global average CO₂ per capita',
+            data: smoothedData,
+            borderColor: 'rgba(40, 167, 69, 0.9)',
+            backgroundColor: 'rgba(40, 167, 69, 0.0)',
+            borderWidth: 2.5,
+            fill: false,
+            tension: 0.2,
+            spanGaps: false,
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointBackgroundColor: 'rgba(40, 167, 69, 0.9)',
             pointBorderColor: '#fff',
             pointBorderWidth: 1
           }]
@@ -1324,11 +1492,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 label: function(context) {
                   const index = context.dataIndex;
-                  const avgValue = context.parsed.y.toFixed(2);
+                  const avgValue = Number(smoothedData[index]).toFixed(2);
                   const countryCount = countryCounts[index];
                   return [
-                    `Countries included: ${countryCount}`,
-                    `Global avg CO₂ per capita: ${avgValue} t`
+                    `Global average CO₂ per capita: ${avgValue} t`,
+                    `Countries included: ${countryCount}`
                   ];
                 }
               }
@@ -1347,8 +1515,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 padding: { top: 10 }
               },
               grid: {
-                display: true,
-                color: 'rgba(0, 0, 0, 0.05)'
+                display: false
               },
               ticks: {
                 font: {
@@ -1360,7 +1527,7 @@ document.addEventListener('DOMContentLoaded', function() {
             y: {
               title: {
                 display: true,
-                text: 'Average CO₂ per capita (metric tons per person)',
+                text: 'Average CO₂ per capita (t)',
                 font: {
                   size: 12,
                   weight: '500',
@@ -1370,7 +1537,8 @@ document.addEventListener('DOMContentLoaded', function() {
               },
               grid: {
                 display: true,
-                color: 'rgba(0, 0, 0, 0.05)'
+                color: 'rgba(0, 0, 0, 0.1)',
+                lineWidth: 1
               },
               ticks: {
                 font: {
@@ -1378,7 +1546,10 @@ document.addEventListener('DOMContentLoaded', function() {
                   family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
                 },
                 callback: function(value) {
-                  return value.toFixed(1) + ' t';
+                  if (value >= 1000) {
+                    return (value / 1000).toFixed(1) + 'k';
+                  }
+                  return value.toFixed(0);
                 }
               },
               beginAtZero: false
@@ -1388,7 +1559,144 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
   }
-  {% endif %}
+});
+
+// ========== INLINE CRUD FUNCTIONS ==========
+
+let currentEditId = null;
+
+function openAddModal(countryId = null, year = null) {
+  currentEditId = null;
+  document.getElementById('ghgModalLabel').innerHTML = '<i class="fa-solid fa-plus"></i> Add New Record';
+  document.getElementById('ghgForm').reset();
+  document.getElementById('ghgRowId').value = '';
+  
+  if (countryId) {
+    document.getElementById('ghgCountry').value = countryId;
+  }
+  if (year) {
+    document.getElementById('ghgYear').value = year;
+  }
+  
+  // Enable country and indicator fields for add
+  document.getElementById('ghgCountry').disabled = false;
+  document.getElementById('ghgIndicator').disabled = false;
+  
+  const modal = new bootstrap.Modal(document.getElementById('ghgModal'));
+  modal.show();
+}
+
+async function openEditModal(rowId) {
+  currentEditId = rowId;
+  document.getElementById('ghgModalLabel').innerHTML = '<i class="fa-solid fa-edit"></i> Edit Record';
+  
+  try {
+    const response = await fetch(`/ghg/api/get/${rowId}`);
+    const data = await response.json();
+    
+    if (!data.success) {
+      alert('Error: ' + (data.error || 'Failed to load record'));
+      return;
+    }
+    
+    const record = data.record;
+    document.getElementById('ghgRowId').value = record.row_id;
+    document.getElementById('ghgCountry').value = record.country_id;
+    document.getElementById('ghgIndicator').value = record.ghg_indicator_id;
+    document.getElementById('ghgYear').value = record.year;
+    document.getElementById('ghgValue').value = record.indicator_value || '';
+    document.getElementById('ghgShare').value = record.share_of_total_pct || '';
+    document.getElementById('ghgUncertainty').value = record.uncertainty_pct || '';
+    document.getElementById('ghgSourceNotes').value = record.source_notes || '';
+    
+    // Disable country and indicator fields for edit (they shouldn't change)
+    document.getElementById('ghgCountry').disabled = true;
+    document.getElementById('ghgIndicator').disabled = true;
+    
+    const modal = new bootstrap.Modal(document.getElementById('ghgModal'));
+    modal.show();
+  } catch (error) {
+    alert('Error loading record: ' + error.message);
+  }
+}
+
+async function submitGhgForm() {
+  const form = document.getElementById('ghgForm');
+  const formData = new FormData(form);
+  const data = Object.fromEntries(formData.entries());
+  
+  // Convert empty strings to null for optional fields
+  if (data.share_of_total_pct === '') data.share_of_total_pct = null;
+  if (data.uncertainty_pct === '') data.uncertainty_pct = null;
+  if (data.source_notes === '') data.source_notes = null;
+  
+  // Convert numeric fields
+  if (data.year) data.year = parseInt(data.year);
+  if (data.indicator_value) data.indicator_value = parseFloat(data.indicator_value);
+  if (data.share_of_total_pct) data.share_of_total_pct = parseFloat(data.share_of_total_pct);
+  if (data.uncertainty_pct) data.uncertainty_pct = parseFloat(data.uncertainty_pct);
+  
+  const url = currentEditId 
+    ? `/ghg/api/edit/${currentEditId}`
+    : '/ghg/api/add';
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('ghgModal'));
+      modal.hide();
+      
+      // Reload page to refresh table
+      window.location.reload();
+    } else {
+      alert('Error: ' + (result.error || 'Failed to save record'));
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+}
+
+function confirmDelete(rowId) {
+  if (!confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+    return;
+  }
+  
+  fetch(`/ghg/api/delete/${rowId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Reload page to refresh table
+      window.location.reload();
+    } else {
+      alert('Error: ' + (data.error || 'Failed to delete record'));
+    }
+  })
+  .catch(error => {
+    alert('Error: ' + error.message);
+  });
+}
+
+// Reset form when modal is hidden
+document.getElementById('ghgModal').addEventListener('hidden.bs.modal', function () {
+  document.getElementById('ghgForm').reset();
+  document.getElementById('ghgCountry').disabled = false;
+  document.getElementById('ghgIndicator').disabled = false;
+  currentEditId = null;
 });
 </script>
 {% endblock %}
