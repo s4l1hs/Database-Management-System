@@ -63,7 +63,16 @@ def list_countries():
         base_sql += " WHERE " + " AND ".join(where_clauses)
 
     # Default ordering: by primary id ascending
-    base_sql += " ORDER BY c.country_id ASC;"
+    base_sql += " ORDER BY c.country_id ASC"
+
+    # Server-side pagination
+    page = request.args.get('page', 1, type=int) or 1
+    page_size = 8
+
+    # count total (respect search)
+    count_sql = "SELECT COUNT(*) as cnt FROM countries c"
+    if where_clauses:
+        count_sql += " WHERE " + " AND ".join(where_clauses)
 
     conn = get_db()
     cur = conn.cursor(dictionary=True)
@@ -73,14 +82,24 @@ def list_countries():
     has_data_by_iso2 = {}
 
     try:
-        cur.execute(base_sql, params)
+        # get paged rows for listing
+        params_for_count = list(params)
+        cur.execute(count_sql, params_for_count)
+        total_count = cur.fetchone().get('cnt', 0)
+        total_pages = max(1, -(-int(total_count) // page_size))
+
+        offset = (page - 1) * page_size
+        params_for_rows = list(params) + [page_size, offset]
+        # use LIMIT/OFFSET for pagination
+        paged_sql = base_sql + " LIMIT %s OFFSET %s"
+        cur.execute(paged_sql, params_for_rows)
         rows = cur.fetchall()
         colnames = [d[0] for d in cur.description]
 
-        # country_code -> region map
+        # country_code -> region map (full set)
         cur.execute(
             """
-            SELECT country_code, region
+            SELECT country_code, region, country_name
             FROM countries
             WHERE region IS NOT NULL AND region != ''
             """
@@ -88,10 +107,8 @@ def list_countries():
         code_rows = cur.fetchall()
         region_map = {(r.get("country_code") or "").upper(): r.get("region") for r in code_rows}
 
-        # country_name -> region map (fallback for tooltip names)
-        region_name_map = {
-            (r.get("country_name") or ""): r.get("region") for r in rows if r.get("region")
-        }
+        # country_name -> region map (full set)
+        region_name_map = { (r.get('country_name') or ''): r.get('region') for r in code_rows if r.get('region') }
 
         # distinct region list
         cur.execute(
@@ -105,14 +122,25 @@ def list_countries():
         regions = [r["region"] for r in cur.fetchall()]
 
         # Build ISO2 -> has_data map for the frontend map widget.
-        # We invert the ISO2_TO_ISO3 mapping to go from DB ISO3 codes to ISO2.
+        # Query full country dataset to determine availability for the map
+        cur.execute("""
+            SELECT c.country_code,
+                (
+                    COALESCE((SELECT COUNT(*) FROM health_system hs WHERE hs.country_id = c.country_id),0) +
+                    COALESCE((SELECT COUNT(*) FROM energy_data ed WHERE ed.country_id = c.country_id),0) +
+                    COALESCE((SELECT COUNT(*) FROM freshwater_data fd WHERE fd.country_id = c.country_id),0) +
+                    COALESCE((SELECT COUNT(*) FROM greenhouse_emissions ge WHERE ge.country_id = c.country_id),0) +
+                    COALESCE((SELECT COUNT(*) FROM sustainability_data sd WHERE sd.country_id = c.country_id),0)
+                ) as data_count
+            FROM countries c
+        """)
         iso3_to_iso2 = {v: k for k, v in ISO2_TO_ISO3.items()}
-        for r in rows:
-            iso3 = (r.get("country_code") or "").upper()
+        for r in cur.fetchall():
+            iso3 = (r.get('country_code') or '').upper()
             iso2 = iso3_to_iso2.get(iso3)
             if not iso2:
                 continue
-            has_data_by_iso2[iso2] = (r.get("data_count") or 0) > 0
+            has_data_by_iso2[iso2] = (r.get('data_count') or 0) > 0
     finally:
         cur.close()
 
@@ -125,6 +153,9 @@ def list_countries():
         region_name_map=region_name_map,
         has_data_by_iso2=has_data_by_iso2,
         search=search or "",
+        current_page=page,
+        total_pages=total_pages,
+        total_count=total_count,
     )
 
 # =========================================================
