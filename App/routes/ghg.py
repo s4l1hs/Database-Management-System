@@ -583,7 +583,8 @@ def list_ghg():
         country_coverage = {}
         total_pages = 0
     
-    # Fetch countries and indicators for modal dropdowns
+    # Fetch countries, indicators, and students for modal dropdowns
+    students = []
     if not countries or not indicators:
         try:
             modal_cursor = db_conn.cursor(dictionary=True)
@@ -596,10 +597,15 @@ def list_ghg():
                 "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
             )
             indicators = modal_cursor.fetchall()
+            
+            # Fetch students for audit dropdown
+            modal_cursor.execute("SELECT student_id, student_number, full_name FROM students ORDER BY student_number")
+            students = modal_cursor.fetchall()
             modal_cursor.close()
         except MySQLError:
             countries = []
             indicators = []
+            students = []
     
     # Close main cursor if it exists
     if 'cursor' in locals() and cursor:
@@ -631,6 +637,7 @@ def list_ghg():
         per_page=per_page,
         countries=countries,  # For modal dropdown
         indicators=indicators,  # For modal dropdown
+        students=students,  # For audit dropdown
     )
 
 
@@ -961,6 +968,7 @@ def api_add_ghg():
         share_of_total_pct = data.get("share_of_total_pct") or None
         uncertainty_pct = data.get("uncertainty_pct") or None
         source_notes = data.get("source_notes") or None
+        audit_user_id = data.get("audit_user_id") or None
 
         # Validate required fields
         if not all([c_id, i_id, year, indicator_value is not None]):
@@ -971,6 +979,8 @@ def api_add_ghg():
             share_of_total_pct = None
         if uncertainty_pct == "":
             uncertainty_pct = None
+        if audit_user_id == "":
+            audit_user_id = None
 
         # Insert new record
         insert_query = """
@@ -984,6 +994,18 @@ def api_add_ghg():
             (c_id, i_id, year, indicator_value, share_of_total_pct, uncertainty_pct, source_notes),
         )
         new_row_id = cursor.lastrowid
+
+        # Create audit log entry if user is selected
+        if audit_user_id:
+            try:
+                cursor.execute("""
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (audit_user_id, "CREATE", "greenhouse_emissions", new_row_id))
+            except MySQLError:
+                # Audit log failure should not break the main operation
+                pass
 
         # Fetch the created record with related data
         cursor.execute("""
@@ -1025,9 +1047,12 @@ def api_edit_ghg(id):
         uncertainty_val = data.get("uncertainty_pct")
         year = data.get("year")
         source_notes = data.get("source_notes") or None
+        audit_user_id = data.get("audit_user_id") or None
 
         share_of_total_pct = int(share_val) if share_val and str(share_val).strip() else None
         uncertainty_pct = int(uncertainty_val) if uncertainty_val and str(uncertainty_val).strip() else None
+        if audit_user_id == "":
+            audit_user_id = None
 
         # Validate required fields
         if indicator_value is None or year is None:
@@ -1047,6 +1072,18 @@ def api_edit_ghg(id):
             update_query,
             (indicator_value, share_of_total_pct, uncertainty_pct, year, source_notes, id),
         )
+
+        # Create audit log entry if user is selected
+        if audit_user_id:
+            try:
+                cursor.execute("""
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (audit_user_id, "UPDATE", "greenhouse_emissions", id))
+            except MySQLError:
+                # Audit log failure should not break the main operation
+                pass
 
         # Fetch the updated record with related data
         cursor.execute("""
@@ -1079,7 +1116,7 @@ def api_edit_ghg(id):
 def api_delete_ghg(id):
     """AJAX endpoint for deleting a GHG record."""
     db_conn = get_db()
-    cursor = db_conn.cursor(dictionary=False)
+    cursor = db_conn.cursor(dictionary=True)
 
     try:
         # Check if record exists
@@ -1087,8 +1124,27 @@ def api_delete_ghg(id):
         if not cursor.fetchone():
             return jsonify({"success": False, "error": "Record not found"}), 404
 
+        # Get audit user ID if provided
+        data = request.get_json() or {}
+        audit_user_id = data.get("audit_user_id") or None
+        if audit_user_id == "":
+            audit_user_id = None
+
         # Delete record
         cursor.execute("DELETE FROM greenhouse_emissions WHERE row_id = %s", (id,))
+
+        # Create audit log entry if user is selected
+        if audit_user_id:
+            try:
+                cursor.execute("""
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (audit_user_id, "DELETE", "greenhouse_emissions", id))
+            except MySQLError:
+                # Audit log failure should not break the main operation
+                pass
+
         db_conn.commit()
         return jsonify({"success": True}), 200
 
