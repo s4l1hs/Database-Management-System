@@ -2,24 +2,87 @@
 
 {% block title %}About{% endblock %}
 
+{% block extra_head %}
+<style>
+  .about-wrapper {
+    max-width: 960px;
+  }
+  .about-section-title {
+    text-align: center;
+  }
+  .team-card {
+    border-radius: 16px;
+    padding: 20px 18px;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+    text-align: center;
+  }
+  .team-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px rgba(15,23,42,0.10);
+  }
+  .team-icon {
+    font-size: 3.5rem;
+    color: #0f172a;
+  }
+  .about-list {
+    max-width: 820px;
+    margin: 0 auto;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-5 px-4 py-5" id="featured-3">
-  <h1 class="mb-4">Our Team</h1>
-  <div class="row g-4 py-3 row-cols-1 row-cols-lg-3">
+<div class="container mt-4 px-4 py-4 about-wrapper" id="featured-3">
+  <!-- About the Project -->
+  <h1 class="mb-3 about-section-title">About the Project</h1>
+  <p class="text-muted mb-4 text-center">
+    This project is built on World Development Indicators (WDI) data and is designed to support
+    cross-country comparison across multiple domains (health, energy, freshwater, greenhouse gases,
+    sustainability). The application focuses on normalized indicator reporting, time-series trend
+    computation, region-level aggregation, and transparent visualization of country- and region-level
+    patterns.
+  </p>
+
+  <hr class="my-4" />
+
+  <!-- Our Team -->
+  <h2 class="mb-3 about-section-title">Our Team</h2>
+  <div class="row g-4 py-2 row-cols-1 row-cols-lg-3 justify-content-center">
     {% for member in members %}
-      <div class="feature col">
-        <div
-          class="feature-icon d-inline-flex align-items-center justify-content-center mb-3 user-icon"
-          style="font-size: 5.5rem"
-        >
-          <i class="fa-solid fa-user"></i>
+      <div class="col d-flex">
+        <div class="team-card w-100">
+          <div class="mb-3 team-icon">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          <h3 class="fs-5 text-body-emphasis mb-1">{{ member.name }}</h3>
+          <div class="text-muted small mb-1">Computer Engineering</div>
+          <div class="text-muted small fst-italic">
+            {{ member.role or 'Project development & analysis' }}
+          </div>
         </div>
-        <h3 class="fs-4 text-body-emphasis">{{ member.name }}</h3>
-        <ul class="list-unstyled">
-          <li><span class="fw-semibold">Computer Engineering</span></li>
-        </ul>
       </div>
     {% endfor %}
   </div>
+
+  <!-- Key Features -->
+  <hr class="my-4" />
+  <h2 class="mb-3 about-section-title">Key Features</h2>
+  <ul class="about-list text-muted small mb-4">
+    <li class="mb-1">Country and region-level aggregation of indicators across multiple domains.</li>
+    <li class="mb-1">Time-series trend analysis with explicit handling of missing and irregular data.</li>
+    <li class="mb-1">Interactive maps and tables enabling drill-down from global to country-year detail.</li>
+    <li class="mb-1">Consistent units, normalized scales, and comparable metrics across countries.</li>
+  </ul>
+
+  <!-- Data & Methodology -->
+  <h2 class="mb-3 about-section-title">Data &amp; Methodology</h2>
+  <ul class="about-list text-muted small mb-0">
+    <li class="mb-1"><strong>Data source:</strong> World Development Indicators (WDI), using the latest available country-year records for each indicator.</li>
+    <li class="mb-1"><strong>Normalization:</strong> indicators are cleaned and aligned by country codes, domains, and units to allow cross-country comparison.</li>
+    <li class="mb-1"><strong>Missing data:</strong> missing values are left un-imputed and explicitly marked in the UI; trends are computed only where sufficient history exists.</li>
+    <li class="mb-1"><strong>Trend computation:</strong> percentage and absolute changes are calculated between the earliest and latest available observations per country and indicator.</li>
+  </ul>
 </div>
 {% endblock %}
