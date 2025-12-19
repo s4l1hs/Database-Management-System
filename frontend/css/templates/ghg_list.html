@@ -14,9 +14,9 @@
     overflow-y: auto;
   }
   
-  /* Match Countries table header style */
+  /* GHG Table header - dark gray background */
   .table thead {
-    background: linear-gradient(90deg, #eef2ff 0%, #e0f2fe 100%);
+    background-color: #2f2f2f;
   }
   
   .table thead th {
@@ -25,14 +25,16 @@
     z-index: 10;
     cursor: pointer;
     user-select: none;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.875rem;
     padding: 0.75rem 0.5rem;
     line-height: 1.4;
+    color: #ffffff;
+    border-bottom: 1px solid #1a1a1a;
   }
   
   .table thead th:hover {
-    background: linear-gradient(90deg, #e0f2fe 0%, #dbeafe 100%);
+    background-color: #3a3a3a;
   }
   
   /* Region badge styling - match Countries table */
@@ -139,53 +141,73 @@
   }
   
   thead .trend-column {
-    background: linear-gradient(90deg, #eef2ff 0%, #e0f2fe 100%);
-    font-weight: 600;
+    background-color: #2f2f2f !important;
+    font-weight: 700;
+    color: #ffffff !important;
   }
   
   thead .trend-column:hover {
-    background: linear-gradient(90deg, #e0f2fe 0%, #dbeafe 100%);
+    background-color: #3a3a3a !important;
+  }
+  
+  /* Trend column cells - bold percentage, icon + percentage grouped */
+  .trend-column .trend-indicator {
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  
+  .trend-column .trend-value {
+    font-weight: 700;
   }
   
   /* Trend indicator styling - bold and prominent */
   .trend-indicator {
-    font-weight: 600;
+    font-weight: 700;
     font-size: 1em;
     display: inline-flex;
     align-items: center;
+    gap: 4px;
+    white-space: nowrap;
   }
   
   .trend-indicator.trend-increase {
     color: #dc3545;
-    font-weight: 600;
+    font-weight: 700;
   }
   
   .trend-indicator.trend-decrease {
     color: #198754;
-    font-weight: 600;
+    font-weight: 700;
   }
   
   .trend-indicator.trend-no-data {
     color: #6c757d;
-    font-weight: 600;
+    font-weight: 700;
+    opacity: 0.6;
   }
   
   .trend-percent {
     font-size: 0.875rem;
-    margin-left: 2px;
-    font-weight: 600;
+    font-weight: 700;
   }
   
   .trend-increase .trend-percent {
     color: #dc3545;
+    font-weight: 700;
   }
   
   .trend-decrease .trend-percent {
     color: #198754;
+    font-weight: 700;
   }
   
   .trend-no-data .trend-percent {
     color: #6c757d;
+    font-weight: 700;
+    opacity: 0.6;
   }
   
   /* Simplified trend indicator - only icon and color */
@@ -259,28 +281,49 @@
     font-weight: 600;
   }
   
-  /* Match Countries table hover and zebra striping */
-  .table-hover > tbody > tr:hover > td {
-    background-color: rgba(37, 99, 235, 0.05) !important;
+  /* Zebra striping for table body - MUST be clearly visible */
+  .table tbody tr:nth-of-type(odd) {
+    background-color: #ffffff !important;
   }
   
-  .table-striped > tbody > tr:nth-of-type(odd) > td {
-    background-color: rgba(0, 0, 0, 0.02);
+  .table tbody tr:nth-of-type(even) {
+    background-color: #f5f5f5 !important;
+  }
+  
+  /* Override Bootstrap table-hover - maintain zebra striping on hover */
+  .table-hover > tbody > tr:hover > td {
+    background-color: inherit !important;
+  }
+  
+  /* Row hover effect - darken slightly while maintaining zebra pattern */
+  .table tbody tr.summary-row:nth-of-type(odd):hover {
+    background-color: #f0f0f0 !important;
+    cursor: pointer;
+  }
+  
+  .table tbody tr.summary-row:nth-of-type(odd):hover > td {
+    background-color: #f0f0f0 !important;
+  }
+  
+  .table tbody tr.summary-row:nth-of-type(even):hover {
+    background-color: #ececec !important;
+    cursor: pointer;
+  }
+  
+  .table tbody tr.summary-row:nth-of-type(even):hover > td {
+    background-color: #ececec !important;
   }
   
   /* ============================================
      GHG DOMAIN ONLY - Page & Content Animations
      ============================================ */
   
-  /* A2) Hover micro-interactions (GHG only) */
+  /* A2) Hover micro-interactions (GHG only) - maintain zebra striping */
   .table tbody tr:not(.no-data):not(.disabled) {
-    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+    transition: background-color 0.15s ease-out;
   }
   
-  .table tbody tr:not(.no-data):not(.disabled):hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
+  /* Hover effect is handled above with zebra striping maintained - no transform/box-shadow */
   
   /* Action buttons hover */
   .btn-group .btn,
@@ -321,6 +364,25 @@
     transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
   }
   
+  /* Expanded detail row styling - dark gray border matching header */
+  .detail-row.show td {
+    background-color: #f5f5f5 !important;
+    border-left: 2px solid #2f2f2f !important;
+    border-right: 2px solid #2f2f2f !important;
+    border-bottom: 2px solid #2f2f2f !important;
+    border-top: none !important;
+  }
+  
+  .detail-row.show .p-3 {
+    background-color: #f5f5f5;
+  }
+  
+  /* Expanded section titles */
+  .detail-row.show h6 {
+    font-weight: 700;
+    color: #2f2f2f;
+  }
+  
   /* A4) Trend icon animation (GHG only) - fade-in + slide on first render */
   .trend-indicator {
     animation: trendFadeIn 0.4s ease-out;
@@ -343,16 +405,31 @@
   .trend-indicator:nth-child(2) { animation-delay: 0.1s; }
   .trend-indicator:nth-child(3) { animation-delay: 0.15s; }
   
-  .table-striped > tbody > tr:nth-of-type(even) > td {
-    background-color: rgba(0, 0, 0, 0.01);
+  /* Override Bootstrap table-striped - use our zebra striping instead */
+  .table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: #ffffff !important;
   }
   
-  .summary-row:hover > td {
-    background-color: rgba(37, 99, 235, 0.05) !important;
+  .table-striped > tbody > tr:nth-of-type(even) > td {
+    background-color: #f5f5f5 !important;
+  }
+  
+  /* Expanded row styling - dark gray border matching header */
+  .summary-row.expanded {
+    border-left: 2px solid #2f2f2f !important;
+    border-right: 2px solid #2f2f2f !important;
   }
   
   .summary-row.expanded > td {
-    background-color: rgba(37, 99, 235, 0.08) !important;
+    border-top: 2px solid #2f2f2f !important;
+  }
+  
+  .summary-row.expanded > td:first-child {
+    border-left: 2px solid #2f2f2f !important;
+  }
+  
+  .summary-row.expanded > td:last-child {
+    border-right: 2px solid #2f2f2f !important;
   }
   
   /* Unit legend */
@@ -376,6 +453,23 @@
     font-weight: 300;
     font-style: normal;
     cursor: help;
+    opacity: 0.6;
+  }
+  
+  /* Rows with no expandable data - disable expand */
+  .summary-row.no-expand .expand-btn {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
+  .summary-row.no-expand:hover {
+    background-color: inherit !important;
+    cursor: default;
+  }
+  
+  .summary-row.no-expand:hover > td {
+    background-color: inherit !important;
   }
   
   /* Data coverage indicator */
@@ -491,21 +585,74 @@
   </div>
 </form>
 
-
-<!-- Global CO₂ per capita Trend Chart -->
-{% if global_avg_by_year %}
-<div class="card mb-3 shadow-sm">
-  <div class="card-body p-3">
-    <h6 class="mb-3">Global CO₂ per capita Trend</h6>
-    <div style="position: relative; height: 250px;">
-      <canvas id="globalTrendChart"></canvas>
+<!-- Trend Explorer Section -->
+<div class="card mb-4 shadow-sm border-0" style="background-color: #f8f9fa;">
+  <!-- Header -->
+  <div class="card-header border-0" style="background-color: #e9ecef; border-bottom: 1px solid #dee2e6 !important;">
+    <h5 class="mb-1" style="color: #495057; font-weight: 600;">Trend Explorer</h5>
+    <p class="text-muted small mb-0">Explore greenhouse gas trends over time using global, regional, or country-level averages.</p>
+  </div>
+  
+  <div class="card-body">
+    <!-- Controls Container -->
+    <div class="bg-white rounded p-3 mb-3 border" style="background-color: #ffffff;">
+      <div class="row g-3 align-items-end">
+        <!-- View Mode Tabs -->
+        <div class="col-12">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">View Mode</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="viewMode" id="viewGlobal" value="global" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="viewGlobal">Global Avg</label>
+            
+            <input type="radio" class="btn-check" name="viewMode" id="viewCountry" value="country">
+            <label class="btn btn-outline-secondary btn-sm" for="viewCountry">Country Trend</label>
+          </div>
+        </div>
+        
+        <!-- Indicator Selector -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Indicator</label>
+          <select class="form-select form-select-sm" id="trendIndicator">
+            <option value="6" selected>CO₂ per capita</option>
+            <option value="5">CO₂ total</option>
+            <option value="1">Total GHG (CO₂-eq)</option>
+          </select>
+        </div>
+        
+        <!-- Country Selector (enabled only for Country Trend) -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Country</label>
+          <select class="form-select form-select-sm" id="trendCountry" disabled>
+            <option value="">Select country...</option>
+            {% for country in countries %}
+              <option value="{{ country.country_id }}">{{ country.country_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <!-- Year Range -->
+        <div class="col-md-2">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Min Year</label>
+          <input type="number" class="form-control form-control-sm" id="trendYearMin" placeholder="1990" min="1900" max="2100">
+        </div>
+        
+        <div class="col-md-2">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Max Year</label>
+          <input type="number" class="form-control form-control-sm" id="trendYearMax" placeholder="2015" min="1900" max="2100">
+        </div>
+      </div>
     </div>
-    <p class="text-muted small mt-2 mb-0">
-      Each point represents the global average for that year using countries with available data.
+    
+    <!-- Chart Container -->
+    <div style="position: relative; height: 300px; background-color: #ffffff; border-radius: 4px; padding: 15px;">
+      <canvas id="trendExplorerChart"></canvas>
+    </div>
+    
+    <p class="text-muted small mt-2 mb-0" style="color: #6c757d;">
+      Each point represents the average for that year using countries with available data.
     </p>
   </div>
 </div>
-{% endif %}
 
 <!-- Top Risers/Decliners Panel (B1) -->
 {% if top_risers or top_decliners %}
@@ -750,12 +897,12 @@
         
         <!-- Detail Row -->
         <tr class="detail-row" id="detail-{{ detail_key }}" data-expanded="false">
-          <td colspan="{% if current_role in ['editor', 'admin'] %}9{% else %}8{% endif %}" class="bg-light">
-            <div class="p-3">
+          <td colspan="{% if current_role in ['editor', 'admin'] %}9{% else %}8{% endif %}" style="background-color: #f5f5f5;">
+            <div class="p-3" style="background-color: #f5f5f5;">
               <!-- Time-Series Chart Section -->
               <div id="chart-container-{{ detail_key }}" class="mb-4" style="display: none;">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="mb-0">Emissions Over Time</h6>
+                  <h6 class="mb-0 fw-bold" style="color: #2f2f2f;">Emissions Over Time</h6>
                   <div class="d-flex gap-2 align-items-center">
                     <div class="btn-group btn-group-sm" role="group" id="metric-selector-{{ detail_key }}">
                       <!-- Metric selector will be populated dynamically by JavaScript -->
@@ -772,7 +919,7 @@
                 <canvas id="chart-{{ detail_key }}" style="max-height: 300px;"></canvas>
               </div>
               
-              <h6 class="mb-3">Detailed Indicators</h6>
+              <h6 class="mb-3 fw-bold" style="color: #2f2f2f;">Detailed Indicators</h6>
               <div class="table-responsive">
                 <table class="table table-sm table-bordered mb-0">
                   <thead class="table-secondary">
@@ -1118,6 +1265,7 @@ const chartInstances = {};
 function toggleDetails(key) {
   const detailRow = document.getElementById('detail-' + key);
   const icon = document.getElementById('icon-' + key);
+  const summaryRow = document.querySelector(`tr.summary-row[data-key="${key}"]`);
   
   if (!detailRow || !icon) {
     console.error('Element not found for key:', key);
@@ -1131,6 +1279,9 @@ function toggleDetails(key) {
     // Collapse - use CSS transitions
     detailRow.classList.remove('show');
     detailRow.setAttribute('data-expanded', 'false');
+    if (summaryRow) {
+      summaryRow.classList.remove('expanded');
+    }
     icon.classList.remove('fa-chevron-down');
     icon.classList.add('fa-chevron-right');
     
@@ -1153,6 +1304,9 @@ function toggleDetails(key) {
     detailRow.offsetHeight;
     detailRow.classList.add('show');
     detailRow.setAttribute('data-expanded', 'true');
+    if (summaryRow) {
+      summaryRow.classList.add('expanded');
+    }
     icon.classList.remove('fa-chevron-right');
     icon.classList.add('fa-chevron-down');
     
@@ -1566,216 +1720,284 @@ function exportToCSV() {
 }
 
 
-// Initialize sparklines and global trend chart on page load
-document.addEventListener('DOMContentLoaded', function() {
-  renderSparklines();
+// Trend Explorer Chart
+let trendExplorerChart = null;
+const timeSeriesData = JSON.parse('{{ time_series_data|tojson|safe }}');
+
+function updateTrendExplorerChart() {
+  const viewMode = document.querySelector('input[name="viewMode"]:checked')?.value || 'global';
+  const indicatorId = parseInt(document.getElementById('trendIndicator').value);
+  const countryId = viewMode === 'country' ? parseInt(document.getElementById('trendCountry').value) : null;
+  const yearMin = parseInt(document.getElementById('trendYearMin').value) || null;
+  const yearMax = parseInt(document.getElementById('trendYearMax').value) || null;
   
-  const globalTrendData = JSON.parse('{{ global_avg_by_year|tojson|safe }}');
-  if (Array.isArray(globalTrendData) && globalTrendData.length > 0) {
-    const ctx = document.getElementById('globalTrendChart');
-    if (ctx) {
-      const years = globalTrendData.map(d => d.year);
-      const values = globalTrendData.map(d => d.avg_value);
-      const countryCounts = globalTrendData.map(d => d.country_count);
+  const ctx = document.getElementById('trendExplorerChart');
+  if (!ctx) return;
+  
+  let chartData = [];
+  let label = '';
+  let unit = '';
+  
+  // Get indicator info
+  const indicatorMap = {
+    1: { name: 'Total GHG', unit: 'kt CO₂-eq' },
+    5: { name: 'CO₂ total', unit: 'kt' },
+    6: { name: 'CO₂ per capita', unit: 't' }
+  };
+  const indicatorInfo = indicatorMap[indicatorId] || { name: 'Unknown', unit: '' };
+  unit = indicatorInfo.unit;
+  
+  if (viewMode === 'global') {
+    // Global average - use existing global_avg_by_year data (only for CO2 per capita indicator 6)
+    const globalTrendData = JSON.parse('{{ global_avg_by_year|tojson|safe }}');
+    if (indicatorId === 6 && Array.isArray(globalTrendData) && globalTrendData.length > 0) {
+      chartData = globalTrendData
+        .filter(d => (!yearMin || d.year >= yearMin) && (!yearMax || d.year <= yearMax))
+        .map(d => ({
+          year: d.year,
+          value: d.avg_value,
+          count: d.country_count
+        }));
+      label = 'Global average CO₂ per capita';
+    } else {
+      // For other indicators, calculate global average from time series data
+      const allYears = new Set();
+      const countryYearValues = {};
       
-      // Internal smoothing (polynomial regression) - not exposed in UI
-      function fitQuadratic(xs, ys) {
-        const n = xs.length;
-        if (n < 3) return { a: 0, b: 0, c: ys[0] || 0 };
-        
-        let Sx = 0, Sx2 = 0, Sx3 = 0, Sx4 = 0, Sy = 0, Sxy = 0, Sx2y = 0;
-        for (let i = 0; i < n; i++) {
-          const x = xs[i], y = ys[i], x2 = x * x;
-          Sx += x; Sx2 += x2; Sx3 += x2 * x; Sx4 += x2 * x2;
-          Sy += y; Sxy += x * y; Sx2y += x2 * y;
+      Object.keys(timeSeriesData).forEach(cid => {
+        const countryData = timeSeriesData[cid];
+        if (countryData.country_data && countryData.country_data[indicatorId]) {
+          countryData.country_data[indicatorId].forEach(point => {
+            if (point.value !== null && point.value !== undefined) {
+              const year = point.year;
+              allYears.add(year);
+              if (!countryYearValues[year]) countryYearValues[year] = [];
+              countryYearValues[year].push(point.value);
+            }
+          });
         }
-        
-        let A = [[n, Sx, Sx2], [Sx, Sx2, Sx3], [Sx2, Sx3, Sx4]];
-        let B = [Sy, Sxy, Sx2y];
-        
-        for (let i = 0; i < 3; i++) {
-          let maxRow = i;
-          for (let k = i + 1; k < 3; k++) {
-            if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
-          }
-          if (maxRow !== i) {
-            [A[i], A[maxRow]] = [A[maxRow], A[i]];
-            [B[i], B[maxRow]] = [B[maxRow], B[i]];
-          }
-          const pivot = A[i][i] || 1e-12;
-          for (let k = i + 1; k < 3; k++) {
-            const factor = A[k][i] / pivot;
-            for (let j = i; j < 3; j++) A[k][j] -= factor * A[i][j];
-            B[k] -= factor * B[i];
-          }
-        }
-        
-        const coef = [0, 0, 0];
-        for (let i = 2; i >= 0; i--) {
-          let sum = B[i];
-          for (let j = i + 1; j < 3; j++) sum -= A[i][j] * coef[j];
-          coef[i] = sum / (A[i][i] || 1e-12);
-        }
-        return { a: coef[2], b: coef[1], c: coef[0] };
-      }
+      });
       
-      const xs = years.map(y => Number(y));
-      const ys = values.map(v => Number(v));
-      const quad = fitQuadratic(xs, ys);
-      const smoothedData = xs.map(x => quad.a * x * x + quad.b * x + quad.c);
-      
-      new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: years,
-          datasets: [{
-            label: 'Global average CO₂ per capita',
-            data: smoothedData,
-            borderColor: 'rgba(40, 167, 69, 0.9)',
-            backgroundColor: 'rgba(40, 167, 69, 0.0)',
-            borderWidth: 2.5,
-            fill: false,
-            tension: 0.2,
-            spanGaps: false,
-            pointRadius: 0,
-            pointHoverRadius: 4,
-            pointBackgroundColor: 'rgba(40, 167, 69, 0.9)',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: {
-            duration: 1200,
-            easing: 'easeOutQuart',
-            x: {
-              from: 0
-            },
-            y: {
-              from: 0
-            }
-          },
-          animations: {
-            x: {
-              type: 'number',
-              easing: 'easeOutQuart',
-              duration: 1200,
-              from: NaN
-            },
-            y: {
-              type: 'number',
-              easing: 'easeOutQuart',
-              duration: 1200,
-              from: NaN
-            },
-            points: {
-              type: 'number',
-              easing: 'easeOutQuart',
-              duration: 1200,
-              from: 0
-            }
-          },
-          plugins: {
-            legend: {
-              display: true,
-              position: 'top',
-              labels: {
-                font: {
-                  size: 12,
-                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                },
-                padding: 10
-              }
-            },
-            tooltip: {
-              backgroundColor: 'rgba(0, 0, 0, 0.8)',
-              padding: 12,
-              titleFont: {
-                size: 13,
-                weight: 'bold',
-                family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-              },
-              bodyFont: {
-                size: 12,
-                family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-              },
-              callbacks: {
-                title: function(context) {
-                  const index = context[0].dataIndex;
-                  return `Year: ${years[index]}`;
-                },
-                label: function(context) {
-                  const index = context.dataIndex;
-                  const avgValue = Number(smoothedData[index]).toFixed(2);
-                  const countryCount = countryCounts[index];
-                  return [
-                    `Global average CO₂ per capita: ${avgValue} t`,
-                    `Countries included: ${countryCount}`
-                  ];
-                }
-              }
-            }
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: 'Year',
-                font: {
-                  size: 12,
-                  weight: '500',
-                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                },
-                padding: { top: 10 }
-              },
-              grid: {
-                display: false
-              },
-              ticks: {
-                font: {
-                  size: 11,
-                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                }
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'Average CO₂ per capita (t)',
-                font: {
-                  size: 12,
-                  weight: '500',
-                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                },
-                padding: { bottom: 10 }
-              },
-              grid: {
-                display: true,
-                color: 'rgba(0, 0, 0, 0.1)',
-                lineWidth: 1
-              },
-              ticks: {
-                font: {
-                  size: 11,
-                  family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
-                },
-                callback: function(value) {
-                  if (value >= 1000) {
-                    return (value / 1000).toFixed(1) + 'k';
-                  }
-                  return value.toFixed(0);
-                }
-              },
-              beginAtZero: false
-            }
+      Array.from(allYears).sort().forEach(year => {
+        if ((!yearMin || year >= yearMin) && (!yearMax || year <= yearMax)) {
+          const values = countryYearValues[year];
+          if (values && values.length > 0) {
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            chartData.push({ year, value: avg, count: values.length });
           }
         }
       });
+      label = `Global average ${indicatorInfo.name}`;
+    }
+  } else if (viewMode === 'country' && countryId) {
+    // Country trend
+    const countryData = timeSeriesData[countryId];
+    if (countryData && countryData.country_data && countryData.country_data[indicatorId]) {
+      chartData = countryData.country_data[indicatorId]
+        .filter(d => d.value !== null && d.value !== undefined)
+        .filter(d => (!yearMin || d.year >= yearMin) && (!yearMax || d.year <= yearMax))
+        .map(d => ({ year: d.year, value: d.value }));
+      const countryName = document.getElementById('trendCountry').selectedOptions[0]?.text || 'Country';
+      label = `${countryName} - ${indicatorInfo.name}`;
     }
   }
+  
+  // Sort by year
+  chartData.sort((a, b) => a.year - b.year);
+  
+  if (chartData.length === 0) {
+    if (trendExplorerChart) {
+      trendExplorerChart.destroy();
+      trendExplorerChart = null;
+    }
+    ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+  
+  const years = chartData.map(d => d.year);
+  const values = chartData.map(d => d.value);
+  
+  // Internal smoothing (polynomial regression) - not exposed in UI
+  function fitQuadratic(xs, ys) {
+    const n = xs.length;
+    if (n < 3) return ys;
+    
+    let Sx = 0, Sx2 = 0, Sx3 = 0, Sx4 = 0, Sy = 0, Sxy = 0, Sx2y = 0;
+    for (let i = 0; i < n; i++) {
+      const x = xs[i], y = ys[i], x2 = x * x;
+      Sx += x; Sx2 += x2; Sx3 += x2 * x; Sx4 += x2 * x2;
+      Sy += y; Sxy += x * y; Sx2y += x2 * y;
+    }
+    
+    let A = [[n, Sx, Sx2], [Sx, Sx2, Sx3], [Sx2, Sx3, Sx4]];
+    let B = [Sy, Sxy, Sx2y];
+    
+    for (let i = 0; i < 3; i++) {
+      let maxRow = i;
+      for (let k = i + 1; k < 3; k++) {
+        if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+      }
+      if (maxRow !== i) {
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [B[i], B[maxRow]] = [B[maxRow], B[i]];
+      }
+      const pivot = A[i][i] || 1e-12;
+      for (let k = i + 1; k < 3; k++) {
+        const factor = A[k][i] / pivot;
+        for (let j = i; j < 3; j++) A[k][j] -= factor * A[i][j];
+        B[k] -= factor * B[i];
+      }
+    }
+    
+    const coef = [0, 0, 0];
+    for (let i = 2; i >= 0; i--) {
+      let sum = B[i];
+      for (let j = i + 1; j < 3; j++) sum -= A[i][j] * coef[j];
+      coef[i] = sum / (A[i][i] || 1e-12);
+    }
+    
+    return xs.map(x => coef[2] * x * x + coef[1] * x + coef[0]);
+  }
+  
+  const xs = years.map(y => Number(y));
+  const ys = values.map(v => Number(v));
+  const smoothedData = fitQuadratic(xs, ys);
+  
+  if (trendExplorerChart) {
+    trendExplorerChart.destroy();
+  }
+  
+  trendExplorerChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [{
+        label: label,
+        data: smoothedData,
+        borderColor: 'rgba(70, 70, 70, 0.8)',
+        backgroundColor: 'rgba(70, 70, 70, 0.05)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.2,
+        spanGaps: false,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointBackgroundColor: 'rgba(70, 70, 70, 0.8)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 1200,
+        easing: 'easeOutQuart'
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { size: 12, family: "'Inter', -apple-system, sans-serif" },
+            padding: 10,
+            color: '#495057'
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 13, weight: 'bold', family: "'Inter', -apple-system, sans-serif" },
+          bodyFont: { size: 12, family: "'Inter', -apple-system, sans-serif" },
+          callbacks: {
+            title: function(context) {
+              return `Year: ${years[context[0].dataIndex]}`;
+            },
+            label: function(context) {
+              const index = context.dataIndex;
+              const value = Number(smoothedData[index]).toFixed(2);
+              return `${label}: ${value} ${unit}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Year',
+            font: { size: 12, weight: '500', family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d',
+            padding: { top: 10 }
+          },
+          grid: {
+            display: false
+          },
+          ticks: {
+            font: { size: 11, family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: `Average ${indicatorInfo.name} (${unit})`,
+            font: { size: 12, weight: '500', family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d',
+            padding: { bottom: 10 }
+          },
+          grid: {
+            display: true,
+            color: 'rgba(0, 0, 0, 0.1)',
+            lineWidth: 1
+          },
+          ticks: {
+            font: { size: 11, family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d',
+            callback: function(value) {
+              if (value >= 1000) {
+                return (value / 1000).toFixed(0) + 'k';
+              }
+              return value.toFixed(1);
+            }
+          },
+          beginAtZero: false
+        }
+      }
+    }
+  });
+}
+
+// Initialize Trend Explorer
+document.addEventListener('DOMContentLoaded', function() {
+  renderSparklines();
+  
+  // Set up Trend Explorer controls
+  document.querySelectorAll('input[name="viewMode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      const countrySelect = document.getElementById('trendCountry');
+      if (this.value === 'country') {
+        countrySelect.disabled = false;
+      } else {
+        countrySelect.disabled = true;
+        countrySelect.value = '';
+      }
+      updateTrendExplorerChart();
+    });
+  });
+  
+  document.getElementById('trendIndicator').addEventListener('change', updateTrendExplorerChart);
+  document.getElementById('trendCountry').addEventListener('change', updateTrendExplorerChart);
+  document.getElementById('trendYearMin').addEventListener('change', updateTrendExplorerChart);
+  document.getElementById('trendYearMax').addEventListener('change', updateTrendExplorerChart);
+  
+  // Initial chart render
+  updateTrendExplorerChart();
+  
+  // Legacy global chart removed - now using Trend Explorer
 });
+
+// ========== INLINE CRUD FUNCTIONS ==========
 
 // ========== INLINE CRUD FUNCTIONS ==========
 
