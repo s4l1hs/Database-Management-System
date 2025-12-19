@@ -27,6 +27,20 @@
   .stat-chip h6 { margin: 0; font-size: 13px; color: #64748b; letter-spacing: 0.3px; text-transform: uppercase; }
   .stat-chip .value { font-size: 22px; font-weight: 800; color: #0f172a; }
   .stat-chip small { color: #94a3b8; }
+  .country-row {
+    cursor: pointer;
+    transition: background-color 0.12s ease, transform 0.02s ease;
+  }
+  .country-row:hover {
+    background-color: rgba(37,99,235,0.04);
+  }
+  .country-row.no-data {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .country-row.no-data:hover {
+    background-color: transparent;
+  }
 </style>
 {% endblock %}
 
@@ -128,7 +142,14 @@
             </thead>
             <tbody>
               {% for row in rows %}
-                <tr title="{{ row.region }}">
+                {% set has_data = (row.data_count or 0) > 0 %}
+                <tr
+                  class="country-row {% if not has_data %}no-data{% endif %}"
+                  title="{{ row.region }}"
+                  data-country-id="{{ row.country_id }}"
+                  data-country-name="{{ row.country_name }}"
+                  data-has-data="{{ 1 if has_data else 0 }}"
+                >
                   <td>{{ row.country_id }}</td>
                   <td class="fw-semibold">{{ row.country_name }}</td>
                   <td><span class="badge bg-primary">{{ row.country_code }}</span></td>
@@ -137,6 +158,9 @@
               {% endfor %}
             </tbody>
           </table>
+        </div>
+        <div id="noDataMessage" class="alert alert-info mt-3 d-none small mb-0">
+          No data available for this country in the selected dataset.
         </div>
         {% if not rows %}
           <div class="alert alert-warning text-center mt-3">
@@ -213,6 +237,7 @@
     };
 
     const regionStatsUrl = "{{ url_for('countries.get_region_stats') }}";
+    const hasDataByIso2 = {{ has_data_by_iso2|tojson|safe }};
     let mode = 'countries';
 
     const regionList = ['Africa','Europe','Asia','North America','South America','Oceania','Antarctica'];
@@ -288,6 +313,16 @@
     } else {
         // --- COUNTRY MODE ---
       
+        const hasData = Object.prototype.hasOwnProperty.call(hasDataByIso2, codeUpper)
+          ? !!hasDataByIso2[codeUpper]
+          : false;
+
+        if (!hasData) {
+          event.preventDefault();
+          showNoDataMessage('No data available for this country in the selected dataset.');
+          return;
+        }
+
         window.location.href = `/countries/resolve/${codeUpper}`;
     }
 }
@@ -489,6 +524,59 @@ document.getElementById('btn-countries').addEventListener('click', function() {
     applyRegionColors(false); 
 });
 
+    function showNoDataMessage(text) {
+      const el = document.getElementById('noDataMessage');
+      if (!el) return;
+      el.textContent = text || 'No data available for this country in the selected dataset.';
+      el.classList.remove('d-none');
+
+      if (showNoDataMessage._timeoutId) {
+        clearTimeout(showNoDataMessage._timeoutId);
+      }
+      showNoDataMessage._timeoutId = setTimeout(() => {
+        el.classList.add('d-none');
+      }, 4000);
+    }
+
+    // Table row click handling for Countries tab
+    document.querySelectorAll('tr.country-row').forEach((row) => {
+      row.addEventListener('click', (ev) => {
+        const hasData = row.dataset.hasData === '1';
+        const countryId = row.dataset.countryId;
+        const countryName = row.dataset.countryName || 'this country';
+
+        if (!hasData) {
+          ev.preventDefault();
+          showNoDataMessage(`No data available for ${countryName} in the selected dataset.`);
+          return;
+        }
+
+        if (countryId) {
+          window.location.href = `/countries/profile/${countryId}`;
+        }
+      });
+    });
+
+    // Visually mute regions with no data on the world map in country mode
+    function applyDataAvailabilityStyling() {
+      if (!map || !map.regions) return;
+      Object.keys(map.regions).forEach((code) => {
+        const codeUpper = code.toUpperCase();
+        const hasData = Object.prototype.hasOwnProperty.call(hasDataByIso2, codeUpper)
+          ? !!hasDataByIso2[codeUpper]
+          : false;
+
+        if (!hasData) {
+          map.regions[code].element.setStyle({
+            fill: '#e5e7eb',
+            'fill-opacity': 0.6,
+            cursor: 'not-allowed'
+          });
+        }
+      });
+    }
+
     buildLegend();
+    applyDataAvailabilityStyling();
 </script>
 {% endblock %}
