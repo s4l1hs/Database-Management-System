@@ -12,22 +12,50 @@ def list_countries():
     """
     Common page: list all countries (name, code, region),
     optional text search on country name or code.
+
+    Additionally, we annotate each country with a backend-derived
+    data availability flag (data_count) so the UI can disable
+    navigation for countries that have zero records across all
+    main datasets.
     """
     search = request.args.get("q", type=str)
     params = []
 
     base_sql = """
-        SELECT country_id,
-               country_name,
-               country_code,
-               COALESCE(region, '-') AS region
-        FROM countries
+        SELECT
+            c.country_id,
+            c.country_name,
+            c.country_code,
+            COALESCE(c.region, '-') AS region,
+            (
+                COALESCE((
+                    SELECT COUNT(*) FROM health_system hs
+                    WHERE hs.country_id = c.country_id
+                ), 0) +
+                COALESCE((
+                    SELECT COUNT(*) FROM energy_data ed
+                    WHERE ed.country_id = c.country_id
+                ), 0) +
+                COALESCE((
+                    SELECT COUNT(*) FROM freshwater_data fd
+                    WHERE fd.country_id = c.country_id
+                ), 0) +
+                COALESCE((
+                    SELECT COUNT(*) FROM greenhouse_emissions ge
+                    WHERE ge.country_id = c.country_id
+                ), 0) +
+                COALESCE((
+                    SELECT COUNT(*) FROM sustainability_data sd
+                    WHERE sd.country_id = c.country_id
+                ), 0)
+            ) AS data_count
+        FROM countries c
     """
 
     where_clauses = []
     if search:
         # simple case-insensitive like: matches name OR code
-        where_clauses.append("(LOWER(country_name) LIKE %s OR LOWER(country_code) LIKE %s)")
+        where_clauses.append("(LOWER(c.country_name) LIKE %s OR LOWER(c.country_code) LIKE %s)")
         pattern = f"%{search.lower()}%"
         params.extend([pattern, pattern])
 
@@ -35,13 +63,14 @@ def list_countries():
         base_sql += " WHERE " + " AND ".join(where_clauses)
 
     # Default ordering: by primary id ascending
-    base_sql += " ORDER BY country_id ASC;"
+    base_sql += " ORDER BY c.country_id ASC;"
 
     conn = get_db()
     cur = conn.cursor(dictionary=True)
     region_map = {}
     region_name_map = {}
     regions = []
+    has_data_by_iso2 = {}
 
     try:
         cur.execute(base_sql, params)
@@ -74,6 +103,16 @@ def list_countries():
             """
         )
         regions = [r["region"] for r in cur.fetchall()]
+
+        # Build ISO2 -> has_data map for the frontend map widget.
+        # We invert the ISO2_TO_ISO3 mapping to go from DB ISO3 codes to ISO2.
+        iso3_to_iso2 = {v: k for k, v in ISO2_TO_ISO3.items()}
+        for r in rows:
+            iso3 = (r.get("country_code") or "").upper()
+            iso2 = iso3_to_iso2.get(iso3)
+            if not iso2:
+                continue
+            has_data_by_iso2[iso2] = (r.get("data_count") or 0) > 0
     finally:
         cur.close()
 
@@ -84,6 +123,7 @@ def list_countries():
         regions=regions,
         region_map=region_map,
         region_name_map=region_name_map,
+        has_data_by_iso2=has_data_by_iso2,
         search=search or "",
     )
 
@@ -218,6 +258,69 @@ def get_region_stats():
     return jsonify(stats)
 
 
+@countries_bp.route("/api/has-data/<string:iso2>", methods=["GET"])
+def api_has_data(iso2: str):
+    """
+    Lightweight API used by the Countries tab & world map to determine
+    whether a given ISO2 country has any records across the main datasets.
+
+    This mirrors the logic in /countries/resolve, but returns JSON instead
+    of redirecting or rendering a template.
+    """
+    iso2 = iso2.upper()
+    iso3 = ISO2_TO_ISO3.get(iso2)
+    if not iso3:
+        # Unknown mapping – treat as no data, but do not error.
+        return jsonify({"iso2": iso2, "has_data": False, "country_id": None})
+
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+
+    # Find country row by ISO3 code stored in DB
+    cur.execute(
+        """
+        SELECT country_id
+        FROM countries
+        WHERE UPPER(country_code) = %s
+        LIMIT 1
+        """,
+        (iso3,),
+    )
+    row = cur.fetchone()
+    if not row:
+        cur.close()
+        return jsonify({"iso2": iso2, "has_data": False, "country_id": None})
+
+    country_id = row["country_id"]
+
+    total = 0
+    try:
+        for tbl in (
+            "health_system",
+            "energy_data",
+            "freshwater_data",
+            "greenhouse_emissions",
+            "sustainability_data",
+        ):
+            try:
+                cur.execute(f"SELECT COUNT(*) AS cnt FROM {tbl} WHERE country_id = %s", (country_id,))
+                cnt = cur.fetchone().get("cnt", 0)
+                total += int(cnt or 0)
+            except Exception:
+                # ignore missing tables or other issues and continue
+                continue
+    finally:
+        cur.close()
+
+    return jsonify(
+        {
+            "iso2": iso2,
+            "country_id": country_id,
+            "has_data": total > 0,
+        }
+    )
+
+
 @countries_bp.route("/profile/<int:country_id>", methods=["GET"])
 def country_profile(country_id: int):
     db = get_db()
@@ -337,6 +440,177 @@ def country_profile(country_id: int):
         ghg=ghg,
         sustainability=sustainability,
     )
+
+@countries_bp.route("/region/<string:region_name>", methods=["GET"])
+def region_profile(region_name: str):
+    """Region profile page with aggregated data across all domains.
+    Region information is derived exclusively from countries.region column."""
+    db = get_db()
+    cur = db.cursor(dictionary=True)
+    
+    # Verify region exists in countries table
+    cur.execute("""
+        SELECT DISTINCT region
+        FROM countries
+        WHERE region = %s
+        LIMIT 1
+    """, (region_name,))
+    region_check = cur.fetchone()
+    if not region_check:
+        cur.close()
+        return render_template(
+            "country_no_data.html",
+            message=f"Region not found: {region_name}"
+        )
+    
+    region = {"region": region_name}
+    
+    # Get countries in this region for the listing table
+    cur.execute("""
+        SELECT 
+            country_id,
+            country_name,
+            country_code
+        FROM countries
+        WHERE region = %s
+        ORDER BY country_name
+    """, (region_name,))
+    region_countries = cur.fetchall()
+    
+    # HEALTH - Region-level aggregation
+    cur.execute("""
+        SELECT
+            hid.indicator_name AS indicator,
+            hid.unit_symbol AS unit,
+            hs.year,
+            AVG(hs.indicator_value) AS avg_value,
+            MIN(hs.indicator_value) AS min_value,
+            MAX(hs.indicator_value) AS max_value,
+            COUNT(DISTINCT hs.country_id) AS country_count
+        FROM health_system hs
+        JOIN health_indicator_details hid ON hid.health_indicator_id = hs.health_indicator_id
+        JOIN countries c ON c.country_id = hs.country_id
+        WHERE c.region = %s AND hs.indicator_value IS NOT NULL
+        GROUP BY hid.indicator_name, hid.unit_symbol, hs.year
+        ORDER BY hs.year DESC, hid.indicator_name
+        LIMIT 500
+    """, (region_name,))
+    health = cur.fetchall()
+    
+    # ENERGY - Region-level aggregation
+    cur.execute("""
+        SELECT
+            eid.indicator_name AS indicator,
+            eid.measurement_unit AS unit,
+            ed.year,
+            AVG(ed.indicator_value) AS avg_value,
+            MIN(ed.indicator_value) AS min_value,
+            MAX(ed.indicator_value) AS max_value,
+            COUNT(DISTINCT ed.country_id) AS country_count
+        FROM energy_data ed
+        JOIN energy_indicator_details eid ON eid.energy_indicator_id = ed.energy_indicator_id
+        JOIN countries c ON c.country_id = ed.country_id
+        WHERE c.region = %s AND ed.indicator_value IS NOT NULL
+        GROUP BY eid.indicator_name, eid.measurement_unit, ed.year
+        ORDER BY ed.year DESC, eid.indicator_name
+        LIMIT 500
+    """, (region_name,))
+    energy = cur.fetchall()
+    
+    # FRESHWATER - Region-level aggregation
+    cur.execute("""
+        SELECT
+            fid.indicator_name AS indicator,
+            fid.unit_of_measure AS unit,
+            fd.year,
+            AVG(fd.indicator_value) AS avg_value,
+            MIN(fd.indicator_value) AS min_value,
+            MAX(fd.indicator_value) AS max_value,
+            COUNT(DISTINCT fd.country_id) AS country_count
+        FROM freshwater_data fd
+        JOIN freshwater_indicator_details fid ON fid.freshwater_indicator_id = fd.freshwater_indicator_id
+        JOIN countries c ON c.country_id = fd.country_id
+        WHERE c.region = %s AND fd.indicator_value IS NOT NULL
+        GROUP BY fid.indicator_name, fid.unit_of_measure, fd.year
+        ORDER BY fd.year DESC, fid.indicator_name
+        LIMIT 500
+    """, (region_name,))
+    freshwater = cur.fetchall()
+    
+    # GHG - Region-level aggregation
+    cur.execute("""
+        SELECT
+            gid.indicator_name AS indicator,
+            gid.unit_symbol AS unit,
+            ge.year,
+            AVG(ge.indicator_value) AS avg_value,
+            MIN(ge.indicator_value) AS min_value,
+            MAX(ge.indicator_value) AS max_value,
+            COUNT(DISTINCT ge.country_id) AS country_count
+        FROM greenhouse_emissions ge
+        JOIN ghg_indicator_details gid ON gid.ghg_indicator_id = ge.ghg_indicator_id
+        JOIN countries c ON c.country_id = ge.country_id
+        WHERE c.region = %s AND ge.indicator_value IS NOT NULL
+        GROUP BY gid.indicator_name, gid.unit_symbol, ge.year
+        ORDER BY ge.year DESC, gid.indicator_name
+        LIMIT 500
+    """, (region_name,))
+    ghg = cur.fetchall()
+    
+    # SUSTAINABILITY - Region-level aggregation
+    cur.execute("""
+        SELECT
+            sid.indicator_name AS indicator,
+            NULL AS unit,
+            sd.year,
+            AVG(sd.indicator_value) AS avg_value,
+            MIN(sd.indicator_value) AS min_value,
+            MAX(sd.indicator_value) AS max_value,
+            COUNT(DISTINCT sd.country_id) AS country_count
+        FROM sustainability_data sd
+        JOIN sustainability_indicator_details sid ON sid.sus_indicator_id = sd.sus_indicator_id
+        JOIN countries c ON c.country_id = sd.country_id
+        WHERE c.region = %s AND sd.indicator_value IS NOT NULL
+        GROUP BY sid.indicator_name, sd.year
+        ORDER BY sd.year DESC, sid.indicator_name
+        LIMIT 500
+    """, (region_name,))
+    sustainability = cur.fetchall()
+    
+    # Get country-level metrics for sorting (using GHG CO2 per capita as default)
+    # Countries with missing data are placed at the bottom (NULLS LAST)
+    # This will be used to sort countries in the region listing
+    cur.execute("""
+        SELECT
+            c.country_id,
+            c.country_name,
+            c.country_code,
+            AVG(CASE WHEN ge.ghg_indicator_id = 6 THEN ge.indicator_value END) AS co2_per_capita_avg
+        FROM countries c
+        LEFT JOIN greenhouse_emissions ge ON c.country_id = ge.country_id AND ge.ghg_indicator_id = 6 AND ge.indicator_value IS NOT NULL
+        WHERE c.region = %s
+        GROUP BY c.country_id, c.country_name, c.country_code
+        ORDER BY 
+            CASE WHEN AVG(CASE WHEN ge.ghg_indicator_id = 6 THEN ge.indicator_value END) IS NULL THEN 1 ELSE 0 END,
+            AVG(CASE WHEN ge.ghg_indicator_id = 6 THEN ge.indicator_value END) DESC NULLS LAST,
+            c.country_name
+    """, (region_name,))
+    countries_with_metrics = cur.fetchall()
+    
+    cur.close()
+    
+    return render_template(
+        "region_profile.html",
+        region=region,
+        health=health,
+        energy=energy,
+        freshwater=freshwater,
+        ghg=ghg,
+        sustainability=sustainability,
+        countries=countries_with_metrics,
+        region_countries=region_countries
+    )
+
 
 @countries_bp.route("/resolve/<string:iso2>", methods=["GET"])
 def resolve_country(iso2):
