@@ -160,7 +160,7 @@
             {{ ghg.source_notes or '' }}
           </td>
 
-          {% if session.get("team_no")|int == 1 %}
+          {% if current_role in ['editor', 'admin'] %}
             <td>
               <div class="d-flex gap-1">
                 <a
@@ -169,15 +169,17 @@
                 >
                   Edit
                 </a>
-                <form
-                  action="{{ url_for('ghg.delete_ghg', id=ghg.row_id) }}"
-                  method="post"
-                  onsubmit="return confirm('Delete this record?');"
-                >
-                  <button type="submit" class="btn btn-sm btn-outline-danger">
-                    Delete
-                  </button>
-                </form>
+                {% if current_role == 'admin' %}
+                  <form
+                    action="{{ url_for('ghg.delete_ghg', id=ghg.row_id) }}"
+                    method="post"
+                    onsubmit="return confirm('Delete this record?');"
+                  >
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                      Delete
+                    </button>
+                  </form>
+                {% endif %}
               </div>
             </td>
           {% endif %}
