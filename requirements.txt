@@ -1,4 +1,5 @@
-pandas
 flask
 python-dotenv
 mysql-connector-python
+pandas
+cryptography
