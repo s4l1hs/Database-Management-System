@@ -4,7 +4,7 @@ from mysql.connector.errors import IntegrityError
 from types import SimpleNamespace
 
 from App.db import get_db
-from App.routes.login import admin_required
+from App.routes.login import admin_required, editor_required
 
 ghg_bp = Blueprint("ghg", __name__, url_prefix="/ghg")
 
@@ -35,6 +35,10 @@ def list_ghg():
 
     db_conn = get_db()
     cursor = db_conn.cursor(dictionary=True)
+
+    # For modal dropdowns – ensure variables always exist
+    countries = []
+    indicators = []
 
     try:
         # Build WHERE clause
@@ -176,138 +180,116 @@ def list_ghg():
         
         summary_rows = list(unique_summary_dict.values())
         
-        # Calculate trends for each country using FULL historical dataset (ignoring filters)
-        # Get all unique countries from summary rows (visible countries)
+        # Calculate trends for each row based on chronological neighbors (previous/next year)
+        # This uses the full historical dataset to find previous/next year values
         country_ids = list(set(row['country_id'] for row in summary_rows))
-        trend_data = {}
         
-        if country_ids:
-            # Build placeholders for IN clause
-            placeholders = ','.join(['%s'] * len(country_ids))
-            
-            # For each indicator, get earliest and latest values per country from FULL dataset
-            # This ignores year_min, year_max, and latest_year_only filters
-            for indicator_id, indicator_key in [(1, 'total_ghg'), (5, 'co2_total'), (6, 'co2_per_capita')]:
-                # Get min/max years for each country-indicator combination from FULL dataset
-                year_range_query = f"""
-                    SELECT country_id, MIN(year) as min_year, MAX(year) as max_year
-                    FROM greenhouse_emissions
-                    WHERE country_id IN ({placeholders}) AND ghg_indicator_id = %s
-                    GROUP BY country_id
-                """
-                cursor.execute(year_range_query, country_ids + [indicator_id])
-                year_ranges = {row['country_id']: (row['min_year'], row['max_year']) for row in cursor.fetchall()}
-                
-                # Get values for earliest and latest years from FULL dataset
-                for country_id, (min_year, max_year) in year_ranges.items():
-                    if country_id not in trend_data:
-                        trend_data[country_id] = {}
-                    
-                    # Get earliest value from FULL dataset
-                    earliest_query = """
-                        SELECT indicator_value FROM greenhouse_emissions
-                        WHERE country_id = %s AND ghg_indicator_id = %s AND year = %s
-                        LIMIT 1
-                    """
-                    cursor.execute(earliest_query, (country_id, indicator_id, min_year))
-                    earliest_result = cursor.fetchone()
-                    earliest_value = earliest_result['indicator_value'] if earliest_result else None
-                    
-                    # Get latest value from FULL dataset
-                    latest_query = """
-                        SELECT indicator_value FROM greenhouse_emissions
-                        WHERE country_id = %s AND ghg_indicator_id = %s AND year = %s
-                        LIMIT 1
-                    """
-                    cursor.execute(latest_query, (country_id, indicator_id, max_year))
-                    latest_result = cursor.fetchone()
-                    latest_value = latest_result['indicator_value'] if latest_result else None
-                    
-                    trend_data[country_id][indicator_key] = {
-                        'earliest': float(earliest_value) if earliest_value is not None else None,
-                        'latest': float(latest_value) if latest_value is not None else None,
-                        'earliest_year': min_year,
-                        'latest_year': max_year
-                    }
-        
-        # Find the latest year for each country from FULL dataset (not filtered rows)
-        # This ensures trends are shown correctly even when latest_year_only filter is active
-        country_latest_years_full = {}
+        # Build a map of all country-year CO2 per capita values from FULL dataset for trend calculation
+        # Structure: {(country_id, year): value}
+        full_data_map = {}
         if country_ids:
             placeholders = ','.join(['%s'] * len(country_ids))
+            # Get all CO2 per capita data (indicator_id = 6) for trend calculation
             cursor.execute(f"""
-                SELECT country_id, MAX(year) as max_year
+                SELECT country_id, year, indicator_value
                 FROM greenhouse_emissions
-                WHERE country_id IN ({placeholders})
-                GROUP BY country_id
+                WHERE country_id IN ({placeholders}) AND ghg_indicator_id = 6 AND indicator_value IS NOT NULL
+                ORDER BY country_id, year ASC
             """, country_ids)
-            country_latest_years_full = {row['country_id']: row['max_year'] for row in cursor.fetchall()}
+            for data_row in cursor.fetchall():
+                key = (data_row['country_id'], data_row['year'])
+                full_data_map[key] = float(data_row['indicator_value'])
         
-        # Also get earliest years from FULL dataset for is_earliest_year flag
+        # Get earliest and latest years for UI flags
+        country_latest_years_full = {}
         country_earliest_years_full = {}
         if country_ids:
             placeholders = ','.join(['%s'] * len(country_ids))
             cursor.execute(f"""
-                SELECT country_id, MIN(year) as min_year
+                SELECT country_id, MAX(year) as max_year, MIN(year) as min_year
                 FROM greenhouse_emissions
                 WHERE country_id IN ({placeholders})
                 GROUP BY country_id
             """, country_ids)
-            country_earliest_years_full = {row['country_id']: row['min_year'] for row in cursor.fetchall()}
+            for data_row in cursor.fetchall():
+                country_latest_years_full[data_row['country_id']] = data_row['max_year']
+                country_earliest_years_full[data_row['country_id']] = data_row['min_year']
         
-        # Calculate trend values and add to summary rows
-        # Trend is only shown for the latest year per country (from FULL dataset)
+        # Calculate trends for each summary row based on chronological neighbors
         for row in summary_rows:
             country_id = row['country_id']
             year = row['year']
-            # Use full dataset latest year, not filtered rows
-            is_latest_year = country_latest_years_full.get(country_id) == year
-            
             trends = {}
             show_trend = False
             
-            # Only calculate and show trend for the latest year of each country
-            if is_latest_year and country_id in trend_data:
-                country_trends = trend_data[country_id]
+            # Get current year's CO2 per capita value and convert to float
+            current_value_raw = row.get('co2_per_capita')
+            current_value = float(current_value_raw) if current_value_raw is not None else None
+            
+            if current_value is not None:
+                # Try to find previous year (Y-1) - look for the most recent year before current year
+                prev_year = None
+                prev_value = None
+                available_years = sorted([y for (c, y) in full_data_map.keys() if c == country_id], reverse=True)
+                for y in available_years:
+                    if y < year:
+                        prev_year = y
+                        prev_value = full_data_map.get((country_id, y))
+                        break
                 
-                # Calculate trend for CO2 per capita (primary metric for trend display)
-                if 'co2_per_capita' in country_trends:
-                    t = country_trends['co2_per_capita']
-                    # Check if we have valid previous data (earliest year must exist and be different from latest)
-                    if t['earliest'] is not None and t['latest'] is not None and t['earliest_year'] is not None and t['earliest_year'] < t['latest_year']:
-                        earliest_val = float(t['earliest'])
-                        latest_val = float(t['latest'])
-                        trends['co2_per_capita'] = {
-                            'change': latest_val - earliest_val,
-                            'percent': ((latest_val - earliest_val) / earliest_val * 100) if earliest_val != 0 else None,
-                            'earliest_year': t['earliest_year'],
-                            'latest_year': t['latest_year']
-                        }
-                        show_trend = True
-                    else:
-                        trends['co2_per_capita'] = None
+                # Try to find next year (Y+1) if no previous year exists
+                next_year = None
+                next_value = None
+                if prev_year is None:
+                    available_years_asc = sorted([y for (c, y) in full_data_map.keys() if c == country_id])
+                    for y in available_years_asc:
+                        if y > year:
+                            next_year = y
+                            next_value = full_data_map.get((country_id, y))
+                            break
+                
+                # Calculate trend based on comparison
+                if prev_year is not None and prev_value is not None:
+                    # Compare to previous year (backward-looking): (current - previous) / previous
+                    change = current_value - prev_value
+                    percent = ((change / prev_value) * 100) if prev_value != 0 else None
+                    trends['co2_per_capita'] = {
+                        'change': change,
+                        'percent': percent,
+                        'comparison_year': prev_year,
+                        'comparison_type': 'previous',
+                        'comparison_value': prev_value
+                    }
+                    show_trend = True
+                elif next_year is not None and next_value is not None:
+                    # Compare to next year (forward-looking): (next - current) / current
+                    change = next_value - current_value
+                    percent = ((change / current_value) * 100) if current_value != 0 else None
+                    trends['co2_per_capita'] = {
+                        'change': change,
+                        'percent': percent,
+                        'comparison_year': next_year,
+                        'comparison_type': 'next',
+                        'comparison_value': next_value
+                    }
+                    show_trend = True
                 else:
+                    # Only one data point - no comparison possible
                     trends['co2_per_capita'] = None
             else:
-                trends = {'co2_per_capita': None}
+                # No value for current year
+                trends['co2_per_capita'] = None
             
             row['trends'] = trends
             row['show_trend'] = show_trend
-            row['is_latest_year'] = is_latest_year
-            row['is_earliest_year'] = False  # Will be set below
+            row['is_latest_year'] = country_latest_years_full.get(country_id) == year
+            row['is_earliest_year'] = country_earliest_years_full.get(country_id) == year
             
             # Calculate primary trend value for sorting (use CO2 per capita)
-            if trends['co2_per_capita'] is not None:
-                row['trend_value'] = trends['co2_per_capita']['change']
+            if trends.get('co2_per_capita') is not None:
+                row['trend_value'] = trends['co2_per_capita'].get('change', 0)
             else:
                 row['trend_value'] = None
-        
-        # Mark earliest year rows using FULL dataset (not filtered)
-        for row in summary_rows:
-            country_id = row['country_id']
-            year = row['year']
-            # Use full dataset earliest year
-            row['is_earliest_year'] = country_earliest_years_full.get(country_id) == year
         
         # Get unit symbols for summary indicators (1=Total GHG, 5=CO2 Total, 6=CO2 per capita)
         cursor.execute("""
@@ -383,30 +365,37 @@ def list_ghg():
         ]
         
         # Calculate top risers/decliners (B1) - percentage-based changes in CO2 per capita
+        # Use earliest-to-latest comparison for overall change
         top_risers = []
         top_decliners = []
-        if trend_data:
+        if country_ids and full_data_map:
             risers_decliners = []
-            for country_id, trends in trend_data.items():
-                if 'co2_per_capita' in trends and trends['co2_per_capita']:
-                    t = trends['co2_per_capita']
-                    if t['earliest'] is not None and t['latest'] is not None and t['earliest_year'] < t['latest_year']:
-                        percent_change = ((t['latest'] - t['earliest']) / t['earliest'] * 100) if t['earliest'] != 0 else None
-                        if percent_change is not None:
-                            # Get country name
-                            country_name = next((row['country_name'] for row in summary_rows if row['country_id'] == country_id), 'Unknown')
-                            risers_decliners.append({
-                                'country_id': country_id,
-                                'country_name': country_name,
-                                'percent_change': percent_change,
-                                'earliest_year': t['earliest_year'],
-                                'latest_year': t['latest_year']
-                            })
+            for country_id in country_ids:
+                # Get all years for this country, sorted
+                country_years = sorted([y for (c, y) in full_data_map.keys() if c == country_id])
+                if len(country_years) >= 2:
+                    earliest_year = country_years[0]
+                    latest_year = country_years[-1]
+                    earliest_value = full_data_map.get((country_id, earliest_year))
+                    latest_value = full_data_map.get((country_id, latest_year))
+                    
+                    if earliest_value is not None and latest_value is not None and earliest_value != 0:
+                        percent_change = ((latest_value - earliest_value) / earliest_value * 100)
+                        # Get country name
+                        country_name = next((row['country_name'] for row in summary_rows if row['country_id'] == country_id), 'Unknown')
+                        risers_decliners.append({
+                            'country_id': country_id,
+                            'country_name': country_name,
+                            'percent_change': percent_change,
+                            'earliest_year': earliest_year,
+                            'latest_year': latest_year
+                        })
             
             # Sort and get top 5
-            risers_decliners.sort(key=lambda x: x['percent_change'], reverse=True)
-            top_risers = risers_decliners[:5]
-            top_decliners = sorted(risers_decliners[-5:], key=lambda x: x['percent_change'])
+            if risers_decliners:
+                risers_decliners.sort(key=lambda x: x['percent_change'], reverse=True)
+                top_risers = risers_decliners[:5]
+                top_decliners = sorted(risers_decliners[-5:], key=lambda x: x['percent_change'])
         
         # Calculate data coverage per country (D2)
         country_coverage = {}
@@ -593,8 +582,31 @@ def list_ghg():
         top_decliners = []
         country_coverage = {}
         total_pages = 0
-    finally:
-        cursor.close()
+    
+    # Fetch countries and indicators for modal dropdowns
+    if not countries or not indicators:
+        try:
+            modal_cursor = db_conn.cursor(dictionary=True)
+            # Fetch countries
+            modal_cursor.execute("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")
+            countries = modal_cursor.fetchall()
+
+            # Fetch indicators
+            modal_cursor.execute(
+                "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
+            )
+            indicators = modal_cursor.fetchall()
+            modal_cursor.close()
+        except MySQLError:
+            countries = []
+            indicators = []
+    
+    # Close main cursor if it exists
+    if 'cursor' in locals() and cursor:
+        try:
+            cursor.close()
+        except:
+            pass
 
     return render_template(
         "ghg_list.html",
@@ -617,6 +629,8 @@ def list_ghg():
         page=page,
         total_pages=total_pages,
         per_page=per_page,
+        countries=countries,  # For modal dropdown
+        indicators=indicators,  # For modal dropdown
     )
 
 
@@ -650,7 +664,7 @@ def autocomplete_countries():
 
 # ---------- CREATE ----------
 @ghg_bp.route("/add", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def add_ghg():
     db_conn = get_db()
     cursor = db_conn.cursor(dictionary=False)
@@ -774,7 +788,7 @@ def add_ghg():
 
 # ---------- UPDATE ----------
 @ghg_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def edit_ghg(id):
     db_conn = get_db()
     cursor = db_conn.cursor(dictionary=False)
@@ -928,6 +942,192 @@ def delete_ghg(id):
         cursor.close()
 
     return redirect(url_for("ghg.list_ghg"))
+
+
+# ---------- AJAX ENDPOINTS FOR INLINE CRUD ----------
+@ghg_bp.route("/api/add", methods=["POST"])
+@editor_required
+def api_add_ghg():
+    """AJAX endpoint for adding a new GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        data = request.get_json()
+        c_id = data.get("country_id")
+        i_id = data.get("ghg_indicator_id")
+        year = data.get("year")
+        indicator_value = data.get("indicator_value")
+        share_of_total_pct = data.get("share_of_total_pct") or None
+        uncertainty_pct = data.get("uncertainty_pct") or None
+        source_notes = data.get("source_notes") or None
+
+        # Validate required fields
+        if not all([c_id, i_id, year, indicator_value is not None]):
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+        # Convert empty strings to None
+        if share_of_total_pct == "":
+            share_of_total_pct = None
+        if uncertainty_pct == "":
+            uncertainty_pct = None
+
+        # Insert new record
+        insert_query = """
+            INSERT INTO greenhouse_emissions 
+            (country_id, ghg_indicator_id, year, indicator_value, 
+             share_of_total_pct, uncertainty_pct, source_notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(
+            insert_query,
+            (c_id, i_id, year, indicator_value, share_of_total_pct, uncertainty_pct, source_notes),
+        )
+        new_row_id = cursor.lastrowid
+
+        # Fetch the created record with related data
+        cursor.execute("""
+            SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
+                   g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
+                   c.country_name, c.country_code, c.region,
+                   i.indicator_name, i.unit_symbol
+            FROM greenhouse_emissions g
+            JOIN countries c ON g.country_id = c.country_id
+            JOIN ghg_indicator_details i ON g.ghg_indicator_id = i.ghg_indicator_id
+            WHERE g.row_id = %s
+        """, (new_row_id,))
+        record = cursor.fetchone()
+
+        db_conn.commit()
+        return jsonify({"success": True, "record": record}), 201
+
+    except IntegrityError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": "This country + indicator + year combination already exists!"}), 400
+    except MySQLError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+@ghg_bp.route("/api/edit/<int:id>", methods=["POST"])
+@editor_required
+def api_edit_ghg(id):
+    """AJAX endpoint for editing an existing GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        data = request.get_json()
+        indicator_value = data.get("indicator_value")
+        share_val = data.get("share_of_total_pct")
+        uncertainty_val = data.get("uncertainty_pct")
+        year = data.get("year")
+        source_notes = data.get("source_notes") or None
+
+        share_of_total_pct = int(share_val) if share_val and str(share_val).strip() else None
+        uncertainty_pct = int(uncertainty_val) if uncertainty_val and str(uncertainty_val).strip() else None
+
+        # Validate required fields
+        if indicator_value is None or year is None:
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+        # Update record
+        update_query = """
+            UPDATE greenhouse_emissions
+            SET indicator_value = %s,
+                share_of_total_pct = %s,
+                uncertainty_pct = %s,
+                year = %s,
+                source_notes = %s
+            WHERE row_id = %s
+        """
+        cursor.execute(
+            update_query,
+            (indicator_value, share_of_total_pct, uncertainty_pct, year, source_notes, id),
+        )
+
+        # Fetch the updated record with related data
+        cursor.execute("""
+            SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
+                   g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
+                   c.country_name, c.country_code, c.region,
+                   i.indicator_name, i.unit_symbol
+            FROM greenhouse_emissions g
+            JOIN countries c ON g.country_id = c.country_id
+            JOIN ghg_indicator_details i ON g.ghg_indicator_id = i.ghg_indicator_id
+            WHERE g.row_id = %s
+        """, (id,))
+        record = cursor.fetchone()
+
+        if not record:
+            return jsonify({"success": False, "error": "Record not found"}), 404
+
+        db_conn.commit()
+        return jsonify({"success": True, "record": record}), 200
+
+    except MySQLError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+@ghg_bp.route("/api/delete/<int:id>", methods=["POST"])
+@admin_required
+def api_delete_ghg(id):
+    """AJAX endpoint for deleting a GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=False)
+
+    try:
+        # Check if record exists
+        cursor.execute("SELECT row_id FROM greenhouse_emissions WHERE row_id = %s", (id,))
+        if not cursor.fetchone():
+            return jsonify({"success": False, "error": "Record not found"}), 404
+
+        # Delete record
+        cursor.execute("DELETE FROM greenhouse_emissions WHERE row_id = %s", (id,))
+        db_conn.commit()
+        return jsonify({"success": True}), 200
+
+    except MySQLError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+@ghg_bp.route("/api/get/<int:id>", methods=["GET"])
+@editor_required
+def api_get_ghg(id):
+    """AJAX endpoint for fetching a single GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
+                   g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
+                   c.country_name, c.country_code, c.region,
+                   i.indicator_name, i.unit_symbol
+            FROM greenhouse_emissions g
+            JOIN countries c ON g.country_id = c.country_id
+            JOIN ghg_indicator_details i ON g.ghg_indicator_id = i.ghg_indicator_id
+            WHERE g.row_id = %s
+        """, (id,))
+        record = cursor.fetchone()
+
+        if not record:
+            return jsonify({"success": False, "error": "Record not found"}), 404
+
+        return jsonify({"success": True, "record": record}), 200
+
+    except MySQLError as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
 
 
 # ---------- MAP VISUALIZATION ----------
