@@ -268,6 +268,81 @@
     background-color: rgba(0, 0, 0, 0.02);
   }
   
+  /* ============================================
+     GHG DOMAIN ONLY - Page & Content Animations
+     ============================================ */
+  
+  /* A2) Hover micro-interactions (GHG only) */
+  .table tbody tr:not(.no-data):not(.disabled) {
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+  
+  .table tbody tr:not(.no-data):not(.disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+  
+  /* Action buttons hover */
+  .btn-group .btn,
+  .table .btn-sm {
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+  
+  .btn-group .btn:hover:not(:disabled),
+  .table .btn-sm:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* Disabled / no-data rows */
+  .table tbody tr.no-data,
+  .table tbody tr.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .table tbody tr.no-data:hover,
+  .table tbody tr.disabled:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  /* A3) Accordion animations (GHG only) */
+  .detail-row {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
+  }
+  
+  .detail-row.show {
+    max-height: 2000px;
+    opacity: 1;
+    transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
+  }
+  
+  /* A4) Trend icon animation (GHG only) - fade-in + slide on first render */
+  .trend-indicator {
+    animation: trendFadeIn 0.4s ease-out;
+    animation-fill-mode: both;
+  }
+  
+  @keyframes trendFadeIn {
+    0% {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Stagger animation delay for multiple trend indicators */
+  .trend-indicator:nth-child(1) { animation-delay: 0.05s; }
+  .trend-indicator:nth-child(2) { animation-delay: 0.1s; }
+  .trend-indicator:nth-child(3) { animation-delay: 0.15s; }
+  
   .table-striped > tbody > tr:nth-of-type(even) > td {
     background-color: rgba(0, 0, 0, 0.01);
   }
@@ -1053,12 +1128,18 @@ function toggleDetails(key) {
   const isExpanded = detailRow.getAttribute('data-expanded') === 'true';
   
   if (isExpanded) {
-    // Collapse
+    // Collapse - use CSS transitions
     detailRow.classList.remove('show');
     detailRow.setAttribute('data-expanded', 'false');
-    detailRow.style.display = 'none';
     icon.classList.remove('fa-chevron-down');
     icon.classList.add('fa-chevron-right');
+    
+    // Hide after transition completes
+    setTimeout(() => {
+      if (detailRow.getAttribute('data-expanded') === 'false') {
+        detailRow.style.display = 'none';
+      }
+    }, 250);
     
     // Destroy chart if exists
     if (chartInstances[key]) {
@@ -1066,15 +1147,19 @@ function toggleDetails(key) {
       delete chartInstances[key];
     }
     } else {
-    // Expand
+    // Expand - use CSS transitions
+    detailRow.style.display = 'table-row';
+    // Force reflow to ensure display is set before adding show class
+    detailRow.offsetHeight;
     detailRow.classList.add('show');
     detailRow.setAttribute('data-expanded', 'true');
-    detailRow.style.display = 'table-row';
     icon.classList.remove('fa-chevron-right');
     icon.classList.add('fa-chevron-down');
     
-    // Render chart if data exists
-    renderChart(key);
+    // Render chart if data exists (after a short delay for smooth transition)
+    setTimeout(() => {
+      renderChart(key);
+    }, 100);
   }
 }
 
@@ -1207,6 +1292,36 @@ function renderChart(key) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: {
+        duration: 1200,
+        easing: 'easeOutQuart',
+        x: {
+          from: 0
+        },
+        y: {
+          from: 0
+        }
+      },
+      animations: {
+        x: {
+          type: 'number',
+          easing: 'easeOutQuart',
+          duration: 1200,
+          from: NaN
+        },
+        y: {
+          type: 'number',
+          easing: 'easeOutQuart',
+          duration: 1200,
+          from: NaN
+        },
+        points: {
+          type: 'number',
+          easing: 'easeOutQuart',
+          duration: 1200,
+          from: 0
+        }
+      },
       plugins: {
         legend: {
           display: true,
@@ -1532,6 +1647,36 @@ document.addEventListener('DOMContentLoaded', function() {
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          animation: {
+            duration: 1200,
+            easing: 'easeOutQuart',
+            x: {
+              from: 0
+            },
+            y: {
+              from: 0
+            }
+          },
+          animations: {
+            x: {
+              type: 'number',
+              easing: 'easeOutQuart',
+              duration: 1200,
+              from: NaN
+            },
+            y: {
+              type: 'number',
+              easing: 'easeOutQuart',
+              duration: 1200,
+              from: NaN
+            },
+            points: {
+              type: 'number',
+              easing: 'easeOutQuart',
+              duration: 1200,
+              from: 0
+            }
+          },
           plugins: {
             legend: {
               display: true,
