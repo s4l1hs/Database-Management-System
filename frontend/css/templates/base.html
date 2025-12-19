@@ -46,38 +46,62 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
 
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0 d-flex flex-wrap align-items-center" style="gap: 8px;">
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint and request.endpoint.startswith('dashboard.') %}active{% endif %}"
-                 href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
+              <a class="nav-pill {% if request.endpoint and request.endpoint.startswith('dashboard.') %}active{% endif %}"
+                 href="{{ url_for('dashboard.dashboard') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="Overview of key indicators and trends">
+                <span class="nav-emoji">📊</span> Dashboard
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint and request.endpoint.startswith('countries.') %}active{% endif %}"
-                 href="{{ url_for('countries.list_countries') }}">Countries</a>
+              <a class="nav-pill {% if request.endpoint and request.endpoint.startswith('countries.') %}active{% endif %}"
+                 href="{{ url_for('countries.list_countries') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="Browse countries and regional data">
+                <span class="nav-emoji">🌍</span> Countries
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint and request.endpoint.startswith('health.') %}active{% endif %}"
-                 href="{{ url_for('health.list_health') }}">Health</a>
+              <a class="nav-pill {% if request.endpoint and request.endpoint.startswith('health.') %}active{% endif %}"
+                 href="{{ url_for('health.list_health') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="Health indicators and statistics">
+                <span class="nav-emoji">🏥</span> Health
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ghg.') %}active{% endif %}"
-                 href="{{ url_for('ghg.list_ghg') }}">GHG Emissions</a>
+              <a class="nav-pill {% if request.endpoint and request.endpoint.startswith('ghg.') %}active{% endif %}"
+                 href="{{ url_for('ghg.list_ghg') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="Greenhouse gas emissions by country and year">
+                <span class="nav-emoji">🌫️</span> GHG Emissions
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint and request.endpoint.startswith('energy.') %}active{% endif %}" 
-                 href="{{ url_for('energy.list_energy') }}">Energy</a>
+              <a class="nav-pill {% if request.endpoint and request.endpoint.startswith('energy.') %}active{% endif %}" 
+                 href="{{ url_for('energy.list_energy') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="Energy consumption and production data">
+                <span class="nav-emoji">⚡</span> Energy
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint and request.endpoint.startswith('freshwater.') %}active{% endif %}"
-                 href="{{ url_for('freshwater.list_freshwater') }}">Freshwater</a>
+              <a class="nav-pill {% if request.endpoint and request.endpoint.startswith('freshwater.') %}active{% endif %}"
+                 href="{{ url_for('freshwater.list_freshwater') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="Freshwater resources and usage">
+                <span class="nav-emoji">💧</span> Freshwater
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint and request.endpoint.startswith('sustainability.') %}active{% endif %}"
-                 href="{{ url_for('sustainability.list_sustainability') }}">Sustainability</a>
+              <a class="nav-pill {% if request.endpoint and request.endpoint.startswith('sustainability.') %}active{% endif %}"
+                 href="{{ url_for('sustainability.list_sustainability') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="Sustainability metrics and environmental indicators">
+                <span class="nav-emoji">🌱</span> Sustainability
+              </a>
             </li>
             <li class="nav-item">
-              <a class="nav-link {% if request.endpoint == 'about.about' %}active{% endif %}"
-                 href="{{ url_for('about.about') }}">About</a>
+              <a class="nav-pill {% if request.endpoint == 'about.about' %}active{% endif %}"
+                 href="{{ url_for('about.about') }}"
+                 data-bs-toggle="tooltip" data-bs-placement="bottom" title="About the project and team">
+                <span class="nav-emoji">ℹ️</span> About
+              </a>
             </li>
           </ul>
 
@@ -95,6 +119,17 @@
                   ID: {{ session.get("student_number") }}
                 </span>
                 <span class="badge bg-warning text-dark ms-2">Admin</span>
+              </li>
+              <li class="nav-item ms-2">
+                <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
+              </li>
+
+            {% elif session.get("team_no") == 2 %}
+              <li class="nav-item me-2">
+                <span class="badge" style="background-color: #e3f2fd; color: #1565c0; padding: 6px 10px; border-radius: 999px; font-weight: 500;">
+                  ID: {{ session.get("student_number") }}
+                </span>
+                <span class="badge bg-info text-dark ms-2">Editor</span>
               </li>
               <li class="nav-item ms-2">
                 <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
@@ -281,6 +316,16 @@
     </script>
 
     {% block extra_js %}{% endblock %}
+
+    <script>
+      // Initialize Bootstrap tooltips for navigation pills
+      document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+          return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+      });
+    </script>
 
   </body>
 </html>
