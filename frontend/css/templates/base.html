@@ -91,22 +91,22 @@
 
             {% if session.get("team_no") == 1 %}
               <li class="nav-item me-2">
-                <span class="navbar-text text-light">
+                <span class="badge" style="background-color: #e3f2fd; color: #1565c0; padding: 6px 10px; border-radius: 999px; font-weight: 500;">
                   ID: {{ session.get("student_number") }}
-                  <span class="badge bg-warning text-dark ms-1">Admin</span>
                 </span>
+                <span class="badge bg-warning text-dark ms-2">Admin</span>
               </li>
-              <li class="nav-item">
+              <li class="nav-item ms-2">
                 <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
               </li>
 
             {% elif session.get("student_number") %}
               <li class="nav-item me-2">
-                <span class="navbar-text text-light">
+                <span class="badge" style="background-color: #e3f2fd; color: #1565c0; padding: 6px 10px; border-radius: 999px; font-weight: 500;">
                   ID: {{ session.get("student_number") }}
                 </span>
               </li>
-              <li class="nav-item">
+              <li class="nav-item ms-2">
                 <a class="nav-link" href="{{ url_for('auth.logout') }}">Logout</a>
               </li>
 
@@ -228,6 +228,56 @@
                     document.getElementById("widget-health").innerText = "Err";
                 });
         }
+
+        // --- Quick access: last visited domain tracking ---
+        (function () {
+          try {
+            const storageKey = 'wdi:lastVisitedDomain';
+            const endpoint = '{{ request.endpoint or "" }}';
+            let domain = null;
+
+            if (endpoint.startsWith('countries.')) domain = 'Countries';
+            else if (endpoint.startsWith('health.')) domain = 'Health';
+            else if (endpoint.startsWith('ghg.')) domain = 'GHG Emissions';
+            else if (endpoint.startsWith('energy.')) domain = 'Energy';
+            else if (endpoint.startsWith('freshwater.')) domain = 'Freshwater';
+            else if (endpoint.startsWith('sustainability.')) domain = 'Sustainability';
+
+            if (domain) {
+              const payload = {
+                domain,
+                url: window.location.pathname + window.location.search
+              };
+              window.localStorage.setItem(storageKey, JSON.stringify(payload));
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+              const primaryBtn = document.getElementById('quick-primary-btn');
+              if (!primaryBtn) return;
+
+              const raw = window.localStorage.getItem(storageKey);
+              if (!raw) return;
+
+              let parsed;
+              try {
+                parsed = JSON.parse(raw);
+              } catch (e) {
+                return;
+              }
+              if (!parsed || !parsed.domain || !parsed.url) return;
+
+              const label = `Continue ${parsed.domain} analysis`;
+              primaryBtn.textContent = label;
+              primaryBtn.href = parsed.url;
+              primaryBtn.setAttribute(
+                'title',
+                `Jump back into your recent ${parsed.domain} exploration.`
+              );
+            });
+          } catch (e) {
+            // Fail silently if localStorage is unavailable
+          }
+        })();
     </script>
 
     {% block extra_js %}{% endblock %}
