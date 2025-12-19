@@ -26,7 +26,7 @@ def create_app():
     # ---------- BLUEPRINTS ----------
     from App.routes.sustainability import sustainability_bp
     from App.routes.about import about_bp
-    from App.routes.login import login_bp
+    from App.routes.login import login_bp, get_current_role
     from App.routes.health import health_bp
     from App.routes.dashboard import dashboard_bp
     from App.routes.freshwater import freshwater_bp
@@ -43,6 +43,20 @@ def create_app():
     app.register_blueprint(freshwater_bp)
     app.register_blueprint(ghg_bp)
     app.register_blueprint(energy_bp)
+
+    # ---------- GLOBAL TEMPLATE CONTEXT ----------
+    @app.context_processor
+    def inject_role():
+        """
+        Expose the current user's role to all templates for UI-level checks.
+        """
+        role = get_current_role()
+        return {
+            "current_role": role,
+            "is_admin": role == "admin",
+            "is_editor": role == "editor",
+            "is_viewer": role == "viewer",
+        }
 
     # ---------- ROOT: first page = login ----------
     @app.route("/")
