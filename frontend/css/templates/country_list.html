@@ -371,7 +371,7 @@
 }
 
     const hint = document.getElementById('modeHint');
-    const regionStatsBox = document.getElementById('regionStats');
+    const regionStatsBox = document.getElementById('region-stats-container');
     document.querySelectorAll('[data-mode]').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
@@ -386,8 +386,7 @@
               : 'Region mode: hover to see the region, click to load region averages.';
             applyRegionColors(mode === 'regions');
             if (mode === 'countries') {
-              regionStatsBox.classList.add('d-none');
-              
+              if (regionStatsBox) regionStatsBox.classList.add('d-none');
               map.clearSelectedRegions();
             }
             const modeLabel = document.getElementById('modeLabel');
@@ -519,10 +518,7 @@ document.getElementById('btn-regions').addEventListener('click', function() {
     applyRegionColors(true); 
 });
 
-document.getElementById('btn-countries').addEventListener('click', function() {
-    mode = 'countries';
-    applyRegionColors(false); 
-});
+// legacy btn-countries listener removed (uses data-mode tabs now)
 
     function showNoDataMessage(text) {
       const el = document.getElementById('noDataMessage');
