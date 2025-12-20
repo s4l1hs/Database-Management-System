@@ -107,12 +107,6 @@
 
           <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
 
-            <li class="nav-item me-3">
-                <a class="btn btn-outline-info btn-sm text-light" href="#" data-bs-toggle="modal" data-bs-target="#worldStatsModal" onclick="loadGlobalStats()">
-                    <i class="fas fa-globe"></i> World Widget
-                </a>
-            </li>
-
             {% if session.get("team_no") == 1 %}
               <li class="nav-item me-2">
                 <span class="badge" style="background-color: #e3f2fd; color: #1565c0; padding: 6px 10px; border-radius: 999px; font-weight: 500;">
@@ -174,96 +168,12 @@
       {% block content %}{% endblock %}
     </div>
 
-    <div class="modal fade" id="worldStatsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="fas fa-globe-americas"></i> World Data Overview</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body bg-light">
-                    <div class="row text-center g-3">
-                        
-                        <div class="col-md-4">
-                            <div class="card shadow-sm h-100 border-0">
-                                <div class="card-body">
-                                    <div class="display-6 text-primary mb-2">
-                                        <i class="fas fa-flag"></i>
-                                    </div>
-                                    <h3 class="card-title fw-bold" id="widget-countries">
-                                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
-                                    </h3>
-                                    <small class="text-muted">Total Countries</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="card shadow-sm h-100 border-0">
-                                <div class="card-body">
-                                    <div class="display-6 text-success mb-2">
-                                        <i class="fas fa-map-marked-alt"></i>
-                                    </div>
-                                    <h3 class="card-title fw-bold" id="widget-regions">
-                                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
-                                    </h3>
-                                    <small class="text-muted">Active Regions</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="card shadow-sm h-100 border-0">
-                                <div class="card-body">
-                                    <div class="display-6 text-danger mb-2">
-                                        <i class="fas fa-heartbeat"></i>
-                                    </div>
-                                    <h3 class="card-title fw-bold" id="widget-health">
-                                        <div class="spinner-border spinner-border-sm text-secondary" role="status"></div>
-                                    </h3>
-                                    <small class="text-muted">Health Data Points</small>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
     ></script>
 
     <script>
-        function loadGlobalStats() {
-          // Always show loading spinners on open
-            const spinner = '<div class="spinner-border spinner-border-sm text-secondary" role="status"></div>';
-            document.getElementById("widget-countries").innerHTML = spinner;
-            document.getElementById("widget-regions").innerHTML = spinner;
-            document.getElementById("widget-health").innerHTML = spinner;
-
-          // Fetch data from API (URL: /countries/api/stats)
-            fetch("{{ url_for('countries.get_global_stats') }}")
-                .then(response => response.json())
-                .then(data => {
-              // Populate widgets
-                    document.getElementById("widget-countries").innerText = data.total_countries || 0;
-                    document.getElementById("widget-regions").innerText = data.total_regions || 0;
-                    document.getElementById("widget-health").innerText = data.total_health || 0;
-                })
-                .catch(err => {
-                    console.error("Widget Error:", err);
-                    document.getElementById("widget-countries").innerText = "Err";
-                    document.getElementById("widget-regions").innerText = "Err";
-                    document.getElementById("widget-health").innerText = "Err";
-                });
-        }
-
         // --- Quick access: last visited domain tracking ---
         (function () {
           try {
