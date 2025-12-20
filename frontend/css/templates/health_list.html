@@ -9,16 +9,16 @@
     <p class="text-muted mb-0 small">
       Country-based health indicators with year and source notes.
     </p>
-  </div>
+  </div> 
 
-  {% if session.get("team_no")|int == 1 %}
+  {# Team 1 veya Team 2 yetkisi varsa Ekle butonunu göster #}
+  {% if session.get("team_no")|int in [1, 2] %}
     <a href="{{ url_for('health.add_health') }}" class="btn btn-primary px-4 shadow-sm border-0" style="background-color: #0d6efd;">
       <i class="fa-solid fa-plus me-2"></i> Add New Record
     </a>
   {% endif %}
 </div>
 
-<!-- FILTER + SORT (GET FORM) -->
 <form
   method="GET"
   action="{{ url_for('health.list_health') }}"
@@ -26,7 +26,6 @@
   style="border-top-color: #0d6efd !important;"
 >
 
-  <!-- Country name search -->
   <div style="flex: 1; min-width: 220px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Country</label>
     <input
@@ -39,7 +38,6 @@
     />
   </div>
 
-  <!-- ISO3 code -->
   <div style="width: 180px; min-width: 180px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Code</label>
     <input
@@ -52,7 +50,6 @@
     />
   </div>
 
-  <!-- Indicator search -->
   <div style="flex: 2; min-width: 260px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Indicator</label>
     <input
@@ -65,7 +62,6 @@
     />
   </div>
 
-  <!-- Year min -->
   <div style="width: 160px; min-width: 160px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Year Min</label>
     <input
@@ -78,7 +74,6 @@
     />
   </div>
 
-  <!-- Year max -->
   <div style="width: 160px; min-width: 160px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Year Max</label>
     <input
@@ -91,7 +86,6 @@
     />
   </div>
 
-  <!-- Only with value -->
   <div style="min-width: 180px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Value Filter</label>
     <div class="form-check">
@@ -109,7 +103,6 @@
     </div>
   </div>
 
-  <!-- Sort By -->
   <div style="flex: 1; min-width: 200px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Sort By</label>
     <select name="sort_by" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
@@ -124,7 +117,6 @@
     </select>
   </div>
 
-  <!-- Order -->
   <div style="flex: 1; min-width: 200px;">
     <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Order</label>
     <select name="order" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
@@ -133,7 +125,6 @@
     </select>
   </div>
 
-  <!-- Buttons -->
   <div class="d-flex gap-2">
     <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" style="border-radius: 8px; height: 41px; background-color: #0d6efd;">
       <i class="fa-solid fa-magnifying-glass me-2"></i>Apply
@@ -158,7 +149,8 @@
         <th class="py-3 border-0">Year</th>
         <th class="py-3 border-0 text-center">Value</th>
         <th class="py-3 border-0">Source Notes</th>
-        {% if session.get("team_no")|int == 1 %}
+        {# Team 1 veya Team 2 yetkisi varsa Başlığı göster #}
+        {% if session.get("team_no")|int in [1, 2] %}
           <th class="py-3 border-0 text-center">Actions</th>
         {% endif %}
       </tr>
@@ -183,7 +175,8 @@
 
           <td class="small text-muted" style="font-size: 0.75rem; font-style: italic;">{{ row.source_notes or '' }}</td>
 
-          {% if session.get("team_no")|int == 1 %}
+          {# Team 1 veya Team 2 yetkisi varsa Düzenle/Sil butonlarını göster #}
+          {% if session.get("team_no")|int in [1, 2] %}
             <td class="text-center">
               <div class="btn-group shadow-sm" role="group">
                 <a
@@ -215,5 +208,4 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- client-side sort kaldırıldı; sorting/filter artık server-side GET ile -->
 {% endblock %}

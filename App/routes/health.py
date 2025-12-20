@@ -10,7 +10,7 @@ from flask import (
     abort,
 )
 from App.db import get_db
-from App.routes.login import admin_required
+from App.routes.login import admin_required, editor_required
 
 health_bp = Blueprint("health", __name__, url_prefix="/health")
 
@@ -144,7 +144,7 @@ def _load_countries_and_indicators():
 
 # 3. CREATE
 @health_bp.route("/add", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def add_health():
     if request.method == "POST":
         db = get_db()
@@ -218,7 +218,7 @@ def add_health():
 
 # 4. UPDATE
 @health_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def edit_health(id):
     db = get_db()
     cur = db.cursor(dictionary=True)
