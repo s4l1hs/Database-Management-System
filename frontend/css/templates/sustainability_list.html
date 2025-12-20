@@ -1,103 +1,165 @@
 {% extends "base.html" %}
-{% block title %}Sustainability Data{% endblock %}
+
+{% block title %}Sustainability Indicators{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-  <h1 class="h3 text-success">🌱 Sustainability Indicators</h1>
-  
+  <div>
+    <h1 class="h3 mb-1 fw-bold text-success">Sustainability Indicators</h1>
+    <p class="text-muted mb-0 small">
+      Country-based sustainability indicators with year and source notes.
+    </p>
+  </div>
+
   {% if session.get("team_no")|int == 1 %}
-  <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-success shadow-sm">
-    <i class="fa-solid fa-plus"></i> Add New Record
-  </a>
+    <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-success px-4 shadow-sm border-0">
+      <i class="fa-solid fa-plus me-2"></i> Add New Record
+    </a>
   {% endif %}
 </div>
 
-<form method="get" class="row g-2 align-items-center mb-3">
-  <div class="col-auto">
-    <input type="text" name="country" class="form-control" placeholder="Country filter" value="{{ current_country or '' }}">
+<form
+  method="GET"
+  action="{{ url_for('sustainability.list_sustainability') }}"
+  class="d-flex flex-wrap gap-3 mb-4 p-4 bg-white shadow-sm rounded border-top border-success border-4 align-items-end"
+  style="border-top-color: #198754 !important;"
+>
+  <div style="flex: 1; min-width: 220px;">
+    <label class="form-label fw-bold text-success small text-uppercase" style="letter-spacing: 0.5px;">Country</label>
+    <input
+      type="text"
+      name="country"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Country name"
+      value="{{ current_country or '' }}"
+    />
   </div>
-  <div class="col-auto">
-    <input type="number" name="year" class="form-control" placeholder="Year" value="{{ current_year or '' }}">
+
+  <div style="width: 180px; min-width: 180px;">
+    <label class="form-label fw-bold text-success small text-uppercase" style="letter-spacing: 0.5px;">Region</label>
+    <input
+      type="text"
+      name="region"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Region"
+      value="{{ current_region or '' }}"
+    />
   </div>
-  <div class="col-auto">
-    <select name="sort_by" class="form-select">
-      {% for key,label in sort_options %}
-        <option value="{{ key }}" {% if key==current_sort %}selected{% endif %}>Sort: {{ label }}</option>
-      {% endfor %}
+
+  <div style="flex: 2; min-width: 260px;">
+    <label class="form-label fw-bold text-success small text-uppercase" style="letter-spacing: 0.5px;">Indicator</label>
+    <input
+      type="text"
+      name="indicator"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Indicator name"
+      value="{{ current_indicator or '' }}"
+    />
+  </div>
+
+  <div style="width: 160px; min-width: 160px;">
+    <label class="form-label fw-bold text-success small text-uppercase" style="letter-spacing: 0.5px;">Year</label>
+    <input
+      type="number"
+      name="year"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Year"
+      value="{{ current_year or '' }}"
+    />
+  </div>
+
+  <div style="flex: 1; min-width: 200px;">
+    <label class="form-label fw-bold text-success small text-uppercase" style="letter-spacing: 0.5px;">Sort By</label>
+    <select name="sort_by" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
+      <option value="data_id" {% if current_sort_by == 'data_id' %}selected{% endif %}>ID</option>
+      <option value="country" {% if current_sort_by == 'country' %}selected{% endif %}>Country</option>
+      <option value="region" {% if current_sort_by == 'region' %}selected{% endif %}>Region</option>
+      <option value="indicator" {% if current_sort_by == 'indicator' %}selected{% endif %}>Indicator</option>
+      <option value="year" {% if current_sort_by == 'year' %}selected{% endif %}>Year</option>
+      <option value="value" {% if current_sort_by == 'value' %}selected{% endif %}>Value</option>
+      <option value="source_note" disabled>Source Note</option>
     </select>
   </div>
-  <div class="col-auto">
-    <select name="order" class="form-select">
-      <option value="asc" {% if current_order=='asc' %}selected{% endif %}>Ascending</option>
-      <option value="desc" {% if current_order=='desc' %}selected{% endif %}>Descending</option>
+
+  <div style="flex: 1; min-width: 200px;">
+    <label class="form-label fw-bold text-success small text-uppercase" style="letter-spacing: 0.5px;">Order</label>
+    <select name="order" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
+      <option value="asc" {% if current_order == 'asc' %}selected{% endif %}>Ascending</option>
+      <option value="desc" {% if current_order == 'desc' %}selected{% endif %}>Descending</option>
     </select>
   </div>
-  <div class="col-auto">
-    <button class="btn btn-primary" type="submit"><i class="fa-solid fa-filter"></i> Apply</button>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-success px-4 fw-bold shadow-sm" style="border-radius: 8px; height: 41px; background-color: #198754;">
+      <i class="fa-solid fa-magnifying-glass me-2"></i>Apply
+    </button>
+
+    <a href="{{ url_for('sustainability.list_sustainability') }}" class="btn btn-outline-secondary px-4 fw-bold shadow-sm" style="border-radius: 8px; height: 41px;">
+      Reset
+    </a>
   </div>
 </form>
 
-<div class="card shadow-sm">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle mb-0">
-        <thead class="table-success">
-          <tr>
-            <th>Country</th>
-            <th>Region</th>
-            <th>Indicator</th>
-            <th>Year</th>
-            <th>Value</th>
-            <th>Source Note</th>
-            {% if session.get("team_no")|int == 1 %}
-            <th class="text-end">Actions</th>
-            {% endif %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-          <tr>
-            <td>
-              <strong>{{ row.country_name }}</strong>
+<div class="table-responsive shadow-sm rounded border">
+  <table class="table table-hover align-middle mb-0 bg-white">
+    <thead style="background-color: #198754; color: white;">
+      <tr>
+        <th class="py-3 ps-3 border-0">#</th>
+        <th class="py-3 border-0">Country</th>
+        <th class="py-3 border-0">Region</th>
+        <th class="py-3 border-0">Indicator</th>
+        <th class="py-3 border-0 text-center">Year</th>
+        <th class="py-3 border-0 text-center">Value</th>
+        <th class="py-3 border-0">Source Note</th>
+        {% if session.get("team_no")|int == 1 %}
+          <th class="py-3 border-0 text-center">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr class="border-bottom">
+          <td class="ps-3 fw-semibold text-muted">{{ row.data_id }}</td>
+          <td class="fw-bold text-dark">{{ row.country_name }}</td>
+          <td><span class="badge rounded-pill bg-info text-dark fw-normal px-3" style="background-color: #e0f2fe !important; border: 1px solid #bae6fd;">{{ row.region or '-' }}</span></td>
+          <td style="max-width: 250px;" class="text-wrap small text-secondary">{{ row.indicator_name }}</td>
+          <td class="text-center">{{ row.year }}</td>
+          <td class="fw-bold text-success text-center">{{ row.indicator_value }}</td>
+          <td class="small text-muted" style="font-size: 0.75rem; font-style: italic;">{{ row.source_note or '' }}</td>
+          {% if session.get("team_no")|int == 1 %}
+            <td class="text-center">
+              <div class="btn-group shadow-sm" role="group">
+                <a
+                  href="{{ url_for('sustainability.edit_sustainability', id=row.data_id) }}"
+                  class="btn btn-sm btn-outline-success"
+                  style="border-top-left-radius: 6px; border-bottom-left-radius: 6px;"
+                >
+                  Edit
+                </a>
+
+                <form
+                  action="{{ url_for('sustainability.delete_sustainability', id=row.data_id) }}"
+                  method="post"
+                  style="display:inline-block"
+                  onsubmit="return confirm('Delete this record?');"
+                >
+                  <button type="submit" class="btn btn-sm btn-outline-danger" style="border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-left: 0;">
+                    Delete
+                  </button>
+                </form>
+              </div>
             </td>
-            <td>
-              <span class="badge bg-light text-dark border">{{ row.region }}</span>
-            </td>
-            <td title="{{ row.indicator_code }}">
-              {{ row.indicator_name|truncate(50) }}
-            </td>
-            <td>{{ row.year }}</td>
-            <td class="fw-bold text-success">{{ row.indicator_value }}</td>
-            <td><small class="text-muted">{{ row.source_note or '-' }}</small></td>
-            
-            {% if session.get("team_no")|int == 1 %}
-            <td class="text-end">
-              <a href="{{ url_for('sustainability.edit_sustainability', id=row.data_id) }}" 
-                 class="btn btn-sm btn-outline-warning me-1" title="Edit">
-                <i class="fa-solid fa-pen"></i>
-              </a>
-              
-              <form action="{{ url_for('sustainability.delete_sustainability', id=row.data_id) }}" 
-                    method="post" class="d-inline" 
-                    onsubmit="return confirm('Are you sure you want to delete this record?');">
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </form>
-            </td>
-            {% endif %}
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="7" class="text-center py-4 text-muted">
-              No sustainability data found. 
-              {% if session.get("team_no")|int == 1 %}Start by adding a new record.{% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 </div>
+{% endblock %}
+
+{% block extra_js %}
 {% endblock %}
