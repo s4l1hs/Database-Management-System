@@ -98,9 +98,33 @@ def list_sustainability():
     cur.execute(base_sql, params)
     rows = cur.fetchall()
 
+    # Build grouped summary: one row per country + year
+    grouped = {}
+    for r in rows:
+        key = f"{r['country_id']}-{r['year']}"
+        grouped.setdefault(key, {'country_id': r['country_id'], 'country_name': r['country_name'], 'country_code': r.get('country_code'), 'region': r.get('region'), 'year': r['year'], 'details': []})
+        grouped[key]['details'].append(r)
+
+    # summary_rows is a list of country-year summaries
+    summary_rows = []
+    for key, g in grouped.items():
+        summary_rows.append({
+            'key': key,
+            'country_id': g['country_id'],
+            'country_name': g['country_name'],
+            'country_code': g.get('country_code'),
+            'region': g.get('region'),
+            'year': g['year'],
+            'count': len(g['details'])
+        })
+
+    # Keep original rows grouped for detail rendering
+    details_map = {k: v['details'] for k, v in grouped.items()}
+
     return render_template(
         "sustainability_list.html",
-        rows=rows,
+        summary_rows=summary_rows,
+        details_map=details_map,
         current_country=country_name,
         current_year=year,
         current_code=country_code,
