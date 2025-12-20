@@ -68,8 +68,8 @@
         <h6>Countries</h6>
         <i class="fa-solid fa-flag text-primary"></i>
       </div>
-      <div class="value">{{ rows|length }}</div>
-      <small>Total in view</small>
+      <div class="value">{{ total_count }}</div>
+      <small>Total countries</small>
     </div>
   </div>
   <div class="col-md-4">
@@ -130,18 +130,7 @@
 
     <div class="tab-content">
       <div class="tab-pane fade show active" id="panel-countries" role="tabpanel">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <div class="d-flex align-items-center gap-2">
-            {% set prev_disabled = (current_page <= 1) if current_page is defined else false %}
-            {% set next_disabled = (current_page >= total_pages) if current_page is defined and total_pages is defined else false %}
-            <a href="{% if not prev_disabled %}{{ url_for('countries.list_countries', page=(current_page-1), q=search) }}{% else %}#{% endif %}"
-               class="btn btn-sm btn-outline-secondary {% if prev_disabled %}disabled{% endif %}">Prev</a>
-            <div id="pageInfo" class="small text-muted">{% if current_page is defined and total_pages is defined %}{{ current_page }} / {{ total_pages }}{% else %}1 / 1{% endif %}</div>
-            <a href="{% if not next_disabled %}{{ url_for('countries.list_countries', page=(current_page+1), q=search) }}{% else %}#{% endif %}"
-               class="btn btn-sm btn-outline-secondary {% if next_disabled %}disabled{% endif %}">Next</a>
-          </div>
-        </div>
-        <div class="table-responsive panel-soft p-2">
+        <div class="table-responsive panel-soft p-2" style="max-height: 600px; overflow-y: auto;">
           <table class="table table-hover align-middle mb-0">
             <thead>
               <tr>
@@ -162,7 +151,7 @@
                   data-country-name="{{ row.country_name }}"
                   data-has-data="{{ 1 if has_data else 0 }}"
                 >
-                  <td>{{ row.country_id }}</td>
+                  <td>{{ loop.index }}</td>
                   <td class="fw-semibold">{{ row.country_name }}</td>
                   <td><span class="badge bg-primary">{{ row.country_code }}</span></td>
                   <td><span class="badge badge-soft">{{ row.region or '-' }}</span></td>
