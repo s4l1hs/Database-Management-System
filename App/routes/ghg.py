@@ -36,7 +36,6 @@ def list_ghg():
     db_conn = get_db()
     cursor = db_conn.cursor(dictionary=True)
 
-    # For modal dropdowns – ensure variables always exist
     countries = []
     indicators = []
 
@@ -59,10 +58,7 @@ def list_ghg():
 
         where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
-        # If latest_year_only is enabled, filter to show only the latest year per country
         if latest_year_only:
-            # Add a condition to match only the latest year for each country
-            # This uses a correlated subquery to find the max year per country
             latest_year_condition = """
                 AND g.year = (
                     SELECT MAX(g2.year)
@@ -72,10 +68,6 @@ def list_ghg():
             """
             where_sql = f"{where_sql} {latest_year_condition}"
 
-        # Aggregate query: Get summary data grouped by (country, year)
-        # This ensures exactly one row per unique (country, year) combination
-        # Using a subquery approach to ensure proper aggregation
-        # Indicator IDs: 1=Total GHG, 5=CO2 Total, 6=CO2 per capita
         query = f"""
             SELECT 
                 country_id,
@@ -103,9 +95,6 @@ def list_ghg():
         """
         
 
-        # Sorting with NULL handling - NULL values always at bottom
-        # Only allow sorting on meaningful numeric columns
-        sortable_numeric_columns = ["total_ghg", "co2_total", "co2_per_capita", "trend"]
         sort_map = {
             "country": "country_name",
             "year": "year",
@@ -113,31 +102,23 @@ def list_ghg():
             "total_ghg": "total_ghg",
             "co2_total": "co2_total",
             "co2_per_capita": "co2_per_capita",
-            "trend": "trend_value"  # Will be calculated in Python after trend computation
+            "trend": "trend_value"
         }
         
-        # For numeric columns, handle NULLs properly - NULL values always at bottom
         if sort_by in ["total_ghg", "co2_total", "co2_per_capita"]:
             sort_column = sort_map.get(sort_by)
             order = "ASC" if sort_order == "asc" else "DESC"
-            # NULL values always at bottom: IS NULL returns 1 for NULL, 0 for non-NULL
-            # So NULLs (1) come after non-NULLs (0) in ascending order
             query += f" ORDER BY {sort_column} IS NULL, {sort_column} {order}"
         elif sort_by == "trend":
-            # Trend sorting will be done in Python after calculation
             query += " ORDER BY country_name ASC"
         else:
-            # Non-numeric columns: country, year, region
             sort_column = sort_map.get(sort_by, "country_name")
             order = "ASC" if sort_order == "asc" else "DESC"
-            # Handle NULLs for region and country (though they shouldn't be NULL, ensure consistency)
             if sort_by in ["region", "country"]:
                 query += f" ORDER BY {sort_column} IS NULL, {sort_column} {order}"
             else:
                 query += f" ORDER BY {sort_column} {order}"
 
-        # Get total count for pagination - count unique (country, year) pairs
-        # Use the same grouping logic as the main query
         count_query = f"""
             SELECT COUNT(*) as total
             FROM (
@@ -154,22 +135,18 @@ def list_ghg():
         total_count = cursor.fetchone()['total']
         total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
 
-        # Apply pagination
         offset = (page - 1) * per_page
         query += f" LIMIT {per_page} OFFSET {offset}"
 
         cursor.execute(query, params)
         raw_rows = cursor.fetchall()
 
-        # Enforce strict uniqueness: Use dictionary to ensure one row per (country, year)
-        # This is a safety measure in case GROUP BY doesn't work as expected
         unique_summary_dict = {}
         for row in raw_rows:
             pair_key = (row['country_id'], row['year'])
             if pair_key not in unique_summary_dict:
                 unique_summary_dict[pair_key] = row
             else:
-                # If duplicate found, merge indicator values (shouldn't happen with proper GROUP BY)
                 existing = unique_summary_dict[pair_key]
                 if row['total_ghg'] is not None and existing['total_ghg'] is None:
                     existing['total_ghg'] = row['total_ghg']
@@ -180,16 +157,11 @@ def list_ghg():
         
         summary_rows = list(unique_summary_dict.values())
         
-        # Calculate trends for each row based on chronological neighbors (previous/next year)
-        # This uses the full historical dataset to find previous/next year values
         country_ids = list(set(row['country_id'] for row in summary_rows))
         
-        # Build a map of all country-year CO2 per capita values from FULL dataset for trend calculation
-        # Structure: {(country_id, year): value}
         full_data_map = {}
         if country_ids:
             placeholders = ','.join(['%s'] * len(country_ids))
-            # Get all CO2 per capita data (indicator_id = 6) for trend calculation
             cursor.execute(f"""
                 SELECT country_id, year, indicator_value
                 FROM greenhouse_emissions
@@ -200,7 +172,6 @@ def list_ghg():
                 key = (data_row['country_id'], data_row['year'])
                 full_data_map[key] = float(data_row['indicator_value'])
         
-        # Get earliest and latest years for UI flags
         country_latest_years_full = {}
         country_earliest_years_full = {}
         if country_ids:
@@ -215,19 +186,16 @@ def list_ghg():
                 country_latest_years_full[data_row['country_id']] = data_row['max_year']
                 country_earliest_years_full[data_row['country_id']] = data_row['min_year']
         
-        # Calculate trends for each summary row based on chronological neighbors
         for row in summary_rows:
             country_id = row['country_id']
             year = row['year']
             trends = {}
             show_trend = False
             
-            # Get current year's CO2 per capita value and convert to float
             current_value_raw = row.get('co2_per_capita')
             current_value = float(current_value_raw) if current_value_raw is not None else None
             
             if current_value is not None:
-                # Try to find previous year (Y-1) - look for the most recent year before current year
                 prev_year = None
                 prev_value = None
                 available_years = sorted([y for (c, y) in full_data_map.keys() if c == country_id], reverse=True)
@@ -237,7 +205,6 @@ def list_ghg():
                         prev_value = full_data_map.get((country_id, y))
                         break
                 
-                # Try to find next year (Y+1) if no previous year exists
                 next_year = None
                 next_value = None
                 if prev_year is None:
@@ -248,9 +215,7 @@ def list_ghg():
                             next_value = full_data_map.get((country_id, y))
                             break
                 
-                # Calculate trend based on comparison
                 if prev_year is not None and prev_value is not None:
-                    # Compare to previous year (backward-looking): (current - previous) / previous
                     change = current_value - prev_value
                     percent = ((change / prev_value) * 100) if prev_value != 0 else None
                     trends['co2_per_capita'] = {
@@ -262,7 +227,6 @@ def list_ghg():
                     }
                     show_trend = True
                 elif next_year is not None and next_value is not None:
-                    # Compare to next year (forward-looking): (next - current) / current
                     change = next_value - current_value
                     percent = ((change / current_value) * 100) if current_value != 0 else None
                     trends['co2_per_capita'] = {
@@ -274,10 +238,8 @@ def list_ghg():
                     }
                     show_trend = True
                 else:
-                    # Only one data point - no comparison possible
                     trends['co2_per_capita'] = None
             else:
-                # No value for current year
                 trends['co2_per_capita'] = None
             
             row['trends'] = trends
@@ -285,13 +247,11 @@ def list_ghg():
             row['is_latest_year'] = country_latest_years_full.get(country_id) == year
             row['is_earliest_year'] = country_earliest_years_full.get(country_id) == year
             
-            # Calculate primary trend value for sorting (use CO2 per capita)
             if trends.get('co2_per_capita') is not None:
                 row['trend_value'] = trends['co2_per_capita'].get('change', 0)
             else:
                 row['trend_value'] = None
         
-        # Get unit symbols for summary indicators (1=Total GHG, 5=CO2 Total, 6=CO2 per capita)
         cursor.execute("""
             SELECT ghg_indicator_id, unit_symbol
             FROM ghg_indicator_details
@@ -299,8 +259,6 @@ def list_ghg():
         """)
         unit_symbols = {row['ghg_indicator_id']: row['unit_symbol'] for row in cursor.fetchall()}
         
-        # Group rows by country for accordion-style display
-        # Organize: {country_id: {country_info, years: [sorted rows]}}
         countries_grouped = {}
         for row in summary_rows:
             country_id = row['country_id']
@@ -314,14 +272,11 @@ def list_ghg():
                 }
             countries_grouped[country_id]['years'].append(row)
         
-        # Sort years within each country (ascending)
         for country_id in countries_grouped:
             countries_grouped[country_id]['years'].sort(key=lambda x: x['year'])
         
-        # Get region averages per year for comparison (B2)
         region_avg_by_year = {}
         if summary_rows:
-            # Get unique regions and years
             regions = list(set(row['region'] for row in summary_rows if row['region']))
             years = list(set(row['year'] for row in summary_rows))
             
@@ -340,38 +295,37 @@ def list_ghg():
                     """, [region] + years)
                     region_avg_by_year[region] = {row['year']: float(row['avg_value']) for row in cursor.fetchall()}
         
-        # Calculate global average CO₂ per capita by year (for global trend chart)
-        # Use indicator ID 6 (CO₂ per capita)
-        # Include ALL available reporting years, regardless of country count
-        global_avg_by_year = []
-        cursor.execute("""
-            SELECT 
-                year,
-                AVG(indicator_value) as avg_value,
-                COUNT(DISTINCT country_id) as country_count
-            FROM greenhouse_emissions
-            WHERE ghg_indicator_id = 6 
-            AND indicator_value IS NOT NULL
-            GROUP BY year
-            ORDER BY year ASC
-        """)
-        global_avg_by_year = [
-            {
-                'year': row['year'],
-                'avg_value': float(row['avg_value']),
-                'country_count': row['country_count']
-            }
-            for row in cursor.fetchall()
-        ]
+        global_avg_by_year = {}
+        cursor.execute("SELECT ghg_indicator_id FROM ghg_indicator_details ORDER BY ghg_indicator_id")
+        all_indicators = cursor.fetchall()
         
-        # Calculate top risers/decliners (B1) - percentage-based changes in CO2 per capita
-        # Use earliest-to-latest comparison for overall change
+        for indicator_row in all_indicators:
+            indicator_id = indicator_row['ghg_indicator_id']
+            cursor.execute("""
+                SELECT 
+                    year,
+                    AVG(indicator_value) as avg_value,
+                    COUNT(DISTINCT country_id) as country_count
+                FROM greenhouse_emissions
+                WHERE ghg_indicator_id = %s 
+                AND indicator_value IS NOT NULL
+                GROUP BY year
+                ORDER BY year ASC
+            """, (indicator_id,))
+            global_avg_by_year[indicator_id] = [
+                {
+                    'year': row['year'],
+                    'avg_value': float(row['avg_value']),
+                    'country_count': row['country_count']
+                }
+                for row in cursor.fetchall()
+            ]
+        
         top_risers = []
         top_decliners = []
         if country_ids and full_data_map:
             risers_decliners = []
             for country_id in country_ids:
-                # Get all years for this country, sorted
                 country_years = sorted([y for (c, y) in full_data_map.keys() if c == country_id])
                 if len(country_years) >= 2:
                     earliest_year = country_years[0]
@@ -381,7 +335,6 @@ def list_ghg():
                     
                     if earliest_value is not None and latest_value is not None and earliest_value != 0:
                         percent_change = ((latest_value - earliest_value) / earliest_value * 100)
-                        # Get country name
                         country_name = next((row['country_name'] for row in summary_rows if row['country_id'] == country_id), 'Unknown')
                         risers_decliners.append({
                             'country_id': country_id,
@@ -391,32 +344,26 @@ def list_ghg():
                             'latest_year': latest_year
                         })
             
-            # Sort and get top 5
             if risers_decliners:
                 risers_decliners.sort(key=lambda x: x['percent_change'], reverse=True)
                 top_risers = risers_decliners[:5]
                 top_decliners = sorted(risers_decliners[-5:], key=lambda x: x['percent_change'])
         
-        # Calculate data coverage per country (D2)
         country_coverage = {}
         for country_id in countries_grouped:
             years_list = countries_grouped[country_id]['years']
             total_years = len(years_list)
-            # Count years with data in the filtered range
             if year_min or year_max:
                 filtered_years = [y for y in years_list if (not year_min or y['year'] >= year_min) and (not year_max or y['year'] <= year_max)]
                 total_years = len(filtered_years)
             country_coverage[country_id] = {
                 'reported': total_years,
-                'total': total_years  # Could be enhanced to show total possible years
+                'total': total_years
             }
         
-        # Apply sorting to country groups
-        # Convert grouped dict to list for sorting
         countries_list = list(countries_grouped.values())
         
         if sort_by == "trend":
-            # Sort by trend value of latest year
             countries_list.sort(
                 key=lambda c: (
                     next((y['trend_value'] is None for y in c['years'] if y.get('is_latest_year')), True),
@@ -435,7 +382,6 @@ def list_ghg():
                 reverse=(sort_order == "desc")
             )
         elif sort_by in ["co2_per_capita", "co2_total", "total_ghg"]:
-            # Sort by latest year value
             def get_latest_value(c, field):
                 latest_year = max(c['years'], key=lambda y: y['year'])
                 return latest_year.get(field) if latest_year.get(field) is not None else float('-inf')
@@ -447,17 +393,15 @@ def list_ghg():
                 ),
                 reverse=(sort_order == "desc")
             )
-        else:  # year or default
+        else:
             countries_list.sort(
                 key=lambda c: max(y['year'] for y in c['years']),
                 reverse=(sort_order == "desc")
             )
 
-        # For each summary row, get detailed indicators
         detailed_data = {}
-        time_series_data = {}  # For chart visualization
+        time_series_data = {}
         
-        # Get total number of indicators for coverage calculation
         cursor.execute("SELECT COUNT(*) as total FROM ghg_indicator_details")
         total_indicators = cursor.fetchone()['total']
         
@@ -466,7 +410,6 @@ def list_ghg():
             year = row['year']
             key = f"{country_id}-{year}"
 
-            # Get all indicators for this country-year pair
             detail_query = """
                 SELECT 
                     g.row_id,
@@ -485,18 +428,13 @@ def list_ghg():
             cursor.execute(detail_query, (country_id, year))
             detailed_data[key] = cursor.fetchall()
             
-            # Calculate data coverage: count indicators with valid data
             coverage_count = sum(1 for detail in detailed_data[key] if detail['indicator_value'] is not None)
             row['data_coverage'] = {
                 'reported': coverage_count,
                 'total': total_indicators
             }
             
-            # Get time-series data for this country (all years)
-            # Only fetch once per unique country_id
-            # Returns metric-agnostic structure for ALL indicators dynamically
             if country_id not in time_series_data:
-                # Get all available indicators from database
                 cursor.execute("""
                     SELECT ghg_indicator_id, indicator_name, unit_symbol
                     FROM ghg_indicator_details
@@ -505,7 +443,6 @@ def list_ghg():
                 all_indicators = cursor.fetchall()
                 indicator_map = {row['ghg_indicator_id']: {'name': row['indicator_name'], 'unit': row['unit_symbol']} for row in all_indicators}
                 
-                # Get all years for this country
                 cursor.execute("""
                     SELECT DISTINCT year
                     FROM greenhouse_emissions
@@ -514,7 +451,6 @@ def list_ghg():
                 """, (country_id,))
                 all_years = [row['year'] for row in cursor.fetchall()]
                 
-                # Build time-series data for each indicator dynamically
                 country_ts_by_indicator = {}
                 for indicator_id, indicator_info in indicator_map.items():
                     cursor.execute("""
@@ -525,7 +461,6 @@ def list_ghg():
                     """, (country_id, indicator_id))
                     indicator_data = {row['year']: row['indicator_value'] for row in cursor.fetchall()}
                     
-                    # Build complete time-series with all years (null for missing years)
                     country_ts_by_indicator[indicator_id] = [
                         {
                             'year': year,
@@ -534,12 +469,10 @@ def list_ghg():
                         for year in all_years
                     ]
                 
-                # Get region for region average calculation
                 cursor.execute("SELECT region FROM countries WHERE country_id = %s", (country_id,))
                 region_result = cursor.fetchone()
                 region_name = region_result['region'] if region_result else None
                 
-                # Get region average time-series for all indicators if region exists
                 region_avg_by_indicator = {}
                 if region_name:
                     for indicator_id in indicator_map.keys():
@@ -575,7 +508,7 @@ def list_ghg():
         countries_list = []
         detailed_data = {}
         time_series_data = {}
-        unit_symbols = {1: 'kt CO₂-eq', 5: 'kt', 6: 't'}  # Default fallback
+        unit_symbols = {1: 'kt CO₂-eq', 5: 'kt', 6: 't'}
         region_avg_by_year = {}
         global_avg_by_year = []
         top_risers = []
@@ -583,22 +516,18 @@ def list_ghg():
         country_coverage = {}
         total_pages = 0
     
-    # Fetch countries, indicators, and students for modal dropdowns
     students = []
     if not countries or not indicators:
         try:
             modal_cursor = db_conn.cursor(dictionary=True)
-            # Fetch countries
             modal_cursor.execute("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")
             countries = modal_cursor.fetchall()
 
-            # Fetch indicators
             modal_cursor.execute(
                 "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
             )
             indicators = modal_cursor.fetchall()
             
-            # Fetch students for audit dropdown
             modal_cursor.execute("SELECT student_id, student_number, full_name FROM students ORDER BY student_number")
             students = modal_cursor.fetchall()
             modal_cursor.close()
@@ -607,7 +536,6 @@ def list_ghg():
             indicators = []
             students = []
     
-    # Close main cursor if it exists
     if 'cursor' in locals() and cursor:
         try:
             cursor.close()
@@ -616,16 +544,16 @@ def list_ghg():
 
     return render_template(
         "ghg_list.html",
-        countries_grouped=countries_list,  # Grouped by country for accordion view
-        summary_rows=summary_rows,  # Keep for backward compatibility
+        countries_grouped=countries_list,
+        summary_rows=summary_rows,
         detailed_data=detailed_data,
         time_series_data=time_series_data,
-        unit_symbols=unit_symbols,  # Pass unit symbols: {1: 'kt CO₂-eq', 5: 'kt', 6: 't'}
-        region_avg_by_year=region_avg_by_year,  # For region comparison (B2)
-        global_avg_by_year=global_avg_by_year,  # Global average CO₂ per capita by year
-        top_risers=top_risers,  # Top 5 increases (B1)
-        top_decliners=top_decliners,  # Top 5 decreases (B1)
-        country_coverage=country_coverage,  # Data coverage per country (D2)
+        unit_symbols=unit_symbols,
+        region_avg_by_year=region_avg_by_year,
+        global_avg_by_year=global_avg_by_year,
+        top_risers=top_risers,
+        top_decliners=top_decliners,
+        country_coverage=country_coverage,
         current_country=country_name,
         current_year_min=year_min,
         current_year_max=year_max,
@@ -635,9 +563,9 @@ def list_ghg():
         page=page,
         total_pages=total_pages,
         per_page=per_page,
-        countries=countries,  # For modal dropdown
-        indicators=indicators,  # For modal dropdown
-        students=students,  # For audit dropdown
+        countries=countries,
+        indicators=indicators,
+        students=students,
     )
 
 
@@ -687,13 +615,11 @@ def add_ghg():
             source_notes = request.form.get("source_notes") or None
             student_id = request.form.get("student_id") or None
 
-            # Convert empty strings to None
             if share_of_total_pct == "":
                 share_of_total_pct = None
             if uncertainty_pct == "":
                 uncertainty_pct = None
 
-            # Insert new record
             insert_query = """
                 INSERT INTO greenhouse_emissions 
                 (country_id, ghg_indicator_id, year, indicator_value, 
@@ -714,7 +640,6 @@ def add_ghg():
             )
             new_row_id = cursor.lastrowid
 
-            # Audit log
             if student_id:
                 audit_query = """
                     INSERT INTO audit_logs 
@@ -743,9 +668,7 @@ def add_ghg():
         finally:
             cursor.close()
 
-    # GET request - fetch dropdown data
     try:
-        # Fetch countries
         cursor.execute("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")
         countries_data = cursor.fetchall()
         countries = [
@@ -753,7 +676,6 @@ def add_ghg():
             for row in countries_data
         ]
 
-        # Fetch indicators
         cursor.execute(
             "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
         )
@@ -765,7 +687,6 @@ def add_ghg():
             for row in indicators_data
         ]
 
-        # Fetch students
         cursor.execute("SELECT student_id, student_number, full_name FROM students ORDER BY student_number")
         students_data = cursor.fetchall()
         students = [
@@ -811,7 +732,6 @@ def edit_ghg(id):
             source_notes = request.form.get("source_notes") or None
             student_id = request.form.get("student_id") or None
 
-            # Update record
             update_query = """
                 UPDATE greenhouse_emissions
                 SET indicator_value = %s,
@@ -826,7 +746,6 @@ def edit_ghg(id):
                 (indicator_value, share_of_total_pct, uncertainty_pct, year, source_notes, id),
             )
 
-            # Audit log
             if student_id:
                 audit_query = """
                     INSERT INTO audit_logs 
@@ -850,9 +769,7 @@ def edit_ghg(id):
         finally:
             cursor.close()
 
-    # GET request - fetch record and dropdown data
     try:
-        # Fetch the record
         cursor.execute(
             """
             SELECT row_id, country_id, ghg_indicator_id, indicator_value,
@@ -878,7 +795,6 @@ def edit_ghg(id):
             source_notes=record_data[7],
         )
 
-        # Fetch countries
         cursor.execute("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")
         countries_data = cursor.fetchall()
         countries = [
@@ -886,7 +802,6 @@ def edit_ghg(id):
             for row in countries_data
         ]
 
-        # Fetch indicators
         cursor.execute(
             "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
         )
@@ -898,7 +813,6 @@ def edit_ghg(id):
             for row in indicators_data
         ]
 
-        # Fetch students
         cursor.execute("SELECT student_id, student_number, full_name FROM students ORDER BY student_number")
         students_data = cursor.fetchall()
         students = [
@@ -932,12 +846,10 @@ def delete_ghg(id):
     cursor = db_conn.cursor(dictionary=False)
 
     try:
-        # Check if record exists
         cursor.execute("SELECT row_id FROM greenhouse_emissions WHERE row_id = %s", (id,))
         if not cursor.fetchone():
             abort(404)
 
-        # Delete record
         cursor.execute("DELETE FROM greenhouse_emissions WHERE row_id = %s", (id,))
         db_conn.commit()
         flash("Record deleted successfully.", "success")
@@ -970,11 +882,9 @@ def api_add_ghg():
         source_notes = data.get("source_notes") or None
         audit_user_id = data.get("audit_user_id") or None
 
-        # Validate required fields
         if not all([c_id, i_id, year, indicator_value is not None]):
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        # Convert empty strings to None
         if share_of_total_pct == "":
             share_of_total_pct = None
         if uncertainty_pct == "":
@@ -982,7 +892,6 @@ def api_add_ghg():
         if audit_user_id == "":
             audit_user_id = None
 
-        # Insert new record
         insert_query = """
             INSERT INTO greenhouse_emissions 
             (country_id, ghg_indicator_id, year, indicator_value, 
@@ -995,7 +904,6 @@ def api_add_ghg():
         )
         new_row_id = cursor.lastrowid
 
-        # Create audit log entry if user is selected
         if audit_user_id:
             try:
                 cursor.execute("""
@@ -1004,10 +912,8 @@ def api_add_ghg():
                     VALUES (%s, %s, %s, %s)
                 """, (audit_user_id, "CREATE", "greenhouse_emissions", new_row_id))
             except MySQLError:
-                # Audit log failure should not break the main operation
                 pass
 
-        # Fetch the created record with related data
         cursor.execute("""
             SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
                    g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
@@ -1054,11 +960,9 @@ def api_edit_ghg(id):
         if audit_user_id == "":
             audit_user_id = None
 
-        # Validate required fields
         if indicator_value is None or year is None:
             return jsonify({"success": False, "error": "Missing required fields"}), 400
 
-        # Update record
         update_query = """
             UPDATE greenhouse_emissions
             SET indicator_value = %s,
@@ -1073,7 +977,6 @@ def api_edit_ghg(id):
             (indicator_value, share_of_total_pct, uncertainty_pct, year, source_notes, id),
         )
 
-        # Create audit log entry if user is selected
         if audit_user_id:
             try:
                 cursor.execute("""
@@ -1082,10 +985,8 @@ def api_edit_ghg(id):
                     VALUES (%s, %s, %s, %s)
                 """, (audit_user_id, "UPDATE", "greenhouse_emissions", id))
             except MySQLError:
-                # Audit log failure should not break the main operation
                 pass
 
-        # Fetch the updated record with related data
         cursor.execute("""
             SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
                    g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
@@ -1119,21 +1020,17 @@ def api_delete_ghg(id):
     cursor = db_conn.cursor(dictionary=True)
 
     try:
-        # Check if record exists
         cursor.execute("SELECT row_id FROM greenhouse_emissions WHERE row_id = %s", (id,))
         if not cursor.fetchone():
             return jsonify({"success": False, "error": "Record not found"}), 404
 
-        # Get audit user ID if provided
         data = request.get_json() or {}
         audit_user_id = data.get("audit_user_id") or None
         if audit_user_id == "":
             audit_user_id = None
 
-        # Delete record
         cursor.execute("DELETE FROM greenhouse_emissions WHERE row_id = %s", (id,))
 
-        # Create audit log entry if user is selected
         if audit_user_id:
             try:
                 cursor.execute("""
@@ -1142,7 +1039,6 @@ def api_delete_ghg(id):
                     VALUES (%s, %s, %s, %s)
                 """, (audit_user_id, "DELETE", "greenhouse_emissions", id))
             except MySQLError:
-                # Audit log failure should not break the main operation
                 pass
 
         db_conn.commit()
@@ -1189,27 +1085,20 @@ def api_get_ghg(id):
 # ---------- MAP VISUALIZATION ----------
 @ghg_bp.route("/map", methods=["GET"])
 def map_ghg():
-    """Display map visualization for GHG data with Country Mode and Region Mode.
-    All region information is derived exclusively from the countries.region column."""
-    # Get available years and indicators for filters
+    """Display map visualization for GHG data with Country Mode and Region Mode."""
     db = get_db()
     cursor = db.cursor(dictionary=True)
     
     try:
-        # Get available years
         cursor.execute("SELECT DISTINCT year FROM greenhouse_emissions ORDER BY year DESC")
         years = [row['year'] for row in cursor.fetchall()]
         
-        # Get available indicators
         cursor.execute("SELECT ghg_indicator_id, indicator_name FROM ghg_indicator_details ORDER BY ghg_indicator_id")
         indicators = cursor.fetchall()
         
-        # Get unique regions from countries table (single source of truth)
         cursor.execute("SELECT DISTINCT region FROM countries WHERE region IS NOT NULL ORDER BY region")
         regions = [row['region'] for row in cursor.fetchall()]
         
-        # Get country-to-region mapping from countries table
-        # This will be used to map ISO2 codes to regions for the map
         cursor.execute("""
             SELECT 
                 country_code,
@@ -1244,11 +1133,10 @@ def map_ghg():
 
 @ghg_bp.route("/api/region-stats", methods=["GET"])
 def get_region_ghg_stats():
-    """Return aggregated GHG stats for a given region, year, and indicator.
-    Only counts countries with valid data in the aggregation."""
+    """Return aggregated GHG stats for a given region, year, and indicator."""
     region = request.args.get("region", type=str)
     year = request.args.get("year", type=int)
-    indicator_id = request.args.get("indicator_id", type=int, default=6)  # Default: CO2 per capita
+    indicator_id = request.args.get("indicator_id", type=int, default=6)
     
     if not region:
         abort(400, description="region parameter is required")
@@ -1257,7 +1145,6 @@ def get_region_ghg_stats():
     cursor = db.cursor(dictionary=True)
     
     try:
-        # Build WHERE clause
         where_clauses = ["c.region = %s", "g.ghg_indicator_id = %s"]
         params = [region, indicator_id]
         
@@ -1267,10 +1154,6 @@ def get_region_ghg_stats():
         
         where_sql = " AND ".join(where_clauses)
         
-        # Get aggregated region data
-        # CRITICAL: Only count countries that have valid (non-NULL) data
-        # This ensures averages are calculated by dividing by the number of contributing countries,
-        # not by the total number of countries in the region
         query = f"""
             SELECT 
                 c.region,
@@ -1303,7 +1186,6 @@ def get_region_ghg_stats():
                 "countries": []
             })
         
-        # Get indicator name
         cursor.execute(
             "SELECT indicator_name, unit_symbol FROM ghg_indicator_details WHERE ghg_indicator_id = %s",
             (indicator_id,)
