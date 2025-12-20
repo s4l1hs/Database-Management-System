@@ -18,8 +18,19 @@ health_bp = Blueprint("health", __name__, url_prefix="/health")
 # 1. READ  (LIST + FILTER)
 @health_bp.route("/", methods=["GET"])
 def list_health():
+    
     country_name = request.args.get("country", type=str)
-    year = request.args.get("year", type=int)
+    country_code = request.args.get("code", type=str)
+    indicator_name = request.args.get("indicator", type=str)
+
+    year_min = request.args.get("year_min", type=int)
+    year_max = request.args.get("year_max", type=int)
+
+    has_value = request.args.get("has_value", default=0, type=int)  # 1 => only non-null
+
+    sort_by = request.args.get("sort_by", default="row_id", type=str)
+    order = request.args.get("order", default="asc", type=str)
+    order = "desc" if order and order.lower() == "desc" else "asc"
 
     db = get_db()
     cur = db.cursor(dictionary=True)
@@ -38,10 +49,8 @@ def list_health():
             h.indicator_name,
             h.unit_symbol
         FROM health_system hs
-        JOIN countries c
-            ON c.country_id = hs.country_id
-        JOIN health_indicator_details h
-            ON h.health_indicator_id = hs.health_indicator_id
+        JOIN countries c ON c.country_id = hs.country_id
+        JOIN health_indicator_details h ON h.health_indicator_id = hs.health_indicator_id
     """
 
     conditions = []
@@ -51,24 +60,63 @@ def list_health():
         conditions.append("c.country_name LIKE %s")
         params.append(f"%{country_name}%")
 
-    if year:
-        conditions.append("hs.year = %s")
-        params.append(year)
+    if country_code:
+        conditions.append("c.country_code = %s")
+        params.append(country_code.strip().upper())
+
+    if indicator_name:
+        conditions.append("h.indicator_name LIKE %s")
+        params.append(f"%{indicator_name}%")
+
+    if year_min is not None:
+        conditions.append("hs.year >= %s")
+        params.append(year_min)
+
+    if year_max is not None:
+        conditions.append("hs.year <= %s")
+        params.append(year_max)
+
+    if has_value == 1:
+        conditions.append("hs.indicator_value IS NOT NULL")
 
     if conditions:
         base_sql += " WHERE " + " AND ".join(conditions)
 
-    # Default ordering: by primary id ascending
-    base_sql += " ORDER BY hs.row_id ASC LIMIT 500"
+    sort_map = {
+        "row_id": "hs.row_id",
+        "year": "hs.year",
+        "value": "hs.indicator_value",
+        "country": "c.country_name",
+        "code": "c.country_code",
+        "region": "c.region",
+        "indicator": "h.indicator_name",
+    }
+    if sort_by not in sort_map:
+        sort_by = "row_id"
+
+    if sort_by == "value":
+        # NULLS LAST (MySQL)
+        base_sql += f" ORDER BY hs.indicator_value IS NULL, hs.indicator_value {order.upper()}"
+    else:
+        base_sql += f" ORDER BY {sort_map[sort_by]} {order.upper()}"
+
+    base_sql += " LIMIT 500"
 
     cur.execute(base_sql, params)
     rows = cur.fetchall()
 
     return render_template(
         "health_list.html",
-        rows=rows,                
+        rows=rows,
+        # keep values in UI
         current_country=country_name,
-        current_year=year,
+        current_code=country_code,
+        current_indicator=indicator_name,
+        current_year_min=year_min,
+        current_year_max=year_max,
+        current_has_value=has_value,
+        current_sort_by=sort_by,
+        current_order=order,
     )
 
 

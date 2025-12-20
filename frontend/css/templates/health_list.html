@@ -5,138 +5,215 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h1 class="h3 mb-1">Health System Indicators</h1>
-    <p class="text-muted mb-0">
+    <h1 class="h3 mb-1 fw-bold text-dark">Health System Indicators</h1>
+    <p class="text-muted mb-0 small">
       Country-based health indicators with year and source notes.
     </p>
   </div>
 
   {% if session.get("team_no")|int == 1 %}
-    <a href="{{ url_for('health.add_health') }}" class="btn btn-primary">
-      <i class="fa-solid fa-plus"></i> Add New Record
+    <a href="{{ url_for('health.add_health') }}" class="btn btn-primary px-4 shadow-sm border-0" style="background-color: #0d6efd;">
+      <i class="fa-solid fa-plus me-2"></i> Add New Record
     </a>
   {% endif %}
 </div>
 
-<!-- SORT PANEL -->
-<form id="sortForm" class="d-flex flex-wrap gap-3 mb-3">
-  <div>
-    <label class="form-label fw-semibold">Sort By</label>
-    <select id="sortColumn" class="form-select">
-      <option value="0">ID</option>
-      <option value="1">Country</option>
-      <option value="2">Region</option>
-      <option value="3">Code</option>
-      <option value="4">Indicator</option>
-      <option value="5">Unit</option>
-      <option value="6">Year</option>
-      <option value="7">Value</option>
-      <option value="8">Source Notes</option>
+<!-- FILTER + SORT (GET FORM) -->
+<form
+  method="GET"
+  action="{{ url_for('health.list_health') }}"
+  class="d-flex flex-wrap gap-3 mb-4 p-4 bg-white shadow-sm rounded border-top border-primary border-4 align-items-end"
+  style="border-top-color: #0d6efd !important;"
+>
+
+  <!-- Country name search -->
+  <div style="flex: 1; min-width: 220px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Country</label>
+    <input
+      type="text"
+      name="country"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Albania"
+      value="{{ current_country or '' }}"
+    />
+  </div>
+
+  <!-- ISO3 code -->
+  <div style="width: 180px; min-width: 180px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Code</label>
+    <input
+      type="text"
+      name="code"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder=" ALB"
+      value="{{ current_code or '' }}"
+    />
+  </div>
+
+  <!-- Indicator search -->
+  <div style="flex: 2; min-width: 260px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Indicator</label>
+    <input
+      type="text"
+      name="indicator"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder=" Health expenditure"
+      value="{{ current_indicator or '' }}"
+    />
+  </div>
+
+  <!-- Year min -->
+  <div style="width: 160px; min-width: 160px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Year Min</label>
+    <input
+      type="number"
+      name="year_min"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder=" 2000"
+      value="{{ current_year_min or '' }}"
+    />
+  </div>
+
+  <!-- Year max -->
+  <div style="width: 160px; min-width: 160px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Year Max</label>
+    <input
+      type="number"
+      name="year_max"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder=" 2016"
+      value="{{ current_year_max or '' }}"
+    />
+  </div>
+
+  <!-- Only with value -->
+  <div style="min-width: 180px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Value Filter</label>
+    <div class="form-check">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        name="has_value"
+        value="1"
+        id="hasValueCheck"
+        {% if current_has_value|int == 1 %}checked{% endif %}
+      />
+      <label class="form-check-label small text-muted" for="hasValueCheck">
+        Only records with value
+      </label>
+    </div>
+  </div>
+
+  <!-- Sort By -->
+  <div style="flex: 1; min-width: 200px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Sort By</label>
+    <select name="sort_by" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
+      <option value="row_id" {% if current_sort_by == 'row_id' %}selected{% endif %}>ID</option>
+      <option value="country" {% if current_sort_by == 'country' %}selected{% endif %}>Country</option>
+      <option value="region" {% if current_sort_by == 'region' %}selected{% endif %}>Region</option>
+      <option value="code" {% if current_sort_by == 'code' %}selected{% endif %}>Code</option>
+      <option value="indicator" {% if current_sort_by == 'indicator' %}selected{% endif %}>Indicator</option>
+      <option value="year" {% if current_sort_by == 'year' %}selected{% endif %}>Year</option>
+      <option value="value" {% if current_sort_by == 'value' %}selected{% endif %}>Value</option>
+      <option value="source_notes" disabled>Source Notes</option>
     </select>
   </div>
 
-  <div>
-    <label class="form-label fw-semibold">Order</label>
-    <select id="sortOrder" class="form-select">
-      <option value="asc">Ascending</option>
-      <option value="desc">Descending</option>
+  <!-- Order -->
+  <div style="flex: 1; min-width: 200px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Order</label>
+    <select name="order" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
+      <option value="asc" {% if current_order == 'asc' %}selected{% endif %}>Ascending</option>
+      <option value="desc" {% if current_order == 'desc' %}selected{% endif %}>Descending</option>
     </select>
   </div>
 
-  <div class="align-self-end">
-    <button type="button" class="btn btn-secondary" onclick="applySort()">
-      Apply Sort
+  <!-- Buttons -->
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" style="border-radius: 8px; height: 41px; background-color: #0d6efd;">
+      <i class="fa-solid fa-magnifying-glass me-2"></i>Apply
     </button>
+
+    <a href="{{ url_for('health.list_health') }}" class="btn btn-outline-secondary px-4 fw-bold shadow-sm" style="border-radius: 8px; height: 41px;">
+      Reset
+    </a>
   </div>
 </form>
 
-<table class="table table-striped table-hover align-middle">
-  <thead class="table-dark">
-    <tr>
-      <th>#</th>
-      <th>Country</th>
-      <th>Region</th>
-      <th>Code</th>
-      <th>Indicator</th>
-      <th>Unit</th>
-      <th>Year</th>
-      <th>Value</th>
-      <th>Source Notes</th>
-      {% if session.get("team_no")|int == 1 %}
-        <th>Actions</th>
-      {% endif %}
-    </tr>
-  </thead>
-
-  <tbody>
-    {# BURASI DEĞİŞTİ #}
-    {% for row in rows %}
+<div class="table-responsive shadow-sm rounded border">
+  <table class="table table-hover align-middle mb-0 bg-white">
+    <thead style="background-color: #084298; color: white;">
       <tr>
-        <td>{{ row.row_id }}</td>
-        <td>{{ row.country_name }}</td>
-        <td>{{ row.region or '-' }}</td>
-        <td>{{ row.country_code }}</td>
-        <td>{{ row.indicator_name }}</td>
-        <td>{{ row.unit_symbol or '-' }}</td>
-        <td>{{ row.year }}</td>
-        <td>{{ row.indicator_value }}</td>
-        <td>{{ row.source_notes or '' }}</td>
-
+        <th class="py-3 ps-3 border-0">#</th>
+        <th class="py-3 border-0">Country</th>
+        <th class="py-3 border-0">Region</th>
+        <th class="py-3 border-0">Code</th>
+        <th class="py-3 border-0">Indicator</th>
+        <th class="py-3 border-0">Unit</th>
+        <th class="py-3 border-0">Year</th>
+        <th class="py-3 border-0 text-center">Value</th>
+        <th class="py-3 border-0">Source Notes</th>
         {% if session.get("team_no")|int == 1 %}
-          <td>
-            <a
-              href="{{ url_for('health.edit_health', id=row.row_id) }}"
-              class="btn btn-sm btn-outline-secondary me-1"
-            >
-              Edit
-            </a>
-
-            <form
-              action="{{ url_for('health.delete_health', id=row.row_id) }}"
-              method="post"
-              style="display:inline-block"
-              onsubmit="return confirm('Delete this record?');"
-            >
-              <button type="submit" class="btn btn-sm btn-outline-danger">
-                Delete
-              </button>
-            </form>
-          </td>
+          <th class="py-3 border-0 text-center">Actions</th>
         {% endif %}
       </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    </thead>
+
+    <tbody>
+      {% for row in rows %}
+        <tr class="border-bottom">
+          <td class="ps-3 fw-semibold text-muted">{{ row.row_id }}</td>
+          <td class="fw-bold text-dark">{{ row.country_name }}</td>
+          <td><span class="badge rounded-pill bg-info text-dark fw-normal px-3" style="background-color: #e0f2fe !important; border: 1px solid #bae6fd;">{{ row.region or '-' }}</span></td>
+          <td><span class="badge bg-light text-primary border px-2">{{ row.country_code }}</span></td>
+          <td style="max-width: 250px;" class="text-wrap small text-secondary">{{ row.indicator_name }}</td>
+          <td><small class="text-muted">{{ row.unit_symbol or '-' }}</small></td>
+          <td class="text-center">{{ row.year }}</td>
+
+          {% if row.indicator_value is none %}
+            <td class="fw-bold text-center text-muted">N/A</td>
+          {% else %}
+            <td class="fw-bold text-primary text-center" style="color: #0d6efd !important;">{{ row.indicator_value }}</td>
+          {% endif %}
+
+          <td class="small text-muted" style="font-size: 0.75rem; font-style: italic;">{{ row.source_notes or '' }}</td>
+
+          {% if session.get("team_no")|int == 1 %}
+            <td class="text-center">
+              <div class="btn-group shadow-sm" role="group">
+                <a
+                  href="{{ url_for('health.edit_health', id=row.row_id) }}"
+                  class="btn btn-sm btn-outline-primary"
+                  style="border-top-left-radius: 6px; border-bottom-left-radius: 6px;"
+                >
+                  Edit
+                </a>
+
+                <form
+                  action="{{ url_for('health.delete_health', id=row.row_id) }}"
+                  method="post"
+                  style="display:inline-block"
+                  onsubmit="return confirm('Delete this record?');"
+                >
+                  <button type="submit" class="btn btn-sm btn-outline-danger" style="border-top-right-radius: 6px; border-bottom-right-radius: 6px; border-left: 0;">
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script>
-function applySort() {
-  const colIndex = parseInt(document.getElementById("sortColumn").value);
-  const order = document.getElementById("sortOrder").value;
-
-  const tbody = document.querySelector("table tbody");
-  const rows = Array.from(tbody.querySelectorAll("tr"));
-
-  const sorted = rows.sort((a, b) => {
-    let A = a.children[colIndex].innerText.trim();
-    let B = b.children[colIndex].innerText.trim();
-
-    const numA = parseFloat(A);
-    const numB = parseFloat(B);
-    const isNumeric = !isNaN(numA) && !isNaN(numB);
-
-    if (isNumeric) {
-      return order === "asc" ? numA - numB : numB - numA;
-    } else {
-      return order === "asc"
-        ? A.localeCompare(B)
-        : B.localeCompare(A);
-    }
-  });
-
-  tbody.innerHTML = "";
-  sorted.forEach(row => tbody.appendChild(row));
-}
-</script>
+<!-- client-side sort kaldırıldı; sorting/filter artık server-side GET ile -->
 {% endblock %}
