@@ -65,6 +65,8 @@ def list_freshwater():
     indicator_id = request.args.get("indicator_id", "").strip()
     year = request.args.get("year", "").strip()
     q = request.args.get("q", "").strip()
+    sort_by = request.args.get("sort_by", "year").strip()
+    order = request.args.get("order", "desc").strip().lower()
 
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
@@ -107,8 +109,17 @@ def list_freshwater():
         like = f"%{q}%"
         params.extend([like, like, like])
 
-    # Default ordering: by primary id ascending
-    sql += " ORDER BY fd.data_id ASC;"
+    allowed_sort_columns = {
+        "data_id": "fd.data_id",
+        "country": "c.country_name",
+        "indicator": "fi.indicator_name",
+        "year": "fd.year",
+        "value": "fd.indicator_value",
+    }
+
+    sort_col_sql = allowed_sort_columns.get(sort_by, "fd.year")
+    sort_dir_sql = "DESC" if order == "desc" else "ASC"
+    sql += f" ORDER BY {sort_col_sql} {sort_dir_sql};"
 
     cursor.execute(sql, params)
     rows = cursor.fetchall()
@@ -124,6 +135,8 @@ def list_freshwater():
             "indicator_id": indicator_id,
             "year": year,
             "q": q,
+            "sort_by": sort_by,
+            "order": order,
         },
     )
 
@@ -255,3 +268,38 @@ def edit_freshwater(id):
         students=_get_students(),
         action="Edit",
     )
+
+
+# ---------------------------------------------------------
+# DELETE ACTION
+# ---------------------------------------------------------
+@freshwater_bp.route("/delete/<int:id>", methods=["POST"])
+@admin_required
+def delete_freshwater(id):
+    conn = get_db()
+
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM freshwater_data WHERE data_id = %s", (id,))
+
+        student_id = request.form.get("student_id") or None
+        if student_id:
+            audit_sql = """
+                INSERT INTO audit_logs (student_id, action_type, table_name, record_id)
+                VALUES (%s, %s, %s, %s)
+            """
+            cur.execute(audit_sql, (student_id, "DELETE", "freshwater_data", id))
+
+        conn.commit()
+        cur.close()
+
+        if cur.rowcount == 0:
+            flash("Record not found.", "warning")
+        else:
+            flash("Record deleted successfully.", "success")
+
+    except Exception as e:
+        conn.rollback()
+        flash(f"Delete Error (freshwater): {e}", "danger")
+
+    return redirect(url_for("freshwater.list_freshwater"))
