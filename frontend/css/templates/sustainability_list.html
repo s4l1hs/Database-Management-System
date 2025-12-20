@@ -11,7 +11,7 @@
     </p>
   </div>
 
-  {% if session.get("team_no")|int == 1 %}
+  {% if session.get("team_no")|int in [1, 2] %}
     <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-primary px-4 shadow-sm border-0">
       <i class="fa-solid fa-plus me-2"></i> Add New Record
     </a>
@@ -143,7 +143,7 @@
         <th class="py-3 border-0 text-center">Year</th>
         <th class="py-3 border-0 text-center">Value</th>
         <th class="py-3 border-0">Source Note</th>
-        {% if session.get("team_no")|int == 1 %}
+        {% if session.get("team_no")|int in [1, 2] %}
           <th class="py-3 border-0 text-center">Actions</th>
         {% endif %}
       </tr>
@@ -160,9 +160,10 @@
           <td class="text-center">{{ row.year }}</td>
           <td class="fw-bold text-primary text-center" style="color: #0d6efd !important;">{{ row.indicator_value }}</td>
           <td class="small text-muted" style="font-size: 0.75rem; font-style: italic;">{{ row.source_note or '' }}</td>
-          {% if session.get("team_no")|int == 1 %}
+          {% if session.get("team_no")|int in [1, 2] %}
             <td class="text-center">
               <div class="btn-group shadow-sm" role="group">
+                {% if session.get("team_no")|int in [1, 2] %}
                 <a
                   href="{{ url_for('sustainability.edit_sustainability', id=row.data_id) }}"
                   class="btn btn-sm btn-outline-primary"
@@ -170,7 +171,9 @@
                 >
                   Edit
                 </a>
+                {% endif %}
 
+                {% if session.get("team_no")|int == 1 %}
                 <form
                   action="{{ url_for('sustainability.delete_sustainability', id=row.data_id) }}"
                   method="post"
@@ -181,6 +184,7 @@
                     Delete
                   </button>
                 </form>
+                {% endif %}
               </div>
             </td>
           {% endif %}

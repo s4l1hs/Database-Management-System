@@ -10,7 +10,7 @@ from flask import (
     abort,
 )
 from App.db import get_db
-from App.routes.login import admin_required
+from App.routes.login import admin_required, editor_required
 
 sustainability_bp = Blueprint("sustainability", __name__, url_prefix="/sustainability")
 
@@ -136,7 +136,7 @@ def _load_countries_and_indicators():
 
 # 3. CREATE
 @sustainability_bp.route("/add", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def add_sustainability():
     if request.method == "POST":
         db = get_db()
@@ -210,7 +210,7 @@ def add_sustainability():
 
 # 4. UPDATE
 @sustainability_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def edit_sustainability(id):
     db = get_db()
     cur = db.cursor(dictionary=True)

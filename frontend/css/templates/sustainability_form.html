@@ -18,7 +18,7 @@
       </nav>
 
       <div class="card shadow-lg border-0">
-        <div class="card-header bg-success bg-gradient text-white py-4">
+        <div class="card-header bg-primary bg-gradient text-white py-4">
           <div class="d-flex align-items-center">
             <div class="bg-white bg-opacity-25 rounded-circle p-3 me-3">
               <i class="fa-solid {% if action == 'Edit' %}fa-pen-to-square{% else %}fa-plus-circle{% endif %} fa-2x"></i>
@@ -66,7 +66,7 @@
                 {% for i in indicators %}
                 <option value="{{ i.sus_indicator_id }}" 
                         {% if record and record.sus_indicator_id == i.sus_indicator_id %}selected{% endif %}>
-                  {{ i.indicator_name }}
+                  {{ i.indicator_name }} {% if i.unit_symbol %}({{ i.unit_symbol }}){% endif %}
                 </option>
                 {% endfor %}
               </select>
@@ -173,7 +173,7 @@
                  class="btn btn-lg btn-outline-secondary px-4">
                 <i class="fa-solid fa-arrow-left me-2"></i> Cancel
               </a>
-              <button type="submit" class="btn btn-lg btn-success px-5 shadow">
+              <button type="submit" class="btn btn-lg btn-primary px-5 shadow">
                 <i class="fa-solid fa-check-circle me-2"></i> 
                 {{ 'Update Record' if action == 'Edit' else 'Save Record' }}
               </button>
