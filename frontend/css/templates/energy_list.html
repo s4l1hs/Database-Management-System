@@ -1,165 +1,1075 @@
 {% extends "base.html" %}
 {% block title %}Energy Data{% endblock %}
 
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  
+  .table-container {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+  }
+  
+  
+  .table thead {
+    background-color: #2f2f2f;
+  }
+  
+  .table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 700;
+    font-size: 0.875rem;
+    padding: 0.75rem 0.5rem;
+    line-height: 1.4;
+    color: #ffffff;
+    border-bottom: 1px solid #1a1a1a;
+  }
+  
+  .table thead th:hover {
+    background-color: #3a3a3a;
+  }
+  
+  
+  .badge-soft {
+    background: #eef2ff;
+    color: #1d4ed8;
+    border: 1px solid rgba(37,99,235,0.2);
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  
+  .table tbody td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  
+  .table tbody tr {
+    height: auto;
+  }
+  
+  .table thead th.sort-asc::after {
+    content: " ▲";
+    font-size: 0.8em;
+  }
+  
+  .table thead th.sort-desc::after {
+    content: " ▼";
+    font-size: 0.8em;
+  }
+  
+  .detail-row {
+    display: none !important;
+  }
+  
+  .detail-row.show {
+    display: table-row !important;
+  }
+  
+  .expand-btn {
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.2s;
+  }
+  
+  .expand-btn:hover {
+    opacity: 0.7;
+  }
+  
+  .expand-btn i {
+    transition: transform 0.2s;
+  }
+  
+  
+  .year-cell {
+    font-size: 0.875rem;
+    color: #6c757d;
+  }
+  
+  .year-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  
+  
+  .table {
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  
+  .table tbody td {
+    font-weight: 400;
+  }
+  
+  .table tbody .fw-semibold {
+    font-weight: 600;
+  }
+  
+  
+  .table tbody tr:nth-of-type(odd) {
+    background-color: #ffffff !important;
+  }
+  
+  .table tbody tr:nth-of-type(even) {
+    background-color: #f5f5f5 !important;
+  }
+  
+  
+  .table-hover > tbody > tr:hover > td {
+    background-color: inherit !important;
+  }
+  
+  
+  .table tbody tr.summary-row:nth-of-type(odd):hover {
+    background-color: #f0f0f0 !important;
+    cursor: pointer;
+  }
+  
+  .table tbody tr.summary-row:nth-of-type(odd):hover > td {
+    background-color: #f0f0f0 !important;
+  }
+  
+  .table tbody tr.summary-row:nth-of-type(even):hover {
+    background-color: #ececec !important;
+    cursor: pointer;
+  }
+  
+  .table tbody tr.summary-row:nth-of-type(even):hover > td {
+    background-color: #ececec !important;
+  }
+  
+  
+  .table tbody tr:not(.no-data):not(.disabled) {
+    transition: background-color 0.15s ease-out;
+  }
+  
+  
+  .btn-group .btn,
+  .table .btn-sm {
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+  
+  .btn-group .btn:hover:not(:disabled),
+  .table .btn-sm:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+  
+  
+  .table tbody tr.no-data,
+  .table tbody tr.disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .table tbody tr.no-data:hover,
+  .table tbody tr.disabled:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  
+  
+  .detail-row {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
+  }
+  
+  .detail-row.show {
+    max-height: 2000px;
+    opacity: 1;
+    transition: max-height 0.25s ease-out, opacity 0.2s ease-out;
+  }
+  
+  
+  .detail-row.show td {
+    background-color: #f5f5f5 !important;
+    border-left: 2px solid #2f2f2f !important;
+    border-right: 2px solid #2f2f2f !important;
+    border-bottom: 2px solid #2f2f2f !important;
+    border-top: none !important;
+  }
+  
+  .detail-row.show .p-3 {
+    background-color: #f5f5f5;
+  }
+  
+  
+  .detail-row.show h6 {
+    font-weight: 700;
+    color: #2f2f2f;
+  }
+  
+  
+  .table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: #ffffff !important;
+  }
+  
+  .table-striped > tbody > tr:nth-of-type(even) > td {
+    background-color: #f5f5f5 !important;
+  }
+  
+  
+  .summary-row.expanded {
+    border-left: 2px solid #2f2f2f !important;
+    border-right: 2px solid #2f2f2f !important;
+  }
+  
+  .summary-row.expanded > td {
+    border-top: 2px solid #2f2f2f !important;
+  }
+  
+  .summary-row.expanded > td:first-child {
+    border-left: 2px solid #2f2f2f !important;
+  }
+  
+  .summary-row.expanded > td:last-child {
+    border-right: 2px solid #2f2f2f !important;
+  }
+  
+  
+  .missing-data {
+    color: #adb5bd;
+    font-weight: 300;
+    font-style: normal;
+    cursor: help;
+    opacity: 0.6;
+  }
+  
+  
+  .summary-row.no-expand .expand-btn {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+  
+  .summary-row.no-expand:hover {
+    background-color: inherit !important;
+    cursor: default;
+  }
+  
+  .summary-row.no-expand:hover > td {
+    background-color: inherit !important;
+  }
+  
+  .autocomplete-container {
+    position: relative;
+  }
+  
+  .autocomplete-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+  }
+  
+  .autocomplete-results.show {
+    display: block;
+  }
+  
+  .autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+  
+  .autocomplete-item:hover {
+    background-color: #f0f0f0;
+  }
+  
+  .number-format {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <div>
-    <h1 class="h3 text-warning">
-      <i class="fa-solid fa-bolt me-2"></i>Energy Indicators
-    </h1>
+    <h1 class="h3 mb-1">Energy Indicators</h1>
     <p class="text-muted mb-0">
-      Country-based energy statistics, generation, and usage data.
+      Summary view grouped by country and year. Click to expand for detailed indicators.
     </p>
   </div>
-  
+
   {% if session.get("team_no")|int == 1 %}
-  <a href="{{ url_for('energy.add_energy') }}" class="btn btn-warning shadow-sm">
-    <i class="fa-solid fa-plus"></i> Add New Record
-  </a>
+    <a href="{{ url_for('energy.add_energy') }}" class="btn btn-primary">
+      <i class="fa-solid fa-plus"></i> Add New Record
+    </a>
   {% endif %}
 </div>
 
-<div class="card shadow-sm mb-4 border-0 bg-light">
-  <div class="card-body py-3">
-    <form id="sortForm" class="row g-3 align-items-end">
-      <div class="col-md-4">
-        <label class="form-label fw-bold small text-muted text-uppercase">Sort Column</label>
-        <div class="input-group">
-          <span class="input-group-text bg-white border-end-0"><i class="fa-solid fa-filter text-secondary"></i></span>
-          <select id="sortColumn" class="form-select border-start-0 ps-0">
-            <option value="0">ID</option>
-            <option value="1">Country</option>
-            <option value="2">Region</option>
-            <option value="3">Code</option>
-            <option value="4">Indicator</option>
-            <option value="5">Unit</option>
-            <option value="6">Year</option>
-            <option value="7">Value</option>
-            <option value="8">Source Notes</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <label class="form-label fw-bold small text-muted text-uppercase">Order</label>
-        <select id="sortOrder" class="form-select">
-          <option value="asc">Ascending (A-Z)</option>
-          <option value="desc">Descending (Z-A)</option>
-        </select>
-      </div>
-
-      <div class="col-md-2">
-        <button type="button" class="btn btn-outline-secondary w-100" onclick="applySort()">
-          Apply
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<div class="card shadow-sm border-0">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-striped table-hover align-middle mb-0">
-        <thead class="table-warning">
-          <tr>
-            <th>#</th>
-            <th>Country</th>
-            <th>Region</th>
-            <th>Code</th>
-            <th>Indicator</th>
-            <th>Unit</th>
-            <th>Year</th>
-            <th>Value</th>
-            <th>Source Note</th>
-            {% if session.get("team_no")|int == 1 %}
-            <th class="text-end">Actions</th>
-            {% endif %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-          <tr>
-            <td class="text-muted small">{{ row.data_id }}</td>
-            <td>
-              <strong>{{ row.country_name }}</strong>
-            </td>
-            <td>
-              <span class="badge bg-white text-secondary border">{{ row.region or '-' }}</span>
-            </td>
-            <td><small class="text-monospace">{{ row.country_code }}</small></td>
-            
-            <td title="{{ row.indicator_name }}">
-              {{ row.indicator_name }}
-            </td>
-            <td>{{ row.measurement_unit or '-' }}</td>
-            <td>
-              <span class="badge bg-light text-dark border">{{ row.year }}</span>
-            </td>
-            <td class="fw-bold text-dark">{{ row.indicator_value }}</td>
-            <td><small class="text-muted">{{ row.data_source or '-' }}</small></td>
-            
-            {% if session.get("team_no")|int == 1 %}
-            <td class="text-end">
-              <a href="{{ url_for('energy.edit_energy', id=row.data_id) }}" 
-                 class="btn btn-sm btn-outline-primary me-1" title="Edit">
-                <i class="fa-solid fa-pen"></i>
-              </a>
-              
-              <form action="{{ url_for('energy.delete_energy', id=row.data_id) }}" 
-                    method="post" class="d-inline" 
-                    onsubmit="return confirm('Are you sure you want to delete this energy record?');">
-                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </form>
-            </td>
-            {% endif %}
-          </tr>
-          {% else %}
-          <tr>
-            <td colspan="10" class="text-center py-5 text-muted">
-              <i class="fa-solid fa-plug-circle-xmark fa-3x mb-3 text-secondary opacity-50"></i>
-              <p>No energy data found.</p>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<!-- FILTER FORM -->
+<form method="get" id="filterForm" class="row g-3 mb-3">
+  <div class="col-md-4">
+    <label class="form-label fw-semibold">Country</label>
+    <div class="autocomplete-container">
+      <input
+        type="text"
+        name="country"
+        id="countryInput"
+        class="form-control form-control-sm"
+        placeholder="Start typing country name..."
+        value="{{ current_country or '' }}"
+        autocomplete="off"
+      />
+      <div class="autocomplete-results" id="autocompleteResults"></div>
     </div>
   </div>
+
+  <div class="col-md-3">
+    <label class="form-label fw-semibold">Year From</label>
+    <input
+      type="number"
+      name="year_min"
+      class="form-control form-control-sm"
+      placeholder="e.g. 2010"
+      value="{{ current_year_min or '' }}"
+      min="1900"
+      max="2100"
+    />
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label fw-semibold">Year To</label>
+    <input
+      type="number"
+      name="year_max"
+      class="form-control form-control-sm"
+      placeholder="e.g. 2020"
+      value="{{ current_year_max or '' }}"
+      min="1900"
+      max="2100"
+    />
+  </div>
+
+  <div class="col-md-2 d-flex align-items-end">
+    <a href="{{ url_for('energy.list_energy') }}" class="btn btn-sm btn-outline-secondary w-100">
+      Clear
+    </a>
+  </div>
+</form>
+
+<!-- Trend Explorer Section -->
+<div class="card mb-4 shadow-sm border-0" style="background-color: #f8f9fa;">
+  <!-- Header -->
+  <div class="card-header border-0" style="background-color: #e9ecef; border-bottom: 1px solid #dee2e6 !important;">
+    <h5 class="mb-1" style="color: #495057; font-weight: 600;">Trend Explorer</h5>
+    <p class="text-muted small mb-0">Explore energy trends over time using global, regional, or country-level averages.</p>
+  </div>
+  
+  <div class="card-body">
+    <!-- Controls Container -->
+    <div class="bg-white rounded p-3 mb-3 border" style="background-color: #ffffff;">
+      <div class="row g-3 align-items-end">
+        <!-- View Mode Tabs -->
+        <div class="col-12">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">View Mode</label>
+          <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="viewMode" id="viewGlobal" value="global" checked>
+            <label class="btn btn-outline-secondary btn-sm" for="viewGlobal">Global Avg</label>
+            
+            <input type="radio" class="btn-check" name="viewMode" id="viewCountry" value="country">
+            <label class="btn btn-outline-secondary btn-sm" for="viewCountry">Country Trend</label>
+          </div>
+        </div>
+        
+        <!-- Indicator Selector -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Indicator</label>
+          <select class="form-select form-select-sm" id="trendIndicator">
+            {% for indicator in indicators %}
+              <option value="{{ indicator.energy_indicator_id }}" {% if loop.first %}selected{% endif %}>
+                {{ indicator.indicator_name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <!-- Country Selector (enabled only for Country Trend) -->
+        <div class="col-md-4">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Country</label>
+          <select class="form-select form-select-sm" id="trendCountry" disabled>
+            <option value="">Select country...</option>
+            {% for country in countries %}
+              <option value="{{ country.country_id }}">{{ country.country_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        
+        <!-- Year Range -->
+        <div class="col-md-2">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Min Year</label>
+          <input type="number" class="form-control form-control-sm" id="trendYearMin" placeholder="1990" min="1900" max="2100">
+        </div>
+        
+        <div class="col-md-2">
+          <label class="form-label fw-semibold small text-muted text-uppercase mb-2">Max Year</label>
+          <input type="number" class="form-control form-control-sm" id="trendYearMax" placeholder="2015" min="1900" max="2100">
+        </div>
+      </div>
+    </div>
+    
+    <!-- Chart Container -->
+    <div style="position: relative; height: 300px; background-color: #ffffff; border-radius: 4px; padding: 15px;">
+      <canvas id="trendExplorerChart"></canvas>
+    </div>
+    
+    <p class="text-muted small mt-2 mb-0" style="color: #6c757d;">
+      Each point represents the average for that year using countries with available data.
+    </p>
+  </div>
 </div>
+
+<div class="table-container">
+  <table class="table table-hover align-middle">
+    <thead>
+      <tr>
+        <th style="width: 40px;"></th>
+        <th data-sort="country" style="min-width: 150px;">Country</th>
+        <th data-sort="region" style="min-width: 120px;">Region</th>
+        <th data-sort="year" style="width: 80px;" class="text-center">Year</th>
+        {% if current_role in ['editor', 'admin'] %}
+          <th style="width: 100px;">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+
+    <tbody id="energyTableBody">
+      {% for row in summary_rows %}
+        {% set detail_key = row.country_id|string + '-' + row.year|string %}
+        <tr class="summary-row" data-key="{{ detail_key }}">
+          <td class="expand-btn text-center" onclick="toggleDetails('{{ detail_key }}')">
+            <i class="fa-solid fa-chevron-right" id="icon-{{ detail_key }}"></i>
+          </td>
+          <td class="fw-semibold">
+            {{ row.country_name|default('—', true) }}
+          </td>
+          <td>
+            {% if row.region %}
+              {% set region_emoji = {
+                'Asia': '🌏',
+                'Europe': '🌍',
+                'Africa': '🌍',
+                'North America': '🌎',
+                'South America': '🌎',
+                'Oceania': '🌊',
+                'Antarctica': '❄️'
+              }.get(row.region, '🌍') %}
+              <span class="badge badge-soft">{{ region_emoji }} {{ row.region }}</span>
+            {% else %}
+              <span class="badge badge-soft">—</span>
+            {% endif %}
+          </td>
+          <td class="text-center year-cell">
+            <span class="year-badge">{{ row.year|int }}</span>
+          </td>
+          {% if current_role in ['editor', 'admin'] %}
+            <td>
+              <div class="btn-group">
+                <a href="{{ url_for('energy.add_energy') }}" class="btn btn-sm btn-outline-primary" title="Add new record">
+                  <i class="fa-solid fa-plus"></i>
+                </a>
+              </div>
+            </td>
+          {% endif %}
+        </tr>
+        
+        <!-- Detail Row -->
+        <tr class="detail-row" id="detail-{{ detail_key }}" data-expanded="false">
+          <td colspan="{% if current_role in ['editor', 'admin'] %}5{% else %}4{% endif %}" style="background-color: #f5f5f5;">
+            <div class="p-3" style="background-color: #f5f5f5;">
+              <h6 class="mb-3 fw-bold" style="color: #2f2f2f;">Detailed Indicators</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead class="table-secondary">
+                    <tr>
+                      <th>Indicator</th>
+                      <th class="text-end">Value</th>
+                      <th>Source</th>
+                      {% if current_role in ['editor', 'admin'] %}
+                        <th>Actions</th>
+                      {% endif %}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% if detailed_data[detail_key] %}
+                      {% for detail in detailed_data[detail_key] %}
+                        <tr>
+                          <td>
+                            <strong>{{ detail.indicator_name }}</strong><br>
+                            <small class="text-muted">{{ detail.measurement_unit or '-' }}</small>
+                          </td>
+                          <td class="text-end number-format">
+                            {% if detail.indicator_value is not none %}
+                              <span class="formatted-number" data-value="{{ detail.indicator_value }}">{{ detail.indicator_value }}</span>
+                            {% else %}
+                              <span class="missing-data">—</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            <small class="text-muted">{{ detail.data_source or '—' }}</small>
+                          </td>
+                          {% if current_role in ['editor', 'admin'] %}
+                            <td>
+                              {% if detail.data_id %}
+                                <div class="btn-group">
+                                  <a href="{{ url_for('energy.edit_energy', id=detail.data_id) }}" 
+                                     class="btn btn-sm btn-outline-secondary" 
+                                     title="Edit">
+                                    <i class="fa-solid fa-edit"></i>
+                                  </a>
+                                  {% if current_role == 'admin' %}
+                                    <form action="{{ url_for('energy.delete_energy', id=detail.data_id) }}" 
+                                          method="post" 
+                                          class="d-inline"
+                                          onsubmit="return confirm('Are you sure you want to delete this record?');">
+                                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                        <i class="fa-solid fa-trash"></i>
+                                      </button>
+                                    </form>
+                                  {% endif %}
+                                </div>
+                              {% else %}
+                                <span class="text-muted">-</span>
+                              {% endif %}
+                            </td>
+                          {% endif %}
+                        </tr>
+                      {% endfor %}
+                    {% else %}
+                      <tr>
+                        <td colspan="{% if session.get('team_no')|int == 1 %}4{% else %}3{% endif %}" class="text-center text-muted">
+                          No detailed data available
+                        </td>
+                      </tr>
+                    {% endif %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- PAGINATION -->
+{% if total_pages > 1 %}
+<div class="d-flex justify-content-end align-items-center mt-3 mb-3">
+  <nav>
+    <ul class="pagination pagination-sm mb-0" id="pagination">
+      {% if page > 1 %}
+        <li class="page-item">
+          <a class="page-link" href="#" data-page="{{ page - 1 }}">Previous</a>
+        </li>
+      {% endif %}
+      {% set max_show = [total_pages, 10]|min %}
+      {% for p in range(1, max_show + 1) %}
+        {% if p == page %}
+          <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+        {% elif p <= 2 or p >= max_show - 1 or (p >= page - 1 and p <= page + 1) %}
+          <li class="page-item">
+            <a class="page-link" href="#" data-page="{{ p }}">{{ p }}</a>
+          </li>
+        {% elif p == 3 and page > 4 %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% elif p == max_show - 2 and page < max_show - 3 %}
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+      {% endfor %}
+      {% if page < total_pages %}
+        <li class="page-item">
+          <a class="page-link" href="#" data-page="{{ page + 1 }}">Next</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function applySort() {
-  const colIndex = parseInt(document.getElementById("sortColumn").value);
-  const order = document.getElementById("sortOrder").value;
 
-  const tbody = document.querySelector("table tbody");
-  const rows = Array.from(tbody.querySelectorAll("tr"));
+function formatNumber(num, decimals = 2) {
+  if (num === null || num === undefined || num === '') return 'n/a';
+  const n = parseFloat(num);
+  if (isNaN(n)) return 'n/a';
+  return n.toLocaleString('en-US', { 
+    minimumFractionDigits: decimals, 
+    maximumFractionDigits: decimals 
+  });
+}
 
-  const sorted = rows.sort((a, b) => {
-    // Safety check: ensure columns exist before trying to read them
-    if (!a.children[colIndex] || !b.children[colIndex]) return 0;
 
-    let A = a.children[colIndex].innerText.trim();
-    let B = b.children[colIndex].innerText.trim();
-
-    const numA = parseFloat(A);
-    const numB = parseFloat(B);
-    const isNumeric = !isNaN(numA) && !isNaN(numB);
-
-    if (isNumeric) {
-      return order === "asc" ? numA - numB : numB - numA;
-    } else {
-      return order === "asc" ? A.localeCompare(B) : B.localeCompare(A);
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.formatted-number').forEach(el => {
+    
+    const valueStr = el.getAttribute('data-value') || el.textContent;
+    const num = parseFloat(valueStr);
+    if (!isNaN(num)) {
+    
+      el.textContent = formatNumber(num, 2);
     }
   });
+});
 
-  tbody.innerHTML = "";
-  sorted.forEach(row => tbody.appendChild(row));
+let sortColumn = '{{ sort_by }}';
+let sortOrder = '{{ sort_order }}';
+
+// Update sort indicators
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  if (th.dataset.sort === sortColumn) {
+    th.classList.add(sortOrder === 'asc' ? 'sort-asc' : 'sort-desc');
+  }
+});
+
+// Table header sorting
+const sortableColumns = ['country', 'year', 'region'];
+document.querySelectorAll('th[data-sort]').forEach(th => {
+  const sortKey = th.dataset.sort;
+  if (sortableColumns.includes(sortKey)) {
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', function() {
+      const newSort = this.dataset.sort;
+      const newOrder = (sortColumn === newSort && sortOrder === 'asc') ? 'desc' : 'asc';
+      
+      const url = new URL(window.location);
+      url.searchParams.set('sort', newSort);
+      url.searchParams.set('order', newOrder);
+      url.searchParams.set('page', '1');
+      window.location.href = url.toString();
+    });
+  } else {
+    th.style.cursor = 'default';
+  }
+});
+
+// Toggle detail rows with proper state management
+function toggleDetails(key) {
+  const detailRow = document.getElementById('detail-' + key);
+  const icon = document.getElementById('icon-' + key);
+  const summaryRow = document.querySelector(`tr.summary-row[data-key="${key}"]`);
+  
+  if (!detailRow || !icon) {
+    console.error('Element not found for key:', key);
+    return;
+  }
+  
+  // Check current state using data attribute
+  const isExpanded = detailRow.getAttribute('data-expanded') === 'true';
+  
+  if (isExpanded) {
+    // Collapse - use CSS transitions
+    detailRow.classList.remove('show');
+    detailRow.setAttribute('data-expanded', 'false');
+    if (summaryRow) {
+      summaryRow.classList.remove('expanded');
+    }
+    icon.classList.remove('fa-chevron-down');
+    icon.classList.add('fa-chevron-right');
+    
+    // Hide after transition completes
+    setTimeout(() => {
+      if (detailRow.getAttribute('data-expanded') === 'false') {
+        detailRow.style.display = 'none';
+      }
+    }, 250);
+  } else {
+    // Expand - use CSS transitions
+    detailRow.style.display = 'table-row';
+    // Force reflow to ensure display is set before adding show class
+    detailRow.offsetHeight;
+    detailRow.classList.add('show');
+    detailRow.setAttribute('data-expanded', 'true');
+    if (summaryRow) {
+      summaryRow.classList.add('expanded');
+    }
+    icon.classList.remove('fa-chevron-right');
+    icon.classList.add('fa-chevron-down');
+  }
 }
+
+// Trend Explorer Chart
+let trendExplorerChart = null;
+const timeSeriesData = JSON.parse('{{ time_series_data|tojson|safe }}');
+const globalAvgByYear = JSON.parse('{{ global_avg_by_year|tojson|safe }}');
+const indicators = JSON.parse('{{ indicators|tojson|safe }}');
+
+function updateTrendExplorerChart() {
+  const viewMode = document.querySelector('input[name="viewMode"]:checked')?.value || 'global';
+  const indicatorId = parseInt(document.getElementById('trendIndicator').value);
+  const countryId = viewMode === 'country' ? parseInt(document.getElementById('trendCountry').value) : null;
+  const yearMin = parseInt(document.getElementById('trendYearMin').value) || null;
+  const yearMax = parseInt(document.getElementById('trendYearMax').value) || null;
+  
+  const ctx = document.getElementById('trendExplorerChart');
+  if (!ctx) return;
+  
+  let chartData = [];
+  let label = '';
+  let unit = '';
+  
+  // Get indicator info
+  const indicatorInfo = indicators.find(ind => ind.energy_indicator_id === indicatorId);
+  if (!indicatorInfo) return;
+  
+  unit = indicatorInfo.measurement_unit || '';
+  const indicatorName = indicatorInfo.indicator_name || 'Unknown';
+  
+  if (viewMode === 'global') {
+    // Global average - use global_avg_by_year data
+    const globalData = globalAvgByYear[indicatorId] || [];
+    if (Array.isArray(globalData) && globalData.length > 0) {
+      chartData = globalData
+        .filter(d => (!yearMin || d.year >= yearMin) && (!yearMax || d.year <= yearMax))
+        .map(d => ({
+          year: d.year,
+          value: d.avg_value,
+          count: d.country_count
+        }));
+      label = `Global average ${indicatorName}`;
+    } else {
+      // Fallback: calculate from time series data
+      const allYears = new Set();
+      const countryYearValues = {};
+      
+      Object.keys(timeSeriesData).forEach(cid => {
+        const countryData = timeSeriesData[cid];
+        if (countryData.country_data && countryData.country_data[indicatorId]) {
+          countryData.country_data[indicatorId].forEach(point => {
+            if (point.value !== null && point.value !== undefined) {
+              const year = point.year;
+              allYears.add(year);
+              if (!countryYearValues[year]) countryYearValues[year] = [];
+              countryYearValues[year].push(point.value);
+            }
+          });
+        }
+      });
+      
+      Array.from(allYears).sort().forEach(year => {
+        if ((!yearMin || year >= yearMin) && (!yearMax || year <= yearMax)) {
+          const values = countryYearValues[year];
+          if (values && values.length > 0) {
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            chartData.push({ year, value: avg, count: values.length });
+          }
+        }
+      });
+      label = `Global average ${indicatorName}`;
+    }
+  } else if (viewMode === 'country' && countryId) {
+    // Country trend
+    const countryData = timeSeriesData[countryId];
+    if (countryData && countryData.country_data && countryData.country_data[indicatorId]) {
+      chartData = countryData.country_data[indicatorId]
+        .filter(d => d.value !== null && d.value !== undefined)
+        .filter(d => (!yearMin || d.year >= yearMin) && (!yearMax || d.year <= yearMax))
+        .map(d => ({ year: d.year, value: d.value }));
+      const countryName = document.getElementById('trendCountry').selectedOptions[0]?.text || 'Country';
+      label = `${countryName} - ${indicatorName}`;
+    }
+  }
+  
+  // Sort by year
+  chartData.sort((a, b) => a.year - b.year);
+  
+  if (chartData.length === 0) {
+    if (trendExplorerChart) {
+      trendExplorerChart.destroy();
+      trendExplorerChart = null;
+    }
+    ctx.getContext('2d').clearRect(0, 0, ctx.width, ctx.height);
+    return;
+  }
+  
+  const years = chartData.map(d => d.year);
+  const values = chartData.map(d => d.value);
+  
+  // Internal smoothing (polynomial regression) 
+  function fitQuadratic(xs, ys) {
+    const n = xs.length;
+    if (n < 3) return ys;
+    
+    let Sx = 0, Sx2 = 0, Sx3 = 0, Sx4 = 0, Sy = 0, Sxy = 0, Sx2y = 0;
+    for (let i = 0; i < n; i++) {
+      const x = xs[i], y = ys[i], x2 = x * x;
+      Sx += x; Sx2 += x2; Sx3 += x2 * x; Sx4 += x2 * x2;
+      Sy += y; Sxy += x * y; Sx2y += x2 * y;
+    }
+    
+    let A = [[n, Sx, Sx2], [Sx, Sx2, Sx3], [Sx2, Sx3, Sx4]];
+    let B = [Sy, Sxy, Sx2y];
+    
+    for (let i = 0; i < 3; i++) {
+      let maxRow = i;
+      for (let k = i + 1; k < 3; k++) {
+        if (Math.abs(A[k][i]) > Math.abs(A[maxRow][i])) maxRow = k;
+      }
+      if (maxRow !== i) {
+        [A[i], A[maxRow]] = [A[maxRow], A[i]];
+        [B[i], B[maxRow]] = [B[maxRow], B[i]];
+      }
+      const pivot = A[i][i] || 1e-12;
+      for (let k = i + 1; k < 3; k++) {
+        const factor = A[k][i] / pivot;
+        for (let j = i; j < 3; j++) A[k][j] -= factor * A[i][j];
+        B[k] -= factor * B[i];
+      }
+    }
+    
+    const coef = [0, 0, 0];
+    for (let i = 2; i >= 0; i--) {
+      let sum = B[i];
+      for (let j = i + 1; j < 3; j++) sum -= A[i][j] * coef[j];
+      coef[i] = sum / (A[i][i] || 1e-12);
+    }
+    
+    return xs.map(x => coef[2] * x * x + coef[1] * x + coef[0]);
+  }
+  
+  const xs = years.map(y => Number(y));
+  const ys = values.map(v => Number(v));
+  const smoothedData = fitQuadratic(xs, ys);
+  
+  if (trendExplorerChart) {
+    trendExplorerChart.destroy();
+  }
+  
+  trendExplorerChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [{
+        label: label,
+        data: smoothedData,
+        borderColor: 'rgba(70, 70, 70, 0.8)',
+        backgroundColor: 'rgba(70, 70, 70, 0.05)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.2,
+        spanGaps: false,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        pointBackgroundColor: 'rgba(70, 70, 70, 0.8)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: {
+        duration: 1200,
+        easing: 'easeOutQuart'
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: { size: 12, family: "'Inter', -apple-system, sans-serif" },
+            padding: 10,
+            color: '#495057'
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 13, weight: 'bold', family: "'Inter', -apple-system, sans-serif" },
+          bodyFont: { size: 12, family: "'Inter', -apple-system, sans-serif" },
+          callbacks: {
+            title: function(context) {
+              return `Year: ${years[context[0].dataIndex]}`;
+            },
+            label: function(context) {
+              const index = context.dataIndex;
+              const value = Number(smoothedData[index]).toFixed(2);
+              return `${label}: ${value} ${unit}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Year',
+            font: { size: 12, weight: '500', family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d',
+            padding: { top: 10 }
+          },
+          grid: {
+            display: false
+          },
+          ticks: {
+            font: { size: 11, family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: `Average ${indicatorName}${unit ? ` (${unit})` : ''}`,
+            font: { size: 12, weight: '500', family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d',
+            padding: { bottom: 10 }
+          },
+          grid: {
+            display: true,
+            color: 'rgba(0, 0, 0, 0.1)',
+            lineWidth: 1
+          },
+          ticks: {
+            font: { size: 11, family: "'Inter', -apple-system, sans-serif" },
+            color: '#6c757d',
+            callback: function(value) {
+              if (value >= 1000) {
+                return (value / 1000).toFixed(0) + 'k';
+              }
+              return value.toFixed(1);
+            }
+          },
+          beginAtZero: false
+        }
+      }
+    }
+  });
+}
+
+// Initialize Trend Explorer
+document.addEventListener('DOMContentLoaded', function() {
+  // Set up Trend Explorer controls
+  document.querySelectorAll('input[name="viewMode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+      const countrySelect = document.getElementById('trendCountry');
+      if (this.value === 'country') {
+        countrySelect.disabled = false;
+      } else {
+        countrySelect.disabled = true;
+        countrySelect.value = '';
+      }
+      updateTrendExplorerChart();
+    });
+  });
+  
+  document.getElementById('trendIndicator').addEventListener('change', updateTrendExplorerChart);
+  document.getElementById('trendCountry').addEventListener('change', updateTrendExplorerChart);
+  document.getElementById('trendYearMin').addEventListener('change', updateTrendExplorerChart);
+  document.getElementById('trendYearMax').addEventListener('change', updateTrendExplorerChart);
+  
+  // Initial chart render
+  updateTrendExplorerChart();
+});
+
+// Ensure all detail rows are collapsed on page load
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.detail-row').forEach(row => {
+    row.setAttribute('data-expanded', 'false');
+    row.classList.remove('show');
+    row.style.display = 'none';
+  });
+});
+
+// Autocomplete for country input
+let autocompleteTimeout;
+const countryInput = document.getElementById('countryInput');
+const autocompleteResults = document.getElementById('autocompleteResults');
+
+if (countryInput && autocompleteResults) {
+  // Store countries data from template
+  const countriesData = [
+    {% for country in countries %}
+    {name: "{{ country.country_name|replace('"', '\\"') }}", code: "{{ country.country_code|replace('"', '\\"') }}"}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+  
+  countryInput.addEventListener('input', function() {
+    clearTimeout(autocompleteTimeout);
+    const query = this.value.trim();
+    
+    if (query.length < 2) {
+      autocompleteResults.classList.remove('show');
+      return;
+    }
+    
+    autocompleteTimeout = setTimeout(() => {
+      const filtered = countriesData.filter(c => 
+        c.name.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 10);
+      
+      autocompleteResults.innerHTML = '';
+      if (filtered.length > 0) {
+        filtered.forEach(country => {
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.textContent = country.name + ' (' + country.code + ')';
+          item.addEventListener('click', () => {
+            countryInput.value = country.name;
+            autocompleteResults.classList.remove('show');
+            document.getElementById('filterForm').submit();
+          });
+          autocompleteResults.appendChild(item);
+        });
+        autocompleteResults.classList.add('show');
+      } else {
+        autocompleteResults.classList.remove('show');
+      }
+    }, 300);
+  });
+}
+
+// Close autocomplete when clicking outside
+document.addEventListener('click', function(e) {
+  if (countryInput && autocompleteResults && 
+      !countryInput.contains(e.target) && !autocompleteResults.contains(e.target)) {
+    autocompleteResults.classList.remove('show');
+  }
+});
+
+// Auto-submit filter form on change
+document.querySelectorAll('#filterForm input').forEach(input => {
+  input.addEventListener('change', function() {
+    document.getElementById('filterForm').submit();
+  });
+});
+
+// Pagination links
+document.querySelectorAll('#pagination a[data-page]').forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    const page = this.dataset.page;
+    const url = new URL(window.location);
+    url.searchParams.set('page', page);
+    window.location.href = url.toString();
+  });
+});
 </script>
 {% endblock %}
