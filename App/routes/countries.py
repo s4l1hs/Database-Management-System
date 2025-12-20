@@ -201,75 +201,76 @@ def get_region_stats():
     try:
         # --- 0. List of Countries ---
         cur.execute("SELECT country_name FROM countries WHERE region = %s ORDER BY country_name", (region,))
-        country_rows = cur.fetchall()
-        stats["countries"] = [row["country_name"] for row in country_rows]
-
+        stats["countries"] = [row["country_name"] for row in cur.fetchall()]
 
         # --- 1. Energy Stats ---
         cur.execute("""
-            SELECT d.indicator_name, d.measurement_unit as unit, AVG(e.indicator_value) as avg_val
+            SELECT d.indicator_name, d.measurement_unit as unit, e.year, AVG(e.indicator_value) as avg_val
             FROM energy_data e
             JOIN energy_indicator_details d ON e.energy_indicator_id = d.energy_indicator_id
             JOIN countries c ON e.country_id = c.country_id
             WHERE c.region = %s
-            GROUP BY d.indicator_name, d.measurement_unit
-            ORDER BY d.indicator_name
+            GROUP BY d.indicator_name, d.measurement_unit, e.year
+            ORDER BY e.year DESC, d.indicator_name
         """, (region,))
         stats["energy"] = cur.fetchall()
 
         # --- 2. Health Stats ---
         cur.execute("""
-            SELECT d.indicator_name, d.unit_symbol as unit, AVG(h.indicator_value) as avg_val
+            SELECT d.indicator_name, d.unit_symbol as unit, h.year, AVG(h.indicator_value) as avg_val
             FROM health_system h
             JOIN health_indicator_details d ON h.health_indicator_id = d.health_indicator_id
             JOIN countries c ON h.country_id = c.country_id
             WHERE c.region = %s
-            GROUP BY d.indicator_name, d.unit_symbol
-            ORDER BY d.indicator_name
+            GROUP BY d.indicator_name, d.unit_symbol, h.year
+            ORDER BY h.year DESC, d.indicator_name
         """, (region,))
         stats["health"] = cur.fetchall()
 
         # --- 3. Freshwater Stats ---
         cur.execute("""
-            SELECT d.indicator_name, d.unit_of_measure as unit, AVG(f.indicator_value) as avg_val
+            SELECT d.indicator_name, d.unit_of_measure as unit, f.year, AVG(f.indicator_value) as avg_val
             FROM freshwater_data f
             JOIN freshwater_indicator_details d ON f.freshwater_indicator_id = d.freshwater_indicator_id
             JOIN countries c ON f.country_id = c.country_id
             WHERE c.region = %s
-            GROUP BY d.indicator_name, d.unit_of_measure
-            ORDER BY d.indicator_name
+            GROUP BY d.indicator_name, d.unit_of_measure, f.year
+            ORDER BY f.year DESC, d.indicator_name
         """, (region,))
         stats["freshwater"] = cur.fetchall()
 
         # --- 4. GHG Stats ---
         cur.execute("""
-            SELECT d.indicator_name, d.unit_symbol as unit, AVG(g.indicator_value) as avg_val
+            SELECT d.indicator_name, d.unit_symbol as unit, g.year, AVG(g.indicator_value) as avg_val
             FROM greenhouse_emissions g
             JOIN ghg_indicator_details d ON g.ghg_indicator_id = d.ghg_indicator_id
             JOIN countries c ON g.country_id = c.country_id
             WHERE c.region = %s
-            GROUP BY d.indicator_name, d.unit_symbol
-            ORDER BY d.indicator_name
+            GROUP BY d.indicator_name, d.unit_symbol, g.year
+            ORDER BY g.year DESC, d.indicator_name
         """, (region,))
         stats["ghg"] = cur.fetchall()
 
         # --- 5. Sustainability Stats ---
         cur.execute("""
-            SELECT d.indicator_name, 'Index' as unit, AVG(s.indicator_value) as avg_val
+            SELECT d.indicator_name, 'Index' as unit, s.year, AVG(s.indicator_value) as avg_val
             FROM sustainability_data s
             JOIN sustainability_indicator_details d ON s.sus_indicator_id = d.sus_indicator_id
             JOIN countries c ON s.country_id = c.country_id
             WHERE c.region = %s
-            GROUP BY d.indicator_name
-            ORDER BY d.indicator_name
+            GROUP BY d.indicator_name, s.year
+            ORDER BY s.year DESC, d.indicator_name
         """, (region,))
         stats["sustainability"] = cur.fetchall()
 
+    except Exception as e:
+        # It's good practice to catch errors so your app doesn't crash if a table is missing
+        print(f"Error fetching regional stats: {e}")
+        return jsonify({"error": str(e)}), 500
     finally:
         cur.close()
 
     return jsonify(stats)
-
 
 @countries_bp.route("/api/has-data/<string:iso2>", methods=["GET"])
 def api_has_data(iso2: str):
