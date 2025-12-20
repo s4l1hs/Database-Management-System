@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, request, jsonify, abort,redirect,url_for
 from App.db import get_db
 
-# Blueprint definition
+# Blueprint tanımı
 countries_bp = Blueprint("countries", __name__, url_prefix="/countries")
 
 # =========================================================
-# 1. LIST COUNTRIES 
+# 1. LIST COUNTRIES (Mevcut Sayfa)
 # =========================================================
 @countries_bp.route("/", methods=["GET"])
 def list_countries():
@@ -159,27 +159,29 @@ def list_countries():
     )
 
 # =========================================================
-# 2. WIDGET API 
+# 2. WIDGET API (Yeni Eklenen Kısım)
 # =========================================================
 @countries_bp.route("/api/stats", methods=["GET"])
 def get_global_stats():
     """
-    The widget in the navbar returns general statistics as JSON.
+    Navbar'daki widget için genel istatistikleri JSON olarak döner.
     """
     conn = get_db()
     stats = {}
     
     try:
-        cur = conn.cursor(dictionary=True) 
+        cur = conn.cursor(dictionary=True) # Sonuçları sözlük olarak al
 
-        # 1. total country count
+        # 1. Toplam Ülke Sayısı
         cur.execute("SELECT COUNT(*) as cnt FROM countries")
         stats['total_countries'] = cur.fetchone()['cnt']
 
-        # 2. total region count (not null)
+        # 2. Toplam Bölge Sayısı (Boş olmayanlar)
         cur.execute("SELECT COUNT(DISTINCT region) as cnt FROM countries WHERE region IS NOT NULL AND region != ''")
         stats['total_regions'] = cur.fetchone()['cnt']
         
+        # 3. Örnek: Health tablosu varsa kayıt sayısını çek (Yoksa 0 dön)
+        # Hata almamak için try-except bloğuna alabiliriz veya basitçe tablo var varsayabiliriz.
         try:
             cur.execute("SELECT COUNT(*) as cnt FROM health_system")
             stats['total_health'] = cur.fetchone()['cnt']
@@ -655,7 +657,7 @@ def resolve_country(iso2):
     db = get_db()
     cur = db.cursor(dictionary=True)
 
-    # We are searching via country_code because ISO3 is stored in the DB.
+    # DB'de ISO3 tutuluyor diye country_code üzerinden arıyoruz
     cur.execute("""
         SELECT country_id
         FROM countries
@@ -719,3 +721,245 @@ def resolve_country(iso2):
 
     return redirect(url_for("countries.country_profile", country_id=country_id))
 
+ISO2_TO_ISO3 ={
+  "AF": "AFG",
+  "AL": "ALB",
+  "DZ": "DZA",
+  "AS": "ASM",
+  "AD": "AND",
+  "AO": "AGO",
+  "AI": "AIA",
+  "AQ": "ATA",
+  "AG": "ATG",
+  "AR": "ARG",
+  "AM": "ARM",
+  "AW": "ABW",
+  "AU": "AUS",
+  "AT": "AUT",
+  "AZ": "AZE",
+  "BS": "BHS",
+  "BH": "BHR",
+  "BD": "BGD",
+  "BB": "BRB",
+  "BY": "BLR",
+  "BE": "BEL",
+  "BZ": "BLZ",
+  "BJ": "BEN",
+  "BM": "BMU",
+  "BT": "BTN",
+  "BO": "BOL",
+  "BA": "BIH",
+  "BW": "BWA",
+  "BR": "BRA",
+  "IO": "IOT",
+  "BN": "BRN",
+  "BG": "BGR",
+  "BF": "BFA",
+  "BI": "BDI",
+  "KH": "KHM",
+  "CM": "CMR",
+  "CA": "CAN",
+  "CV": "CPV",
+  "KY": "CYM",
+  "CF": "CAF",
+  "TD": "TCD",
+  "CL": "CHL",
+  "CN": "CHN",
+  "CX": "CXR",
+  "CC": "CCK",
+  "CO": "COL",
+  "KM": "COM",
+  "CG": "COG",
+  "CD": "COD",
+  "CK": "COK",
+  "CR": "CRI",
+  "CI": "CIV",
+  "HR": "HRV",
+  "CU": "CUB",
+  "CY": "CYP",
+  "CZ": "CZE",
+  "DK": "DNK",
+  "DJ": "DJI",
+  "DM": "DMA",
+  "DO": "DOM",
+  "EC": "ECU",
+  "EG": "EGY",
+  "SV": "SLV",
+  "GQ": "GNQ",
+  "ER": "ERI",
+  "EE": "EST",
+  "SZ": "SWZ",
+  "ET": "ETH",
+  "FK": "FLK",
+  "FO": "FRO",
+  "FJ": "FJI",
+  "FI": "FIN",
+  "FR": "FRA",
+  "GF": "GUF",
+  "PF": "PYF",
+  "TF": "ATF",
+  "GA": "GAB",
+  "GM": "GMB",
+  "GE": "GEO",
+  "DE": "DEU",
+  "GH": "GHA",
+  "GI": "GIB",
+  "GR": "GRC",
+  "GL": "GRL",
+  "GD": "GRD",
+  "GP": "GLP",
+  "GU": "GUM",
+  "GT": "GTM",
+  "GG": "GGY",
+  "GN": "GIN",
+  "GW": "GNB",
+  "GY": "GUY",
+  "HT": "HTI",
+  "HN": "HND",
+  "HK": "HKG",
+  "HU": "HUN",
+  "IS": "ISL",
+  "IN": "IND",
+  "ID": "IDN",
+  "IR": "IRN",
+  "IQ": "IRQ",
+  "IE": "IRL",
+  "IM": "IMN",
+  "IL": "ISR",
+  "IT": "ITA",
+  "JM": "JAM",
+  "JP": "JPN",
+  "JE": "JEY",
+  "JO": "JOR",
+  "KZ": "KAZ",
+  "KE": "KEN",
+  "KI": "KIR",
+  "KP": "PRK",
+  "KR": "KOR",
+  "KW": "KWT",
+  "KG": "KGZ",
+  "LA": "LAO",
+  "LV": "LVA",
+  "LB": "LBN",
+  "LS": "LSO",
+  "LR": "LBR",
+  "LY": "LBY",
+  "LI": "LIE",
+  "LT": "LTU",
+  "LU": "LUX",
+  "MO": "MAC",
+  "MG": "MDG",
+  "MW": "MWI",
+  "MY": "MYS",
+  "MV": "MDV",
+  "ML": "MLI",
+  "MT": "MLT",
+  "MH": "MHL",
+  "MQ": "MTQ",
+  "MR": "MRT",
+  "MU": "MUS",
+  "YT": "MYT",
+  "MX": "MEX",
+  "FM": "FSM",
+  "MD": "MDA",
+  "MC": "MCO",
+  "MN": "MNG",
+  "ME": "MNE",
+  "MS": "MSR",
+  "MA": "MAR",
+  "MZ": "MOZ",
+  "MM": "MMR",
+  "NA": "NAM",
+  "NR": "NRU",
+  "NP": "NPL",
+  "NL": "NLD",
+  "NC": "NCL",
+  "NZ": "NZL",
+  "NI": "NIC",
+  "NE": "NER",
+  "NG": "NGA",
+  "NU": "NIU",
+  "NF": "NFK",
+  "MK": "MKD",
+  "MP": "MNP",
+  "NO": "NOR",
+  "OM": "OMN",
+  "PK": "PAK",
+  "PW": "PLW",
+  "PS": "PSE",
+  "PA": "PAN",
+  "PG": "PNG",
+  "PY": "PRY",
+  "PE": "PER",
+  "PH": "PHL",
+  "PN": "PCN",
+  "PL": "POL",
+  "PT": "PRT",
+  "PR": "PRI",
+  "QA": "QAT",
+  "RE": "REU",
+  "RO": "ROU",
+  "RU": "RUS",
+  "RW": "RWA",
+  "BL": "BLM",
+  "SH": "SHN",
+  "KN": "KNA",
+  "LC": "LCA",
+  "MF": "MAF",
+  "PM": "SPM",
+  "VC": "VCT",
+  "WS": "WSM",
+  "SM": "SMR",
+  "ST": "STP",
+  "SA": "SAU",
+  "SN": "SEN",
+  "RS": "SRB",
+  "SC": "SYC",
+  "SL": "SLE",
+  "SG": "SGP",
+  "SX": "SXM",
+  "SK": "SVK",
+  "SI": "SVN",
+  "SB": "SLB",
+  "SO": "SOM",
+  "ZA": "ZAF",
+  "GS": "SGS",
+  "SS": "SSD",
+  "ES": "ESP",
+  "LK": "LKA",
+  "SD": "SDN",
+  "SR": "SUR",
+  "SE": "SWE",
+  "CH": "CHE",
+  "SY": "SYR",
+  "TW": "TWN",
+  "TJ": "TJK",
+  "TZ": "TZA",
+  "TH": "THA",
+  "TL": "TLS",
+  "TG": "TGO",
+  "TK": "TKL",
+  "TO": "TON",
+  "TT": "TTO",
+  "TN": "TUN",
+  "TR": "TUR",
+  "TM": "TKM",
+  "TC": "TCA",
+  "TV": "TUV",
+  "UG": "UGA",
+  "UA": "UKR",
+  "AE": "ARE",
+  "GB": "GBR",
+  "US": "USA",
+  "UY": "URY",
+  "UZ": "UZB",
+  "VU": "VUT",
+  "VE": "VEN",
+  "VN": "VNM",
+  "VG": "VGB",
+  "VI": "VIR",
+  "YE": "YEM",
+  "ZM": "ZMB",
+  "ZW": "ZWE",
+  "XK": "XKX"
+}
