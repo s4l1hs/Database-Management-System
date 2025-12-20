@@ -153,7 +153,7 @@ def main():
         'greenhouse_emissions.csv': ('greenhouse_emissions', ['country_id', 'ghg_indicator_id', 'indicator_value', 'share_of_total_pct', 'uncertainty_pct', 'year', 'source_notes'], None, ['country_id', 'ghg_indicator_id', 'year']),
         'health_indicator_details.csv': ('health_indicator_details', ['health_indicator_id', 'indicator_name', 'indicator_description', 'unit_symbol'], None, None),
         'health_system.csv': ('health_system', ['country_id', 'health_indicator_id', 'indicator_value', 'year', 'source_notes'], None, ['country_id', 'health_indicator_id', 'year']),
-        'sustainability_indicator_details.csv': ('sustainability_indicator_details', ['sus_indicator_id', 'indicator_name', 'indicator_code', 'indicator_description'], None, None),
+        'sustainability_indicator_details.csv': ('sustainability_indicator_details', ['sus_indicator_id', 'indicator_name', 'indicator_code', 'indicator_description', 'unit_symbol'], None, None),
         'sustainability_data.csv': ('sustainability_data', ['country_id', 'sus_indicator_id', 'year', 'indicator_value', 'source_note'], None, ['country_id', 'sus_indicator_id', 'year']),
     }
 

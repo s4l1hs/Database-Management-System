@@ -125,6 +125,7 @@ CREATE TABLE sustainability_indicator_details (
     sus_indicator_id INT AUTO_INCREMENT PRIMARY KEY,
     indicator_name VARCHAR(255) NOT NULL UNIQUE,
     indicator_code VARCHAR(50) NOT NULL UNIQUE,
+    unit_symbol VARCHAR(50),
     indicator_description TEXT
 );
 

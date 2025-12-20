@@ -11,7 +11,7 @@ DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
 DB_NAME = os.getenv("DB_NAME", "wdi_project")
 
-CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'Data', 'countries.csv')
+CSV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Data', 'countries.csv')
 
 
 def load():

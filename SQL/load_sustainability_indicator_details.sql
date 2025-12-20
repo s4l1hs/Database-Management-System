@@ -6,4 +6,4 @@ FIELDS TERMINATED BY ','
 ENCLOSED BY '"'
 LINES TERMINATED BY '\n'
 IGNORE 1 ROWS
-(sus_indicator_id, indicator_name, indicator_code, indicator_description);
+(sus_indicator_id, indicator_name, indicator_code, indicator_description, unit_symbol);

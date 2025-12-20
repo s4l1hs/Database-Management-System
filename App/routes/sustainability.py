@@ -19,7 +19,10 @@ sustainability_bp = Blueprint("sustainability", __name__, url_prefix="/sustainab
 @sustainability_bp.route("/", methods=["GET"])
 def list_sustainability():
     country_name = request.args.get("country", type=str)
+    country_code = request.args.get("code", type=str)
     year = request.args.get("year", type=int)
+    indicator_name = request.args.get("indicator", type=str)
+    unit = request.args.get("unit", type=str)
     sort_by = request.args.get("sort_by", type=str)
     order = request.args.get("order", type=str)
 
@@ -38,7 +41,8 @@ def list_sustainability():
             c.country_code,
             c.region,
             si.indicator_name,
-            si.indicator_code
+                si.indicator_code,
+                si.unit_symbol
         FROM sustainability_data sd
         JOIN countries c
             ON c.country_id = sd.country_id
@@ -53,6 +57,18 @@ def list_sustainability():
         conditions.append("c.country_name LIKE %s")
         params.append(f"%{country_name}%")
 
+    if country_code:
+        conditions.append("c.country_code LIKE %s")
+        params.append(f"%{country_code}%")
+
+    if indicator_name:
+        conditions.append("si.indicator_name LIKE %s")
+        params.append(f"%{indicator_name}%")
+
+    if unit:
+        conditions.append("si.unit_symbol LIKE %s")
+        params.append(f"%{unit}%")
+
     if year:
         conditions.append("sd.year = %s")
         params.append(year)
@@ -65,8 +81,10 @@ def list_sustainability():
     allowed_sorts = {
         'id': 'sd.data_id',
         'country': 'c.country_name',
+        'code': 'c.country_code',
         'region': 'c.region',
         'indicator': 'si.indicator_name',
+        'unit': 'si.unit_symbol',
         'year': 'sd.year',
         'value': 'sd.indicator_value'
     }
@@ -85,9 +103,12 @@ def list_sustainability():
         rows=rows,
         current_country=country_name,
         current_year=year,
-        current_sort=sort_by or 'id',
+        current_code=country_code,
+        current_indicator=indicator_name,
+        current_unit=unit,
+        current_sort_by=sort_by or 'data_id',
         current_order=(order or 'asc').lower(),
-        sort_options=[('id','ID'),('country','Country'),('region','Region'),('indicator','Indicator'),('year','Year'),('value','Value')],
+        sort_options=[('data_id','ID'),('country','Country'),('code','Code'),('region','Region'),('indicator','Indicator'),('unit','Unit'),('year','Year'),('value','Value')],
     )
 
 
@@ -104,7 +125,7 @@ def _load_countries_and_indicators():
     countries = cur.fetchall()
 
     cur.execute("""
-        SELECT sus_indicator_id, indicator_name, indicator_code
+        SELECT sus_indicator_id, indicator_name, indicator_code, unit_symbol
         FROM sustainability_indicator_details
         ORDER BY indicator_name
     """)
