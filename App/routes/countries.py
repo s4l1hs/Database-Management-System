@@ -62,17 +62,7 @@ def list_countries():
     if where_clauses:
         base_sql += " WHERE " + " AND ".join(where_clauses)
 
-    # Default ordering: by primary id ascending
     base_sql += " ORDER BY c.country_id ASC"
-
-    # Server-side pagination
-    page = request.args.get('page', 1, type=int) or 1
-    page_size = 8
-
-    # count total (respect search)
-    count_sql = "SELECT COUNT(*) as cnt FROM countries c"
-    if where_clauses:
-        count_sql += " WHERE " + " AND ".join(where_clauses)
 
     conn = get_db()
     cur = conn.cursor(dictionary=True)
@@ -82,17 +72,11 @@ def list_countries():
     has_data_by_iso2 = {}
 
     try:
-        # get paged rows for listing
-        params_for_count = list(params)
-        cur.execute(count_sql, params_for_count)
+        total_count_sql = "SELECT COUNT(*) as cnt FROM countries"
+        cur.execute(total_count_sql)
         total_count = cur.fetchone().get('cnt', 0)
-        total_pages = max(1, -(-int(total_count) // page_size))
 
-        offset = (page - 1) * page_size
-        params_for_rows = list(params) + [page_size, offset]
-        # use LIMIT/OFFSET for pagination
-        paged_sql = base_sql + " LIMIT %s OFFSET %s"
-        cur.execute(paged_sql, params_for_rows)
+        cur.execute(base_sql, params)
         rows = cur.fetchall()
         colnames = [d[0] for d in cur.description]
 
@@ -153,8 +137,6 @@ def list_countries():
         region_name_map=region_name_map,
         has_data_by_iso2=has_data_by_iso2,
         search=search or "",
-        current_page=page,
-        total_pages=total_pages,
         total_count=total_count,
     )
 
