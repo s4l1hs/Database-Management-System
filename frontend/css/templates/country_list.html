@@ -179,39 +179,48 @@
         </div>
         <div id="region-stats-container" class="mt-4" style="display: none;">
     <div class="card shadow-sm p-4">
-        <h3 class="mb-3">Regional Averages: <span id="region-title" class="text-primary"></span></h3>
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="mb-0">Regional Averages: <span id="region-title" class="text-primary"></span></h3>
         
-        <ul class="nav nav-pills mb-3" id="regionTabs" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active" onclick="switchRegionTab('energy')" id="tab-energy">Energy</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" onclick="switchRegionTab('health')" id="tab-health">Health</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" onclick="switchRegionTab('freshwater')" id="tab-freshwater">Freshwater</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" onclick="switchRegionTab('ghg')" id="tab-ghg">GHG</button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link" onclick="switchRegionTab('sustainability')" id="tab-sustainability">Sustainability</button>
-            </li>
-        </ul>
-
-        <div class="table-responsive">
-            <table class="table table-hover table-bordered align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 60%;">Indicator</th>
-                        <th style="width: 20%;">Regional Average</th>
-                        <th style="width: 20%;">Unit</th>
-                    </tr>
-                </thead>
-                <tbody id="region-table-body">
-                    </tbody>
-            </table>
+        <div class="d-flex align-items-center gap-2 bg-light p-2 rounded border">
+            <label for="regionYearSelector" class="fw-bold small text-muted text-uppercase mb-0">Year:</label>
+            <select id="regionYearSelector" class="form-select form-select-sm border-0 bg-transparent fw-bold" style="width: auto;" onchange="updateRegionDisplay()">
+                </select>
         </div>
+    </div>
+    
+    <ul class="nav nav-pills mb-3" id="regionTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" onclick="switchRegionTab('energy')" id="tab-energy">Energy</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('health')" id="tab-health">Health</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('freshwater')" id="tab-freshwater">Freshwater</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('ghg')" id="tab-ghg">GHG</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('sustainability')" id="tab-sustainability">Sustainability</button>
+        </li>
+    </ul>
+
+       <div class="table-responsive">
+    <table class="table table-hover table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 50%;">Indicator</th>
+                <th style="width: 15%;" class="text-center">Year</th> 
+                <th style="width: 20%;">Regional Average</th>
+                <th style="width: 15%;">Unit</th>
+            </tr>
+        </thead>
+        <tbody id="region-table-body">
+            </tbody>
+    </table>
+</div>
         <div class="mt-4 pt-3 border-top">
             <small class="text-muted d-block mb-2">Countries in this region:</small>
             <div id="region-countries-container" class="d-flex flex-wrap"></div>
@@ -231,6 +240,7 @@
 
 <script>
   let currentRegionData = {};
+  let currentCategory = 'energy';
   
     // Continent mapping (ISO2 -> continent)
     const continentMap = {
@@ -455,71 +465,91 @@
     }
 }
 
-    function switchRegionTab(category) {
-   
+function switchRegionTab(category) {
+    currentCategory = category; // Update category state
+    
+    // Update visual "Active" state of the tabs
     document.querySelectorAll('#regionTabs .nav-link').forEach(btn => btn.classList.remove('active'));
     const activeBtn = document.getElementById(`tab-${category}`);
     if (activeBtn) activeBtn.classList.add('active');
 
-   
-    const items = currentRegionData[category] || [];
-    const tbody = document.getElementById("region-table-body");
-    tbody.innerHTML = ""; 
-
-  
-    if (items.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">No data available.</td></tr>`;
-        return;
-    }
-
-    
-    items.forEach(item => {
-        const avgVal = item.avg_val !== null ? parseFloat(item.avg_val).toFixed(2) : "N/A";
-        const unit = item.unit || "";
-        
-        tbody.innerHTML += `
-            <tr>
-                <td class="fw-bold">${item.indicator_name}</td>
-                <td><span class="badge bg-primary fs-6">${avgVal}</span></td>
-                <td class="text-muted">${unit}</td>
-            </tr>
-        `;
-    });
+    // Refresh the table display
+    updateRegionDisplay();
 }
     function renderRegionStats(data) {
-   
-    const loader = document.getElementById("region-stats-loader");
-    if(loader) loader.style.display = "none";
+    currentRegionData = data; 
     
-    document.getElementById("region-stats-container").style.display = "block";
-    
-    
+    // 1. Collect every unique year available in the dataset for the dropdown
+    const allYears = new Set();
+    ['energy', 'health', 'freshwater', 'ghg', 'sustainability'].forEach(cat => {
+        if (data[cat]) {
+            data[cat].forEach(item => {
+                if (item.year) allYears.add(item.year);
+            });
+        }
+    });
+
+    const yearSelector = document.getElementById("regionYearSelector");
+    const sortedYears = Array.from(allYears).sort((a, b) => b - a); 
+
+    // 2. Populate the Year Dropdown UI
+    if (sortedYears.length > 0) {
+        yearSelector.innerHTML = sortedYears.map(y => `<option value="${y}">${y}</option>`).join('');
+    } else {
+        yearSelector.innerHTML = '<option value="">No Data</option>';
+    }
+
+    // 3. Update Title and Country Badges
     const countryCount = data.countries ? data.countries.length : 0;
     document.getElementById("region-title").innerHTML = `${data.region} <span class="badge bg-primary fs-6 ms-2">${countryCount} countries</span>`;
-
-    
-    const countriesListHtml = (data.countries || [])
-        .map(c => `<span class="badge bg-light text-dark border me-1 mb-1">${c}</span>`)
-        .join('');
     
     const countriesContainer = document.getElementById("region-countries-container");
     if (countriesContainer) {
-        countriesContainer.innerHTML = countriesListHtml || '<span class="text-muted">No countries found.</span>';
+        countriesContainer.innerHTML = (data.countries || [])
+            .map(c => `<span class="badge bg-light text-dark border me-1 mb-1">${c}</span>`)
+            .join('');
     }
 
-    
-    currentRegionData = data;
-
-    
+    // 4. Show container and trigger the default view
+    document.getElementById("region-stats-container").style.display = "block";
     switchRegionTab('energy');
+}
+function updateRegionDisplay() {
+    const yearSelector = document.getElementById("regionYearSelector");
+    if (!yearSelector) return;
+
+    const selectedYear = parseInt(yearSelector.value);
+    const tbody = document.getElementById("region-table-body");
+    const items = currentRegionData[currentCategory] || [];
+
+    // Filter items based on the user-selected year
+    const filteredItems = items.filter(item => parseInt(item.year) === selectedYear);
+
+    tbody.innerHTML = ""; 
+
+    if (filteredItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No ${currentCategory} data found for ${selectedYear}.</td></tr>`;
+        return;
+    }
+
+    // Build and inject the new rows into the table
+    filteredItems.forEach(item => {
+        const avgVal = item.avg_val !== null ? parseFloat(item.avg_val).toFixed(2) : "N/A";
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold">${item.indicator_name}</td>
+                <td class="text-center"><span class="badge bg-light text-dark border">${item.year}</span></td>
+                <td><span class="badge bg-primary fs-6">${avgVal}</span></td>
+                <td class="text-muted small">${item.unit || ""}</td>
+            </tr>
+        `;
+    });
 }
 
 document.getElementById('btn-regions').addEventListener('click', function() {
     mode = 'regions';
     applyRegionColors(true); 
 });
-
-// legacy btn-countries listener removed (uses data-mode tabs now)
 
     function showNoDataMessage(text) {
       const el = document.getElementById('noDataMessage');
@@ -575,6 +605,6 @@ document.getElementById('btn-regions').addEventListener('click', function() {
 
     buildLegend();
     applyDataAvailabilityStyling();
-    // server-side pagination: controls use links; no client-side pagination required
+   
 </script>
 {% endblock %}
