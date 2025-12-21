@@ -1,7 +1,4 @@
 # 🌍 Database Management System
-
-<div align="center">
-
 **A comprehensive web-based database management and visualization system for analyzing World Development Indicators (WDI) data across multiple domains**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
@@ -15,7 +12,7 @@
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#-overview)
 - [Features](#-features)
@@ -38,20 +35,20 @@
 
 ---
 
-## 🎯 Overview
+## Overview
 
 This **Database Management System** provides an interactive platform for exploring, analyzing, and managing multi-domain indicator data from the World Development Indicators dataset. The system enables users to:
 
-- 📊 Browse and filter country-level and regional data
-- 📈 Visualize trends through interactive charts and maps
-- 🔍 Perform cross-country comparisons
-- ⏱️ Analyze time-series data with trend calculations
-- ✏️ Manage data through role-based CRUD operations
-- 📝 Track data modifications via audit logging
+- Browse and filter country-level and regional data
+- Visualize trends through interactive charts and maps
+- Perform cross-country comparisons
+-  Analyze time-series data with trend calculations
+- Manage data through role-based CRUD operations
+- Track data modifications via audit logging
 
 ---
 
-## ✨ Features
+## Features
 
 ### Core Functionality
 
@@ -86,7 +83,7 @@ This **Database Management System** provides an interactive platform for explori
 
 ---
 
-## 🛠 Technology Stack
+## Technology Stack
 
 ### Backend
 - **Python 3.11+** - Programming language
@@ -108,7 +105,7 @@ This **Database Management System** provides an interactive platform for explori
 
 ---
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 Database-Management-System/
@@ -158,7 +155,7 @@ Database-Management-System/
 
 ---
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
@@ -194,10 +191,10 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-> **Note**: If you encounter execution policy issues on Windows PowerShell, run:
-> ```powershell
-> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-> ```
+**Note**: If you encounter execution policy issues on Windows PowerShell, run:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+ ```
 
 #### Step 3: Install Dependencies
 
@@ -235,11 +232,11 @@ DB_NAME=wdi_project
 DB_PORT=3306
 ```
 
-> **Important**: Replace `root` with your actual MySQL root password if different.
+**Important**: Replace `root` with your actual MySQL root password if different.
 
 The application will automatically load these environment variables using `python-dotenv`.
 
-### ⚠️ Important: Data Loading Scripts
+### Important: Data Loading Scripts
 
 **CRITICAL**: You must run the data loading scripts in the correct order for the application to work properly.
 
@@ -290,14 +287,14 @@ python scripts/load_user.py
 - Sets up editor user (team_no = 2):
   - `5454` - Editor User
 
-> **⚠️ Why this order matters:**
-> - `load_all.py` creates the database schema and loads all domain data
-> - `load_user.py` requires the database to exist and uses Flask app context
-> - Running `load_user.py` before `load_all.py` will fail because tables don't exist yet
+ **Why this order matters:**
+- `load_all.py` creates the database schema and loads all domain data
+- `load_user.py` requires the database to exist and uses Flask app context
+- Running `load_user.py` before `load_all.py` will fail because tables don't exist yet
 
 ---
 
-## 💻 Usage
+## Usage
 
 ### Starting the Application
 
@@ -326,7 +323,7 @@ After running `load_user.py`, you can log in with any of these accounts:
 **Editor Account** (Add/Edit only):
 - Student Number: `5454` (Editor User)
 
-> **Note**: Password is not required - authentication is based on student number only for this educational project.
+**Note**: Password is not required - authentication is based on student number only for this educational project.
 
 ### Navigation
 
@@ -340,7 +337,7 @@ After running `load_user.py`, you can log in with any of these accounts:
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### Core Tables
 
@@ -360,7 +357,7 @@ See `SQL/database.sql` for complete schema definition with relationships and con
 
 ---
 
-## 🔐 Role-Based Access Control
+## Role-Based Access Control
 
 The system uses `team_no` field in the `students` table to determine user roles:
 
@@ -383,7 +380,7 @@ The system uses `team_no` field in the `students` table to determine user roles:
 
 ---
 
-## 📊 Data Domains
+## Data Domains
 
 ### 1. Countries
 - Country profiles with comprehensive statistics
@@ -420,7 +417,7 @@ The system uses `team_no` field in the `students` table to determine user roles:
 
 ---
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Authentication
 - `GET/POST /login` - User authentication
@@ -446,7 +443,7 @@ Similar endpoints exist for Health, Energy, Freshwater, and Sustainability domai
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -480,13 +477,13 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 ---
 
-## 📄 License
+## License
 
 This project is developed for **educational purposes** as part of the **BLG-317E Database Systems** course.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **World Bank** for providing World Development Indicators (WDI) dataset
 - **Flask** and **Bootstrap** communities for excellent documentation
@@ -494,7 +491,4 @@ This project is developed for **educational purposes** as part of the **BLG-317E
 - Course instructors and teaching assistants
 
 ---
-
-*Last updated: 2025 December*
-
 </div>
