@@ -1,4 +1,4 @@
-# 🌍 Database Management System
+# Database Management System
 **A comprehensive web-based database management and visualization system for analyzing World Development Indicators (WDI) data across multiple domains**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
