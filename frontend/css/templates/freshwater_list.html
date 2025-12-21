@@ -74,7 +74,7 @@
     <p class="fw-muted mb-0">Country-based freshwater statistics with year and source notes.</p>
   </div>
 
-  {% if session.get("team_no")|int == 1 %}
+  {% if session.get("team_no")|int in [1, 2] %}
     <a href="{{ url_for('freshwater.add_freshwater') }}" class="btn btn-primary rounded-pill px-4">
       <i class="fa-solid fa-plus"></i> Add New Record
     </a>
@@ -483,7 +483,7 @@
         <th>Year</th>
         <th class="text-end">Value</th>
         <th>Source Notes</th>
-        {% if session.get("team_no")|int == 1 %}
+        {% if session.get("team_no")|int in [1, 2] %}
           <th class="text-end">Actions</th>
         {% endif %}
       </tr>
@@ -509,29 +509,32 @@
           </td>
           <td class="text-muted">{{ row.source_notes or '' }}</td>
 
-          {% if session.get("team_no")|int == 1 %}
+          {% if session.get("team_no")|int in [1, 2] %}
             <td class="text-end">
               <a href="{{ url_for('freshwater.edit_freshwater', id=row.data_id) }}"
                  class="btn btn-sm btn-outline-primary rounded-pill me-1"
                  title="Edit">
                 <i class="fa-solid fa-pen"></i>
               </a>
-              <form action="{{ url_for('freshwater.delete_freshwater', id=row.data_id) }}"
-                    method="post"
-                    style="display:inline-block"
-                    onsubmit="return confirm('Delete this record?');">
-                <input type="hidden" name="student_id" value="{{ session.get('student_id', '') }}">
-                <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill" title="Delete">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </form>
+
+              {% if session.get("team_no")|int == 1 %}
+                <form action="{{ url_for('freshwater.delete_freshwater', id=row.data_id) }}"
+                      method="post"
+                      style="display:inline-block"
+                      onsubmit="return confirm('Delete this record?');">
+                  <input type="hidden" name="student_id" value="{{ session.get('student_id', '') }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+              {% endif %}
             </td>
           {% endif %}
         </tr>
       {% endfor %}
 
       {% if rows|length == 0 %}
-        {% set col_count = 9 + (1 if session.get("team_no")|int == 1 else 0) %}
+        {% set col_count = 9 + (1 if session.get("team_no")|int in [1, 2] else 0) %}
         <tr>
           <td colspan="{{ col_count }}" class="text-center text-muted py-4">No records found for the selected filters.</td>
         </tr>

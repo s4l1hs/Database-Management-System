@@ -5,7 +5,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, abort
 from App.db import get_db
-from App.routes.login import admin_required
+from App.routes.login import admin_required, editor_required
 
 freshwater_bp = Blueprint("freshwater", __name__, url_prefix="/freshwater")
 
@@ -474,7 +474,7 @@ def list_freshwater():
 # CREATE PAGE
 # ---------------------------------------------------------
 @freshwater_bp.route("/add", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def add_freshwater():
     conn = get_db()
 
@@ -534,7 +534,7 @@ def add_freshwater():
 # UPDATE PAGE
 # ---------------------------------------------------------
 @freshwater_bp.route("/edit/<int:id>", methods=["GET", "POST"])
-@admin_required
+@editor_required
 def edit_freshwater(id):
     conn = get_db()
 
