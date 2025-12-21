@@ -135,7 +135,7 @@
   </div>
 
   <div class="row g-4 mb-4">
-    <div class="col-lg-4">
+    <div class="col-lg-6">
       <div class="mini-card h-100">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <span class="pill"><i class="fa-solid fa-compass"></i> Quick access</span>
@@ -176,7 +176,7 @@
         </div>
       </div>
     </div>
-    <div class="col-lg-4">
+    <div class="col-lg-6">
       <div class="mini-card h-100">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <span class="pill" style="background:#ecfdf3; color:#166534;"><i class="fa-solid fa-earth-europe"></i> Coverage</span>
@@ -217,21 +217,6 @@
             <span class="text-nowrap">Sustainability: {{ coverage.indicators.sustainability or 0 }}</span>
           </li>
         </ul>
-      </div>
-    </div>
-    <div class="col-lg-4">
-      <div class="mini-card h-100">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="pill" style="background:#fff7ed; color:#9a3412;"><i class="fa-solid fa-screwdriver-wrench"></i> Actions</span>
-          <i class="fa-solid fa-rocket text-warning"></i>
-        </div>
-        <p class="text-muted small mb-3">Admin shortcuts.</p>
-        <div class="d-grid gap-2">
-          <a class="btn btn-outline-secondary" href="{{ url_for('energy.add_energy') }}">Add energy record</a>
-          <a class="btn btn-outline-secondary" href="{{ url_for('freshwater.add_freshwater') }}">Add freshwater record</a>
-          <a class="btn btn-outline-secondary" href="{{ url_for('sustainability.add_sustainability') }}">Add sustainability record</a>
-          <a class="btn btn-outline-secondary" href="{{ url_for('sustainability.add_sustainability') }}">Add health record</a>
-        </div>
       </div>
     </div>
   </div>
