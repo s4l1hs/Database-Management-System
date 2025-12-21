@@ -76,8 +76,6 @@ def list_sustainability():
     if conditions:
         base_sql += " WHERE " + " AND ".join(conditions)
 
-    # Sorting
-    # whitelist allowed sort columns to avoid SQL injection
     allowed_sorts = {
         'id': 'sd.data_id',
         'country': 'c.country_name',
@@ -98,14 +96,12 @@ def list_sustainability():
     cur.execute(base_sql, params)
     rows = cur.fetchall()
 
-    # Build grouped summary: one row per country + year
     grouped = {}
     for r in rows:
         key = f"{r['country_id']}-{r['year']}"
         grouped.setdefault(key, {'country_id': r['country_id'], 'country_name': r['country_name'], 'country_code': r.get('country_code'), 'region': r.get('region'), 'year': r['year'], 'details': []})
         grouped[key]['details'].append(r)
 
-    # summary_rows is a list of country-year summaries
     summary_rows = []
     for key, g in grouped.items():
         summary_rows.append({
@@ -118,7 +114,6 @@ def list_sustainability():
             'count': len(g['details'])
         })
 
-    # Keep original rows grouped for detail rendering
     details_map = {k: v['details'] for k, v in grouped.items()}
 
     return render_template(
@@ -303,7 +298,7 @@ def edit_sustainability(id):
     countries, indicators = _load_countries_and_indicators()
     return render_template(
         "sustainability_form.html",
-        record=record,  # dict
+        record=record,
         countries=countries,
         indicators=indicators,
         action="Edit",
