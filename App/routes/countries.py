@@ -1,11 +1,10 @@
 from flask import Blueprint, render_template, request, jsonify, abort,redirect,url_for
 from App.db import get_db
 
-# Blueprint tanımı
 countries_bp = Blueprint("countries", __name__, url_prefix="/countries")
 
 # =========================================================
-# 1. LIST COUNTRIES (Mevcut Sayfa)
+# 1. LIST COUNTRIES 
 # =========================================================
 @countries_bp.route("/", methods=["GET"])
 def list_countries():
@@ -141,7 +140,7 @@ def list_countries():
     )
 
 # =========================================================
-# 2. WIDGET API (Yeni Eklenen Kısım)
+# 2. WIDGET API 
 # =========================================================
 @countries_bp.route("/api/stats", methods=["GET"])
 def get_global_stats():
@@ -152,18 +151,14 @@ def get_global_stats():
     stats = {}
     
     try:
-        cur = conn.cursor(dictionary=True) # Sonuçları sözlük olarak al
+        cur = conn.cursor(dictionary=True) 
 
-        # 1. Toplam Ülke Sayısı
         cur.execute("SELECT COUNT(*) as cnt FROM countries")
         stats['total_countries'] = cur.fetchone()['cnt']
 
-        # 2. Toplam Bölge Sayısı (Boş olmayanlar)
         cur.execute("SELECT COUNT(DISTINCT region) as cnt FROM countries WHERE region IS NOT NULL AND region != ''")
         stats['total_regions'] = cur.fetchone()['cnt']
-        
-        # 3. Örnek: Health tablosu varsa kayıt sayısını çek (Yoksa 0 dön)
-        # Hata almamak için try-except bloğuna alabiliriz veya basitçe tablo var varsayabiliriz.
+       
         try:
             cur.execute("SELECT COUNT(*) as cnt FROM health_system")
             stats['total_health'] = cur.fetchone()['cnt']
@@ -264,7 +259,6 @@ def get_region_stats():
         stats["sustainability"] = cur.fetchall()
 
     except Exception as e:
-        # It's good practice to catch errors so your app doesn't crash if a table is missing
         print(f"Error fetching regional stats: {e}")
         return jsonify({"error": str(e)}), 500
     finally:
@@ -284,7 +278,6 @@ def api_has_data(iso2: str):
     iso2 = iso2.upper()
     iso3 = ISO2_TO_ISO3.get(iso2)
     if not iso3:
-        # Unknown mapping – treat as no data, but do not error.
         return jsonify({"iso2": iso2, "has_data": False, "country_id": None})
 
     db = get_db()
@@ -591,8 +584,7 @@ def region_profile(region_name: str):
     """, (region_name,))
     sustainability = cur.fetchall()
     
-    # Get country-level metrics for sorting (using GHG CO2 per capita as default)
-    # Countries with missing data are placed at the bottom (NULLS LAST)
+    # Countries with missing data are placed at the bottom 
     # This will be used to sort countries in the region listing
     cur.execute("""
         SELECT
@@ -640,7 +632,7 @@ def resolve_country(iso2):
     db = get_db()
     cur = db.cursor(dictionary=True)
 
-    # DB'de ISO3 tutuluyor diye country_code üzerinden arıyoruz
+   
     cur.execute("""
         SELECT country_id
         FROM countries
@@ -679,7 +671,6 @@ def resolve_country(iso2):
         cur.close()
 
     if total == 0:
-        # No data: show a friendly message instead of redirecting to an empty profile
         db2 = get_db()
         cur2 = db2.cursor(dictionary=True)
         try:

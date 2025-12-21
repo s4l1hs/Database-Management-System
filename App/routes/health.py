@@ -1,4 +1,3 @@
-import mysql.connector
 from urllib.parse import urlencode
 from flask import (
     Blueprint,
@@ -16,7 +15,7 @@ from App.routes.login import admin_required, editor_required
 health_bp = Blueprint("health", __name__, url_prefix="/health")
 
 # ---------------------------------------------------------
-# Yardımcı Fonksiyonlar (Dropdown ve Veri Çekme)
+# helper funcs
 # ---------------------------------------------------------
 def _get_countries():
     conn = get_db()
@@ -37,7 +36,6 @@ def _get_indicators():
 def _get_max_year_for_indicator(conn, indicator_id):
     if not indicator_id: return None
     cur = conn.cursor()
-    # Şemanızda tablo adı health_system
     cur.execute("SELECT MAX(year) FROM health_system WHERE health_indicator_id = %s", (indicator_id,))
     row = cur.fetchone()
     cur.close()
@@ -49,7 +47,7 @@ def _safe_float(x):
     except: return None
 
 # ---------------------------------------------------------
-# Snapshot Analizi (Gelişmiş İstatistikler)
+# Snapshot 
 # ---------------------------------------------------------
 def _build_snapshot(conn, indicators, countries, snap_indicator_id, snap_year, snap_country_id):
     indicator_name = None
@@ -65,7 +63,7 @@ def _build_snapshot(conn, indicators, countries, snap_indicator_id, snap_year, s
         "indicator_id": snap_indicator_id,
         "year": snap_year,
         "indicator_name": indicator_name,
-        "unit_of_measure": unit, # Template uyumu için
+        "unit_of_measure": unit, 
         "global_avg": None,
         "global_n": 0,
         "region_summary": [],
@@ -142,11 +140,10 @@ def _build_snapshot(conn, indicators, countries, snap_indicator_id, snap_year, s
     return snapshot
 
 # ---------------------------------------------------------
-# 1. LİSTELEME (Arama + Sayfalama)
+# 1. List
 # ---------------------------------------------------------
 @health_bp.route("/", methods=["GET"])
 def list_health():
-    # Filtreler
     country_id = request.args.get("country_id", "")
     indicator_id = request.args.get("indicator_id", "")
     year = request.args.get("year", "")
@@ -154,7 +151,6 @@ def list_health():
     sort_by = request.args.get("sort_by", "row_id")
     order = request.args.get("order", "asc").lower()
 
-    # Snapshot Filtreleri
     snap_indicator_id = request.args.get("snap_indicator_id", "")
     snap_year = request.args.get("snap_year", "")
     snap_country_id = request.args.get("snap_country_id", "")
@@ -230,7 +226,7 @@ def list_health():
     )
 
 # ---------------------------------------------------------
-# Ekle, Düzenle, Sil İşlemleri (Audit Log Dahil)
+# Add, Edit, Delete Operations 
 # ---------------------------------------------------------
 @health_bp.route("/add", methods=["GET", "POST"])
 @editor_required
