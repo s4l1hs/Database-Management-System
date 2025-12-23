@@ -1,0 +1,393 @@
+{# templates/health_list.html #}
+{% extends "base.html" %}
+
+{% block title %}Health Indicators{% endblock %}
+
+{% block content %}
+<style>
+  .fw-card { border-radius: 1.25rem; }
+  .fw-soft-shadow { box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+  .fw-stat {
+    border-radius: 1.25rem;
+    border: 1px solid rgba(0,0,0,0.06);
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+  }
+  .fw-stat::before{
+    content:"";
+    position:absolute; left:0; top:0; bottom:0;
+    width: 6px;
+    background: #0d6efd;
+  }
+  .fw-stat.fw-green::before{ background:#198754; }
+  .fw-stat.fw-purple::before{ background:#6f42c1; }
+
+  .fw-stat .fw-stat-body{
+    padding: 16px 18px;
+    background: linear-gradient(180deg, rgba(13,110,253,0.08) 0%, rgba(13,110,253,0.02) 100%);
+  }
+  .fw-stat.fw-green .fw-stat-body{
+    background: linear-gradient(180deg, rgba(25,135,84,0.10) 0%, rgba(25,135,84,0.02) 100%);
+  }
+  .fw-stat.fw-purple .fw-stat-body{
+    background: linear-gradient(180deg, rgba(111,66,193,0.10) 0%, rgba(111,66,193,0.02) 100%);
+  }
+
+  .fw-icon-pill{
+    width: 38px; height: 38px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    background: rgba(13,110,253,0.10);
+    color: #0d6efd;
+    margin-right: 10px;
+  }
+  .fw-green .fw-icon-pill{ background: rgba(25,135,84,0.12); color:#198754; }
+  .fw-purple .fw-icon-pill{ background: rgba(111,66,193,0.12); color:#6f42c1; }
+
+  .fw-section-title{ font-weight: 700; letter-spacing: .2px; }
+  .fw-muted{ color: rgba(0,0,0,0.55); }
+
+  .fw-table thead th{ font-weight: 700; }
+  .fw-table tbody tr:hover{ background: rgba(13,110,253,0.03); }
+
+  .fw-mini-table thead th{ font-weight: 700; }
+  .fw-mini-table tbody tr:nth-child(odd){ background: rgba(0,0,0,0.02); }
+
+  .fw-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(13,110,253,0.08);
+    border: 1px solid rgba(13,110,253,0.12);
+    color:#0b5ed7;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .fw-pagination .page-link { border-radius: 10px !important; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-1 fw-section-title">Health System Indicators</h1>
+    <p class="fw-muted mb-0 small">Country-based health statistics with advanced analysis.</p>
+  </div>
+
+  {% if session.get("team_no")|int in [1, 2] %}
+    <a href="{{ url_for('health.add_health') }}" class="btn btn-primary rounded-pill px-4 shadow-sm">
+      <i class="fa-solid fa-plus me-2"></i> Add New Record
+    </a>
+  {% endif %}
+</div>
+
+<div class="card fw-card fw-soft-shadow mb-4">
+  <div class="card-body p-4">
+    <div class="mb-3">
+      <h2 class="h5 mb-1 fw-section-title">Snapshot Explorer</h2>
+      <div class="fw-muted small">Compare health indicators across regions for a specific year.</div>
+    </div>
+
+    <form method="get" action="{{ url_for('health.list_health') }}" class="row g-3 align-items-end">
+      <input type="hidden" name="q" value="{{ filters.q }}">
+      <input type="hidden" name="sort_by" value="{{ filters.sort_by }}">
+      <input type="hidden" name="order" value="{{ filters.order }}">
+
+      <div class="col-lg-5">
+        <label class="form-label fw-bold text-primary small text-uppercase">Indicator</label>
+        <select class="form-select border-0 bg-light shadow-none" name="snap_indicator_id" style="border-radius: 8px;">
+          {% for ind in indicators %}
+            <option value="{{ ind.health_indicator_id }}"
+              {% if snap_filters.snap_indicator_id|string == ind.health_indicator_id|string %}selected{% endif %}>
+              {{ ind.indicator_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-lg-2">
+        <label class="form-label fw-bold text-primary small text-uppercase">Year</label>
+        <input type="number" class="form-control border-0 bg-light shadow-none"
+               name="snap_year" value="{{ snap_filters.snap_year }}"
+               placeholder="2015" style="border-radius: 8px;">
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label fw-bold text-primary small text-uppercase">Highlight Country</label>
+        <select class="form-select border-0 bg-light shadow-none" name="snap_country_id" style="border-radius: 8px;">
+          <option value="">None</option>
+          {% for c in countries %}
+            <option value="{{ c.country_id }}"
+              {% if snap_filters.snap_country_id|string == c.country_id|string %}selected{% endif %}>
+              {{ c.country_name }} ({{ c.country_code }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-lg-2">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary fw-snap-btn flex-fill">
+            <i class="fa-solid fa-rotate"></i>
+            <span>Update</span>
+          </button>
+      
+          <a
+            class="btn btn-outline-secondary fw-snap-btn flex-fill"
+            href="{{ url_for('health.list_health',
+                            q=filters.q,
+                            sort_by=filters.sort_by,
+                            order=filters.order) }}"
+          >
+            <span>Reset</span>
+          </a>
+        </div>
+      </div>
+      
+      
+    </form>
+
+    {% if snapshot and snapshot.has_data %}
+      {# Chart data: Jinja'yı JS'in içine gömmemek için JSON payload #}
+      <script id="healthTopData" type="application/json">
+        {{ {"labels": snapshot.top_labels, "values": snapshot.top_values} | tojson }}
+      </script>
+
+      <hr class="my-4">
+
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="fw-stat">
+            <div class="fw-stat-body h-100">
+              <div class="d-flex align-items-start">
+                <div class="fw-icon-pill"><i class="fa-solid fa-earth-americas"></i></div>
+                <div>
+                  <div class="fw-muted small fw-semibold">Global Average ({{ snapshot.year }})</div>
+                  <div class="display-6 fw-bold mb-0 text-primary">{{ "%.2f"|format(snapshot.global_avg) }}</div>
+                  <div class="fw-muted small">Countries: {{ snapshot.global_n }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-8">
+          <div class="fw-stat fw-purple">
+            <div class="fw-stat-body h-100">
+              <div class="d-flex align-items-start">
+                <div class="fw-icon-pill"><i class="fa-solid fa-location-dot"></i></div>
+                <div class="row w-100">
+                  {% if snapshot.highlight %}
+                    <div class="col-md-6 border-end">
+                      <div class="fw-muted small fw-semibold">Highlighted Country</div>
+                      <div class="fw-bold">{{ snapshot.highlight.country_name }}</div>
+                      {# FIX: snapshot.unit_symbol yok -> snapshot.unit_of_measure #}
+                      <div class="text-primary fw-bold">
+                        {{ snapshot.highlight.indicator_value }} {{ snapshot.unit_of_measure }}
+                      </div>
+                    </div>
+                    <div class="col-md-6 ps-md-4">
+                      <div class="fw-muted small fw-semibold">Rankings</div>
+                      <div class="fw-bold">Global: #{{ snapshot.highlight.global_rank }}</div>
+                      <div class="small">Region ({{ snapshot.highlight.region }}): #{{ snapshot.highlight.region_rank }}</div>
+                    </div>
+                  {% else %}
+                    <div class="col-12 py-2 text-muted">Select a country to see detailed rank.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-lg-6">
+          <div class="border rounded-4 p-3 bg-white shadow-sm">
+            <div class="fw-section-title mb-3">Top 10 Rankings</div>
+            <canvas id="healthTopChart" height="200"></canvas>
+          </div>
+        </div>
+        <div class="col-lg-6">
+          <div class="border rounded-4 p-3 bg-white shadow-sm">
+            <div class="fw-section-title mb-3">Regional Performance</div>
+            <div class="table-responsive">
+              <table class="table fw-mini-table table-sm align-middle mb-0">
+                <thead><tr><th>Region</th><th class="text-end">Avg</th></tr></thead>
+                <tbody>
+                  {% for reg in snapshot.region_summary %}
+                    <tr>
+                      <td>{{ reg.region }} <small class="text-muted">({{ reg.n }})</small></td>
+                      <td class="text-end fw-bold text-primary">{{ "%.2f"|format(reg.avg) }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card fw-card fw-soft-shadow mb-4">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="h5 mb-0 fw-section-title">Records List</h2>
+      <div class="text-muted small">Total: <strong>{{ total_count }}</strong> records found.</div>
+    </div>
+
+    <form method="GET" action="{{ url_for('health.list_health') }}" class="row g-3 align-items-end mb-4 bg-light p-3 rounded-4">
+      <input type="hidden" name="snap_indicator_id" value="{{ snap_filters.snap_indicator_id }}">
+      <input type="hidden" name="snap_year" value="{{ snap_filters.snap_year }}">
+
+      <div class="col-md-4">
+        <label class="form-label small fw-bold">Search</label>
+        <input type="text" name="q" class="form-control border-0 shadow-none"
+               placeholder="Country, Code or Indicator..." value="{{ filters.q }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Sort By</label>
+        <select name="sort_by" class="form-select border-0 shadow-none">
+          <option value="country" {% if filters.sort_by == 'country' %}selected{% endif %}>Country</option>
+          <option value="year" {% if filters.sort_by == 'year' %}selected{% endif %}>Year</option>
+          <option value="value" {% if filters.sort_by == 'value' %}selected{% endif %}>Value</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small fw-bold">Order</label>
+        <select name="order" class="form-select border-0 shadow-none">
+          <option value="asc" {% if filters.order == 'asc' %}selected{% endif %}>Ascending</option>
+          <option value="desc" {% if filters.order == 'desc' %}selected{% endif %}>Descending</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-flex gap-2">
+        <button type="submit" class="btn btn-dark rounded-pill w-100">Filter</button>
+        <a href="{{ url_for('health.list_health') }}" class="btn btn-outline-secondary rounded-pill w-100">Reset</a>
+      </div>
+    </form>
+
+    <div class="table-responsive shadow-sm rounded-4 border overflow-hidden">
+      <table class="table fw-table table-hover align-middle mb-0 bg-white">
+        <thead class="table-info">
+          <tr>
+            <th class="ps-3">#</th>
+            <th>Country</th>
+            <th>Region</th>
+            <th>Indicator</th>
+            <th>Year</th>
+            <th class="text-center">Value</th>
+            <th>Source</th>
+            <th class="text-center">Actions</th>
+          </tr>
+        </thead>        
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td class="ps-3 text-muted small">{{ row.row_id }}</td>
+              <td>
+                <div class="fw-bold">{{ row.country_name }}</div>
+                <div class="badge bg-light text-primary border small">{{ row.country_code }}</div>
+              </td>
+              <td>
+                <span class="badge rounded-pill bg-info text-dark fw-normal px-3"
+                      style="background-color: #e0f2fe !important; border: 1px solid #bae6fd;">
+                  {{ row.region or '-' }}
+                </span>
+              </td>
+              <td class="small text-secondary" style="max-width: 200px;">{{ row.indicator_name }}</td>
+              <td>{{ row.year }}</td>
+              <td class="text-center fw-bold text-primary">
+                {{ row.indicator_value if row.indicator_value is not none else 'N/A' }}
+                <small class="text-muted fw-normal">{{ row.unit_symbol }}</small>
+              </td>
+              <td class="small text-secondary" style="max-width: 220px;">
+                {{ row.source_notes if row.source_notes else '-' }}
+              </td>
+              
+              <td class="text-center">
+                {% if session.get("team_no")|int in [1, 2] %}
+                  <div class="btn-group shadow-sm">
+                    <a href="{{ url_for('health.edit_health', id=row.row_id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <form action="{{ url_for('health.delete_health', id=row.row_id) }}" method="post"
+                          onsubmit="return confirm('Delete?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger border-start-0">Delete</button>
+                    </form>
+                  </div>
+                {% else %}
+                  <span class="text-muted small">No Access</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if total_pages > 1 %}
+      <nav class="mt-4">
+        <ul class="pagination fw-pagination justify-content-center">
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('health.list_health', page=page-1, **filters) }}">Previous</a>
+          </li>
+
+          {% for p in range(1, total_pages + 1) %}
+            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+              <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('health.list_health', page=p, **filters) }}">{{ p }}</a>
+              </li>
+            {% elif p == page - 3 or p == page + 3 %}
+              <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+          {% endfor %}
+
+          <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for('health.list_health', page=page+1, **filters) }}">Next</a>
+          </li>
+        </ul>
+      </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const dataEl = document.getElementById('healthTopData');
+    const canvas = document.getElementById('healthTopChart');
+    if (!dataEl || !canvas) return;
+
+    let payload;
+    try {
+      payload = JSON.parse(dataEl.textContent);
+    } catch (e) {
+      console.error('Chart payload parse error:', e);
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: payload.labels || [],
+        datasets: [{
+          label: 'Value',
+          data: payload.values || [],
+          backgroundColor: 'rgba(13, 110, 253, 0.7)',
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  });
+</script>
+{% endblock %}

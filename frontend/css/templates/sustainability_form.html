@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Sustainability Record{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <!-- Breadcrumb -->
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('sustainability.list_sustainability') }}">
+              <i class="fa-solid fa-leaf"></i> Sustainability
+            </a>
+          </li>
+          <li class="breadcrumb-item active">{{ action }} Record</li>
+        </ol>
+      </nav>
+
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-primary bg-gradient text-white py-4">
+          <div class="d-flex align-items-center">
+            <div class="bg-white bg-opacity-25 rounded-circle p-3 me-3">
+              <i class="fa-solid {% if action == 'Edit' %}fa-pen-to-square{% else %}fa-plus-circle{% endif %} fa-2x"></i>
+            </div>
+            <div>
+              <h3 class="mb-0">{{ action }} Sustainability Data</h3>
+              <small class="opacity-75">{{ 'Update existing record' if action == 'Edit' else 'Add new environmental indicator' }}</small>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" class="needs-validation" novalidate>
+            
+            <!-- Country Selection -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="fa-solid fa-globe text-success me-1"></i> Country
+                <span class="text-danger">*</span>
+              </label>
+              <select name="country_id" class="form-select form-select-lg" {% if action == 'Edit' %}disabled{% endif %} required>
+                <option value="" disabled selected>🌍 Select a country...</option>
+                {% for c in countries %}
+                <option value="{{ c.country_id }}" {% if record and record.country_id == c.country_id %}selected{% endif %}>
+                  {{ c.country_name }}
+                </option>
+                {% endfor %}
+              </select>
+              {% if action == 'Edit' %}
+              <div class="form-text text-info">
+                <i class="fa-solid fa-info-circle me-1"></i>
+                Country is locked during editing to maintain data integrity.
+              </div>
+              {% endif %}
+              <div class="invalid-feedback">Please select a country.</div>
+            </div>
+
+            <!-- Indicator Selection -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="fa-solid fa-chart-line text-success me-1"></i> Sustainability Indicator
+                <span class="text-danger">*</span>
+              </label>
+              <select name="sus_indicator_id" class="form-select form-select-lg" {% if action == 'Edit' %}disabled{% endif %} required>
+                <option value="" disabled selected>📊 Select an indicator...</option>
+                {% for i in indicators %}
+                <option value="{{ i.sus_indicator_id }}" 
+                        {% if record and record.sus_indicator_id == i.sus_indicator_id %}selected{% endif %}>
+                  {{ i.indicator_name }} {% if i.unit_symbol %}({{ i.unit_symbol }}){% endif %}
+                </option>
+                {% endfor %}
+              </select>
+              {% if action == 'Edit' %}
+              <div class="form-text text-info">
+                <i class="fa-solid fa-info-circle me-1"></i>
+                Indicator is locked during editing.
+              </div>
+              {% endif %}
+              <div class="invalid-feedback">Please select an indicator.</div>
+            </div>
+
+            <!-- Year and Value -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-calendar-days text-primary me-1"></i> Year
+                  <span class="text-danger">*</span>
+                </label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-text"><i class="fa-solid fa-calendar"></i></span>
+                  <input type="number" name="year" class="form-control" 
+                         value="{{ record.year if record else 2020 }}" 
+                         min="1900" max="2100" 
+                         placeholder="e.g. 2023" required>
+                </div>
+                <div class="form-text">Range: 1900 - 2100</div>
+                <div class="invalid-feedback">Please enter a valid year.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-calculator text-warning me-1"></i> Indicator Value
+                  <span class="text-danger">*</span>
+                </label>
+                <div class="input-group input-group-lg">
+                  <span class="input-group-text"><i class="fa-solid fa-hashtag"></i></span>
+                  <input type="number" step="any" name="indicator_value" class="form-control" 
+                         value="{{ record.indicator_value if record else '' }}" 
+                         placeholder="e.g. 45.2" required>
+                </div>
+                <div class="form-text">Any numeric value</div>
+                <div class="invalid-feedback">Please enter a value.</div>
+              </div>
+            </div>
+
+            <!-- Source Note -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="fa-solid fa-file-lines text-secondary me-1"></i> Source / Additional Note
+              </label>
+              <div class="input-group input-group-lg">
+                <span class="input-group-text"><i class="fa-solid fa-pen"></i></span>
+                <input type="text" name="source_note" class="form-control" 
+                       value="{{ record.source_note if record else 'World Development Indicators (WDI)' }}"
+                       placeholder="Enter data source or note...">
+              </div>
+              <div class="form-text">Optional: Provide context or data source information.</div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Audit Log Section -->
+            <div class="alert alert-warning border-start border-4 border-warning bg-warning bg-opacity-10">
+              <div class="d-flex align-items-start">
+                <div class="me-3">
+                  <i class="fa-solid fa-user-shield fa-2x text-warning"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <h6 class="alert-heading mb-2">
+                    <i class="fa-solid fa-clipboard-check me-1"></i> Audit Information
+                  </h6>
+                  <p class="mb-2 small">Who is making this change? (Optional for audit logging)</p>
+                  
+                  <select name="student_id" class="form-select">
+                    <option value="">-- No audit tracking (optional) --</option>
+
+                    {% if students and students|length > 0 %}
+                      {% for s in students %}
+                      <option value="{{ s.student_id }}" {% if record and record.student_id == s.student_id %}selected{% endif %}>
+                        👤 {{ s.full_name }} ({{ s.student_number }})
+                      </option>
+                      {% endfor %}
+                    {% else %}
+                      <!-- Fallback team members -->
+                      <option value="820230313">👤 Salih Sefer (820230313)</option>
+                      <option value="820230334">👤 Atahan Evintan (820230334)</option>
+                      <option value="820230326">👤 Fatih Serdar Çakmak (820230326)</option>
+                      <option value="820230314">👤 Muhammet Tuncer (820230314)</option>
+                      <option value="150210085">👤 Gülbahar Karabaş (150210085)</option>
+                    {% endif %}
+                  </select>
+
+                  <div class="form-text small mt-2">
+                    <i class="fa-solid fa-info-circle me-1"></i>
+                    Select your name to record this action in the audit log. Leave blank if not needed.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-between mt-4 pt-3">
+              <a href="{{ url_for('sustainability.list_sustainability') }}" 
+                 class="btn btn-lg btn-outline-secondary px-4">
+                <i class="fa-solid fa-arrow-left me-2"></i> Cancel
+              </a>
+              <button type="submit" class="btn btn-lg btn-primary px-5 shadow">
+                <i class="fa-solid fa-check-circle me-2"></i> 
+                {{ 'Update Record' if action == 'Edit' else 'Save Record' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Bootstrap form validation
+  (function() {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+      form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+</script>
+{% endblock %}

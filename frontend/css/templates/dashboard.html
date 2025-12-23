@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-panel {
+    position: relative;
+    background: radial-gradient(circle at 20% 20%, rgba(59,130,246,0.18), transparent 35%),
+                radial-gradient(circle at 80% 0%, rgba(16,185,129,0.18), transparent 32%),
+                linear-gradient(120deg, #0f172a, #1d4ed8);
+    color: #f8fafc;
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .hero-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0));
+  }
+  .hero-content { position: relative; z-index: 1; }
+  .badge-soft { background: rgba(255,255,255,0.2); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.25); }
+  .text-muted-70 { color: rgba(226,232,240,0.7); }
+  .chip { background: rgba(255,255,255,0.15); color: #e2e8f0; padding: 6px 10px; border-radius: 20px; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); }
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat-card {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 14px;
+    color: #e5e7eb;
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+  .stat-label { font-size: 13px; color: rgba(229,231,235,0.75); }
+  .stat-value { font-size: 20px; font-weight: 700; color: #fff; }
+
+  .mini-card {
+    border: 1px solid rgba(15,23,42,0.06);
+    border-radius: 14px;
+    padding: 16px;
+    background: #fff;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.05);
+    transition: transform 160ms ease, box-shadow 160ms ease;
+  }
+  .mini-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 38px rgba(15,23,42,0.12);
+  }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #eef2ff; color: #312e81; font-weight: 600; font-size: 13px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="hero-panel mb-4 p-4 p-md-5">
+    <div class="hero-content">
+      <div class="row align-items-center g-4">
+        <div class="col-lg-7">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge badge-soft badge-live-static">Live</span>
+            <span class="text-uppercase small text-muted-70">World Development Indicators</span>
+          </div>
+          <h1 class="fw-bold display-6 mb-2">Explore, compare, and manage the data that matters.</h1>
+          <p class="mb-3 text-muted-70">Navigate countries, health, emissions, water, energy, and sustainability from one clean cockpit.</p>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="chip">5 domains</span>
+            <span class="chip">Map-first navigation</span>
+            <span class="chip">Admin {{ 'enabled' if is_admin else 'off' }}</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            {% for d in domain_shortcuts %}
+              {% set is_overview = (d.key == 'overview') %}
+              {% if is_overview %}
+                {% set btn_classes = 'btn btn-light btn-sm' %}
+              {% else %}
+                {% set btn_classes = 'btn btn-outline-light btn-sm' %}
+              {% endif %}
+
+              {% if d.enabled %}
+                <a class="{{ btn_classes }}" href="{{ url_for(d.endpoint) }}">
+                  {% if d.key == 'overview' %}
+                    <i class="fa-solid fa-gauge-high me-1"></i> {{ d.label }}
+                  {% elif d.key == 'countries' %}
+                    <i class="fa-solid fa-map me-1"></i> {{ d.label }}
+                  {% elif d.key == 'energy' %}
+                    <i class="fa-solid fa-bolt me-1"></i> {{ d.label }}
+                  {% else %}
+                    {{ d.label }}
+                  {% endif %}
+                </a>
+              {% else %}
+                <span
+                  class="{{ btn_classes }}"
+                  style="opacity: 0.6; cursor: not-allowed;"
+                  title="Data coming soon"
+                >
+                  {% if d.key == 'overview' %}
+                    <i class="fa-solid fa-gauge-high me-1"></i> {{ d.label }}
+                  {% elif d.key == 'countries' %}
+                    <i class="fa-solid fa-map me-1"></i> {{ d.label }}
+                  {% elif d.key == 'energy' %}
+                    <i class="fa-solid fa-bolt me-1"></i> {{ d.label }}
+                  {% else %}
+                    {{ d.label }}
+                  {% endif %}
+                </span>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-lg-5">
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-label">Countries</div>
+              <div class="stat-value"><i class="fa-solid fa-flag me-2"></i>190+</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Domains</div>
+              <div class="stat-value"><i class="fa-solid fa-layer-group me-2"></i>5</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Indicators</div>
+              <div class="stat-value"><i class="fa-solid fa-chart-simple me-2"></i>100+</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Admin</div>
+              <div class="stat-value"><i class="fa-solid fa-user-shield me-2"></i>{{ 'On' if is_admin else 'Off' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <div class="col-lg-6">
+      <div class="mini-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="pill"><i class="fa-solid fa-compass"></i> Quick access</span>
+          <i class="fa-solid fa-arrow-trend-up text-primary"></i>
+        </div>
+        <p class="text-muted small mb-3">Jump to the most used sections.</p>
+        <div class="d-grid gap-2">
+          <a
+            id="quick-primary-btn"
+            class="btn btn-outline-primary"
+            href="{{ url_for('dashboard.dashboard') }}"
+            data-default-label="Start with global overview"
+            data-default-href="{{ url_for('dashboard.dashboard') }}"
+          >
+            Start with global overview
+          </a>
+          <a
+            class="btn btn-outline-primary"
+            href="{{ url_for('countries.list_countries') }}"
+            title="Explore the interactive countries map and region groupings."
+          >
+            Countries map
+          </a>
+          <a
+            class="btn btn-outline-primary"
+            href="{{ url_for('health.list_health') }}"
+            title="Browse health system indicators by country and year."
+          >
+            Health indicators
+          </a>
+          <a
+            class="btn btn-outline-primary"
+            href="{{ url_for('ghg.list_ghg') }}"
+            title="Analyze greenhouse gas emissions and CO₂ per capita trends."
+          >
+            GHG emissions
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="mini-card h-100">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="pill" style="background:#ecfdf3; color:#166534;"><i class="fa-solid fa-earth-europe"></i> Coverage</span>
+          <i class="fa-solid fa-database text-success"></i>
+        </div>
+        <p class="text-muted small mb-3">Current scope of your dataset.</p>
+        <ul class="list-unstyled mb-0 small text-muted">
+          <li class="mb-1">
+            <i class="fa-regular fa-circle-check text-success me-2"></i>
+            <strong>Countries onboarded:</strong>
+            {{ coverage.countries or 0 }}
+          </li>
+          <li class="mb-1">
+            <i class="fa-regular fa-circle-check text-success me-2"></i>
+            <strong>Data completeness:</strong>
+            {% if coverage.completeness_pct is not none %}
+              {{ "%.1f"|format(coverage.completeness_pct) }}%
+            {% else %}
+              —
+            {% endif %}
+          </li>
+          <li class="mb-1">
+            <i class="fa-regular fa-circle-check text-success me-2"></i>
+            <strong>Global year range:</strong>
+            {% if coverage.global_min_year and coverage.global_max_year %}
+              {{ coverage.global_min_year }}–{{ coverage.global_max_year }}
+            {% else %}
+              —
+            {% endif %}
+          </li>
+          <li>
+            <i class="fa-regular fa-circle-check text-success me-2"></i>
+            <strong>Indicators:</strong>
+            <span class="text-nowrap">GHG: {{ coverage.indicators.ghg or 0 }}</span> ·
+            <span class="text-nowrap">Health: {{ coverage.indicators.health or 0 }}</span> ·
+            <span class="text-nowrap">Energy: {{ coverage.indicators.energy or 0 }}</span> ·
+            <span class="text-nowrap">Freshwater: {{ coverage.indicators.freshwater or 0 }}</span> ·
+            <span class="text-nowrap">Sustainability: {{ coverage.indicators.sustainability or 0 }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-4">
+      <a href="{{ url_for('countries.list_countries') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,199,92,0.18) 0%, rgba(255,243,207,0.3) 100%);">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-warning"><i class="fa-solid fa-flag"></i></div>
+              <h5 class="mb-0 ms-2">Countries</h5>
+            </div>
+            <p class="text-muted small mb-1">Map filters, country codes, and regions.</p>
+            <p class="text-muted small mb-0">
+              <span class="me-2">Countries: {{ coverage.countries or 0 }}</span>
+              <span class="text-nowrap">
+                Global years:
+                {% if coverage.global_min_year and coverage.global_max_year %}
+                  {{ coverage.global_min_year }}–{{ coverage.global_max_year }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="{{ url_for('health.list_health') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,118,140,0.14) 0%, rgba(255,240,245,0.4) 100%);">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-danger"><i class="fa-solid fa-heart-pulse"></i></div>
+              <h5 class="mb-0 ms-2">Health</h5>
+            </div>
+            <p class="text-muted small mb-1">Health system indicators by country.</p>
+            <p class="text-muted small mb-0">
+              <span class="me-2 text-nowrap">
+                Indicators: {{ coverage.domains.health.indicators or 0 }}
+              </span>
+              <span class="me-2 text-nowrap">
+                Coverage:
+                {% if coverage.domains.health.country_coverage_pct is not none %}
+                  ~{{ "%.1f"|format(coverage.domains.health.country_coverage_pct) }}% countries
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+              <span class="text-nowrap">
+                Years:
+                {% if coverage.domains.health.min_year and coverage.domains.health.max_year %}
+                  {{ coverage.domains.health.min_year }}–{{ coverage.domains.health.max_year }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="{{ url_for('sustainability.list_sustainability') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(46,204,113,0.12) 0%, rgba(234,255,241,0.35) 100%);">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-success"><i class="fa-solid fa-leaf"></i></div>
+              <h5 class="mb-0 ms-2">Sustainability</h5>
+            </div>
+            <p class="text-muted small mb-1">Environmental sustainability metrics.</p>
+            <p class="text-muted small mb-0">
+              <span class="me-2 text-nowrap">
+                Indicators: {{ coverage.domains.sustainability.indicators or 0 }}
+              </span>
+              <span class="me-2 text-nowrap">
+                Coverage:
+                {% if coverage.domains.sustainability.country_coverage_pct is not none %}
+                  ~{{ "%.1f"|format(coverage.domains.sustainability.country_coverage_pct) }}% countries
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+              <span class="text-nowrap">
+                Years:
+                {% if coverage.domains.sustainability.min_year and coverage.domains.sustainability.max_year %}
+                  {{ coverage.domains.sustainability.min_year }}–{{ coverage.domains.sustainability.max_year }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="{{ url_for('energy.list_energy') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(255,206,86,0.18) 0%, rgba(255,244,209,0.38) 100%);">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-warning"><i class="fa-solid fa-bolt"></i></div>
+              <h5 class="mb-0 ms-2">Energy</h5>
+            </div>
+            <p class="text-muted small mb-1">Energy production and consumption.</p>
+            <p class="text-muted small mb-0">
+              <span class="me-2 text-nowrap">
+                Indicators: {{ coverage.domains.energy.indicators or 0 }}
+              </span>
+              <span class="me-2 text-nowrap">
+                Coverage:
+                {% if coverage.domains.energy.country_coverage_pct is not none %}
+                  ~{{ "%.1f"|format(coverage.domains.energy.country_coverage_pct) }}% countries
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+              <span class="text-nowrap">
+                Years:
+                {% if coverage.domains.energy.min_year and coverage.domains.energy.max_year %}
+                  {{ coverage.domains.energy.min_year }}–{{ coverage.domains.energy.max_year }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="{{ url_for('freshwater.list_freshwater') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(0,174,239,0.14) 0%, rgba(232,246,255,0.4) 100%);">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-info"><i class="fa-solid fa-droplet"></i></div>
+              <h5 class="mb-0 ms-2">Freshwater</h5>
+            </div>
+            <p class="text-muted small mb-1">Water usage and quality indicators.</p>
+            <p class="text-muted small mb-0">
+              <span class="me-2 text-nowrap">
+                Indicators: {{ coverage.domains.freshwater.indicators or 0 }}
+              </span>
+              <span class="me-2 text-nowrap">
+                Coverage:
+                {% if coverage.domains.freshwater.country_coverage_pct is not none %}
+                  ~{{ "%.1f"|format(coverage.domains.freshwater.country_coverage_pct) }}% countries
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+              <span class="text-nowrap">
+                Years:
+                {% if coverage.domains.freshwater.min_year and coverage.domains.freshwater.max_year %}
+                  {{ coverage.domains.freshwater.min_year }}–{{ coverage.domains.freshwater.max_year }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+
+    <div class="col-md-4">
+      <a href="{{ url_for('ghg.list_ghg') }}" class="text-decoration-none">
+        <div class="card shadow-sm h-100 hover-card domain-card" style="background: linear-gradient(135deg, rgba(128,139,150,0.12) 0%, rgba(240,242,243,0.35) 100%);">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <div class="icon-circle text-secondary"><i class="fa-solid fa-smog"></i></div>
+              <h5 class="mb-0 ms-2">GHG (Greenhouse Gas)</h5>
+            </div>
+            <p class="text-muted small mb-1">Emissions and share of totals.</p>
+            <p class="text-muted small mb-0">
+              <span class="me-2 text-nowrap">
+                Indicators: {{ coverage.domains.ghg.indicators or 0 }}
+              </span>
+              <span class="me-2 text-nowrap">
+                Coverage:
+                {% if coverage.domains.ghg.country_coverage_pct is not none %}
+                  ~{{ "%.1f"|format(coverage.domains.ghg.country_coverage_pct) }}% countries
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+              <span class="text-nowrap">
+                Years:
+                {% if coverage.domains.ghg.min_year and coverage.domains.ghg.max_year %}
+                  {{ coverage.domains.ghg.min_year }}–{{ coverage.domains.ghg.max_year }}
+                {% else %}
+                  —
+                {% endif %}
+              </span>
+            </p>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

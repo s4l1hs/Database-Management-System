@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Login | WDI{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+  <div class="col-md-4">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h1 class="h4 mb-3 text-center">Admin Login</h1>
+        <p class="text-muted small text-center mb-4">
+          Login as <strong>admin</strong> or <strong>editor</strong>.
+        </p>
+
+        <form method="post" action="{{ url_for('auth.login') }}">
+          <div class="mb-3">
+            <label for="student_number" class="form-label">Student Number</label>
+            <input
+              type="number"
+              class="form-control"
+              id="student_number"
+              name="student_number"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            Login
+          </button>
+        </form>
+
+        <hr class="my-3">
+
+        <div class="d-grid">
+          <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary">
+            Continue without login
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

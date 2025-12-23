@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Energy | {{ action }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      
+      <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('energy.list_energy') }}" class="text-decoration-none text-warning">
+              <i class="fa-solid fa-bolt"></i> Energy Data
+            </a>
+          </li>
+          <li class="breadcrumb-item active" aria-current="page">{{ action }} Record</li>
+        </ol>
+      </nav>
+
+      <div class="card shadow-lg border-0">
+        <div class="card-header bg-warning bg-opacity-75 text-dark py-4">
+          <div class="d-flex align-items-center">
+            <div class="bg-white bg-opacity-50 rounded-circle p-3 me-3">
+              <i class="fa-solid {% if action == 'Edit' %}fa-pen-to-square{% else %}fa-plug-circle-plus{% endif %} fa-2x"></i>
+            </div>
+            <div>
+              <h3 class="mb-0 fw-bold">{{ action }} Energy Record</h3>
+              <small class="opacity-75">{{ 'Update existing metrics' if action == 'Edit' else 'Add new energy consumption/production data' }}</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <form method="post" 
+                action="{% if action == 'Add' %}{{ url_for('energy.add_energy') }}{% else %}{{ url_for('energy.edit_energy', id=record.data_id) }}{% endif %}"
+                class="needs-validation" novalidate>
+            
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="fa-solid fa-globe text-warning me-1"></i> Country <span class="text-danger">*</span>
+              </label>
+              <div class="input-group input-group-lg">
+                <select name="country_id" class="form-select" {% if action == 'Edit' %}disabled{% endif %} required>
+                  <option value="" disabled selected>Select country...</option>
+                  {% for c in countries %}
+                    <option value="{{ c.country_id }}" {% if record and record.country_id == c.country_id %}selected{% endif %}>
+                      {{ c.country_name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              {% if action == 'Edit' %}
+                <div class="form-text text-muted"><i class="fa-solid fa-lock me-1"></i> Country is locked during editing.</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="fa-solid fa-chart-bar text-warning me-1"></i> Energy Indicator <span class="text-danger">*</span>
+              </label>
+              <div class="input-group input-group-lg">
+                <select name="energy_indicator_id" class="form-select" {% if action == 'Edit' %}disabled{% endif %} required>
+                  <option value="" disabled selected>Select indicator...</option>
+                  {% for ind in indicators %}
+                    <option value="{{ ind.energy_indicator_id }}" 
+                      {% if record and record.energy_indicator_id == ind.energy_indicator_id %}selected{% endif %}>
+                      {{ ind.indicator_name }} ({{ ind.measurement_unit or '-' }})
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-calendar-days text-secondary me-1"></i> Year <span class="text-danger">*</span>
+                </label>
+                <div class="input-group input-group-lg">
+                  <input type="number" name="year" class="form-control" 
+                         value="{{ record.year if record else '' }}" 
+                         min="1900" max="2100" placeholder="e.g. 2024" required>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">
+                  <i class="fa-solid fa-hashtag text-secondary me-1"></i> Value <span class="text-danger">*</span>
+                </label>
+                <div class="input-group input-group-lg">
+                  <input type="number" step="any" name="indicator_value" class="form-control" 
+                         value="{{ record.indicator_value if record else '' }}" 
+                         placeholder="e.g. 1500.5" required>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">
+                <i class="fa-solid fa-file-lines text-secondary me-1"></i> Source / Notes
+              </label>
+              <textarea name="data_source" class="form-control" rows="3" 
+                        placeholder="Enter data source details (Optional)...">{{ record.data_source if record else '' }}</textarea>
+            </div>
+
+            <hr class="my-4">
+
+            <div class="alert alert-warning border-start border-4 border-warning bg-warning bg-opacity-10">
+               <div class="d-flex align-items-start">
+                 <div class="me-3">
+                   <i class="fa-solid fa-user-shield fa-2x text-warning"></i>
+                 </div>
+                 <div>
+                   <h6 class="alert-heading mb-1">
+                     <i class="fa-solid fa-clipboard-check me-1"></i> Audit Information
+                   </h6>
+                   <p class="mb-0 small">
+                     This action will be automatically logged under your current session.
+                   </p>
+                 </div>
+               </div>
+            </div>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+              <a href="{{ url_for('energy.list_energy') }}" class="btn btn-lg btn-outline-secondary px-4">
+                <i class="fa-solid fa-arrow-left me-2"></i> Cancel
+              </a>
+              <button type="submit" class="btn btn-lg btn-warning px-5 shadow-sm">
+                <i class="fa-solid fa-check-circle me-2"></i> 
+                {{ 'Update Record' if action == 'Edit' else 'Save Record' }}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Bootstrap form validation
+  (function() {
+    'use strict';
+    var forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+      form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,587 @@
+{% extends "base.html" %}
+
+{% block title %}Freshwater Indicators{% endblock %}
+
+{% block content %}
+<style>
+  .fw-card { border-radius: 1.25rem; }
+  .fw-soft-shadow { box-shadow: 0 10px 30px rgba(0,0,0,0.06); }
+  .fw-stat {
+    border-radius: 1.25rem;
+    border: 1px solid rgba(0,0,0,0.06);
+    overflow: hidden;
+    position: relative;
+    background: #fff;
+  }
+  .fw-stat::before{
+    content:"";
+    position:absolute; left:0; top:0; bottom:0;
+    width: 6px;
+    background: #0d6efd;
+  }
+  .fw-stat.fw-green::before{ background:#198754; }
+  .fw-stat.fw-purple::before{ background:#6f42c1; }
+
+  .fw-stat .fw-stat-body{
+    padding: 16px 18px;
+    background: linear-gradient(180deg, rgba(13,110,253,0.08) 0%, rgba(13,110,253,0.02) 100%);
+  }
+  .fw-stat.fw-green .fw-stat-body{
+    background: linear-gradient(180deg, rgba(25,135,84,0.10) 0%, rgba(25,135,84,0.02) 100%);
+  }
+  .fw-stat.fw-purple .fw-stat-body{
+    background: linear-gradient(180deg, rgba(111,66,193,0.10) 0%, rgba(111,66,193,0.02) 100%);
+  }
+
+  .fw-icon-pill{
+    width: 38px; height: 38px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    background: rgba(13,110,253,0.10);
+    color: #0d6efd;
+    margin-right: 10px;
+  }
+  .fw-green .fw-icon-pill{ background: rgba(25,135,84,0.12); color:#198754; }
+  .fw-purple .fw-icon-pill{ background: rgba(111,66,193,0.12); color:#6f42c1; }
+
+  .fw-section-title{ font-weight: 700; letter-spacing: .2px; }
+  .fw-muted{ color: rgba(0,0,0,0.55); }
+
+  .fw-table thead th{ font-weight: 700; }
+  .fw-table tbody tr:hover{ background: rgba(13,110,253,0.03); }
+
+  .fw-mini-table thead th{ font-weight: 700; }
+  .fw-mini-table tbody tr:nth-child(odd){ background: rgba(0,0,0,0.02); }
+
+  .fw-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(13,110,253,0.08);
+    border: 1px solid rgba(13,110,253,0.12);
+    color:#0b5ed7;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .fw-pagination .page-link { border-radius: 10px !important; }
+  .fw-pagination .page-item.active .page-link { font-weight: 700; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-1 fw-section-title">Freshwater Usage Indicators</h1>
+    <p class="fw-muted mb-0">Country-based freshwater statistics with year and source notes.</p>
+  </div>
+
+  {% if session.get("team_no")|int in [1, 2] %}
+    <a href="{{ url_for('freshwater.add_freshwater') }}" class="btn btn-primary rounded-pill px-4">
+      <i class="fa-solid fa-plus"></i> Add New Record
+    </a>
+  {% endif %}
+</div>
+
+<div class="card fw-card fw-soft-shadow mb-4">
+  <div class="card-body p-4">
+    <div class="accordion" id="fwHelpAccordion">
+      <div class="accordion-item border-0">
+        <h2 class="accordion-header" id="fwHelpHeading">
+          <button class="accordion-button collapsed rounded-4" type="button" data-bs-toggle="collapse" data-bs-target="#fwHelpCollapse" aria-expanded="false" aria-controls="fwHelpCollapse">
+            <i class="fa-solid fa-circle-info text-primary me-2"></i>
+            How to read this page
+          </button>
+        </h2>
+        <div id="fwHelpCollapse" class="accordion-collapse collapse" aria-labelledby="fwHelpHeading" data-bs-parent="#fwHelpAccordion">
+          <div class="accordion-body pt-3">
+            <ul class="mb-0">
+              <li><strong>Snapshot Explorer</strong> compares countries for a selected indicator and year using global and regional averages.</li>
+              <li><strong>Global Average</strong> is computed using only countries with available data for the selected year.</li>
+              <li><strong>Top 10</strong> shows the highest values for the selected indicator/year; <strong>Bottom 10</strong> shows the lowest values.</li>
+              <li><strong>Regional Averages</strong> aggregates values by region (as stored in the <em>countries</em> table).</li>
+              <li><strong>Units</strong> are shown under the selected indicator (Snapshot) and in the <strong>Unit</strong> column for each record.</li>
+              <li><strong>Missing values</strong> are not included in averages/ranks and may appear as “-” in the Records table.</li>
+              <li><strong>Records</strong> can be filtered by country/indicator/year and are paginated (50 records per page).</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card fw-card fw-soft-shadow mb-4">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <h2 class="h5 mb-1 fw-section-title">Snapshot Explorer</h2>
+        <div class="fw-muted">Compare countries for a selected indicator and year using global and regional averages.</div>
+      </div>
+    </div>
+
+    <form method="get" action="{{ url_for('freshwater.list_freshwater') }}" class="row g-3 align-items-end">
+      <input type="hidden" name="q" value="{{ filters.q }}">
+      <input type="hidden" name="country_id" value="{{ filters.country_id }}">
+      <input type="hidden" name="indicator_id" value="{{ filters.indicator_id }}">
+      <input type="hidden" name="year" value="{{ filters.year }}">
+      <input type="hidden" name="sort_by" value="{{ filters.sort_by }}">
+      <input type="hidden" name="order" value="{{ filters.order }}">
+
+      <div class="col-lg-6">
+        <label class="form-label fw-semibold">Indicator</label>
+        <select class="form-select" name="snap_indicator_id">
+          {% for ind in indicators %}
+            <option value="{{ ind.freshwater_indicator_id }}"
+              {% if snapshot_filters.snap_indicator_id == (ind.freshwater_indicator_id|string) %}selected{% endif %}>
+              {{ ind.indicator_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-lg-2 col-md-4">
+        <label class="form-label fw-semibold">Year</label>
+        <input type="number" class="form-control" name="snap_year" value="{{ snapshot_filters.snap_year }}" placeholder="e.g. 2015">
+      </div>
+
+      <div class="col-lg-4 col-md-8">
+        <label class="form-label fw-semibold">Highlight Country (optional)</label>
+        <select class="form-select" name="snap_country_id">
+          <option value="">None</option>
+          {% for c in countries %}
+            <option value="{{ c.country_id }}"
+              {% if snapshot_filters.snap_country_id == (c.country_id|string) %}selected{% endif %}>
+              {{ c.country_name }} ({{ c.country_code }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 d-flex gap-2">
+        <button type="submit" class="btn btn-primary rounded-pill px-4">
+          <i class="fa-solid fa-rotate"></i> Update Snapshot
+        </button>
+        <a href="{{ snapshot_reset_url }}" class="btn btn-outline-secondary rounded-pill px-4">Reset Snapshot</a>
+      </div>
+    </form>
+
+    {% if snapshot and snapshot.has_data %}
+      <hr class="my-4">
+
+      <div class="row g-3">
+        <div class="col-lg-4">
+          <div class="fw-stat">
+            <div class="fw-stat-body h-100">
+              <div class="d-flex align-items-start">
+                <div class="fw-icon-pill">
+                  <i class="fa-solid fa-water"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-muted small fw-semibold">Selected Indicator</div>
+                  <div class="fw-semibold">{{ snapshot.indicator_name }}</div>
+                  <div class="fw-muted small mt-1">
+                    <span class="fw-semibold">Year:</span> {{ snapshot.year }}
+                    {% if snapshot.unit_of_measure %}
+                      · <span class="fw-semibold">Unit:</span> {{ snapshot.unit_of_measure }}
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="fw-stat fw-green">
+            <div class="fw-stat-body h-100">
+              <div class="d-flex align-items-start">
+                <div class="fw-icon-pill">
+                  <i class="fa-solid fa-earth-americas"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-muted small fw-semibold">Global Average</div>
+                  <div class="display-6 fw-bold mb-0">
+                    {{ "%.1f"|format(snapshot.global_avg) if snapshot.global_avg is not none else "-" }}
+                  </div>
+                  <div class="fw-muted small">
+                    Countries with data: <span class="fw-semibold">{{ snapshot.global_n }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-lg-4">
+          <div class="fw-stat fw-purple">
+            <div class="fw-stat-body h-100">
+              <div class="d-flex align-items-start">
+                <div class="fw-icon-pill">
+                  <i class="fa-solid fa-location-dot"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="fw-muted small fw-semibold">Highlighted Country</div>
+
+                  {% if snapshot.highlight %}
+                    <div class="fw-semibold">
+                      {{ snapshot.highlight.country_name }} ({{ snapshot.highlight.country_code }})
+                    </div>
+                    <div class="fw-muted small mt-1">
+                      <span class="fw-semibold">Region:</span> {{ snapshot.highlight.region or "Unknown" }}
+                    </div>
+                    <div class="fw-muted small">
+                      <span class="fw-semibold">Value:</span> {{ "%.1f"|format(snapshot.highlight.indicator_value) }}
+                    </div>
+                    <div class="fw-muted small">
+                      <span class="fw-semibold">Global Rank:</span> #{{ snapshot.highlight.global_rank }}
+                      · <span class="fw-semibold">Region Rank:</span> #{{ snapshot.highlight.region_rank }}
+                    </div>
+                  {% else %}
+                    <div class="fw-muted">No country selected.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-lg-6">
+          <div class="border rounded-4 p-3 h-100 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="fw-section-title">Top 10 Countries</div>
+              <span class="fw-chip"><i class="fa-solid fa-chart-column"></i> Top</span>
+            </div>
+            <canvas id="fwTopChart" height="190"></canvas>
+          </div>
+        </div>
+
+        <div class="col-lg-6">
+          <div class="border rounded-4 p-3 h-100 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="fw-section-title">Regional Averages</div>
+              <span class="fw-chip"><i class="fa-solid fa-layer-group"></i> Regions</span>
+            </div>
+            <canvas id="fwRegionChart" height="190"></canvas>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="border rounded-4 p-3 bg-white">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <div class="fw-section-title">Bottom 10 Countries</div>
+              <span class="fw-chip"><i class="fa-solid fa-arrow-down"></i> Bottom</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table fw-mini-table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width:55%">Country</th>
+                    <th style="width:25%">Region</th>
+                    <th class="text-end" style="width:20%">Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in snapshot.bottom10 %}
+                    <tr>
+                      <td class="fw-semibold">{{ r.country_name }} ({{ r.country_code }})</td>
+                      <td>
+                        {% if r.region %}
+                          <span class="badge rounded-pill text-bg-info">{{ r.region }}</span>
+                        {% else %}
+                          <span class="text-muted">Unknown</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-end fw-semibold">{{ "%.1f"|format(r.indicator_value) }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+
+      <script>
+        (function () {
+          if (!window.Chart) return;
+
+          if (window.ChartDataLabels) {
+            Chart.register(ChartDataLabels);
+          }
+
+          const topLabels = {{ snapshot["top_labels"] | default([]) | tojson }};
+          const topData   = {{ snapshot["top_values"] | default([]) | tojson }};
+
+          const regionLabels = {{ snapshot["region_labels"] | default([]) | tojson }};
+          const regionData   = {{ snapshot["region_avgs"] | default([]) | tojson }};
+
+          function buildOptions(xRotMax, xRotMin) {
+            return {
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  callbacks: {
+                    label: function(ctx) {
+                      const v = (ctx.parsed && typeof ctx.parsed.y !== "undefined") ? ctx.parsed.y : ctx.raw;
+                      const n = Number(v);
+                      return isFinite(n) ? n.toFixed(1) : String(v);
+                    }
+                  }
+                },
+                datalabels: {
+                  anchor: "end",
+                  align: "end",
+                  clamp: true,
+                  formatter: function(value) {
+                    const n = Number(value);
+                    return isFinite(n) ? n.toFixed(1) : "";
+                  }
+                }
+              },
+              scales: {
+                y: {
+                  ticks: {
+                    callback: function(value) {
+                      const n = Number(value);
+                      return isFinite(n) ? n.toFixed(1) : value;
+                    }
+                  }
+                },
+                x: { ticks: { maxRotation: xRotMax, minRotation: xRotMin } }
+              }
+            };
+          }
+
+          function renderBar(canvasId, labels, data, xRotMax, xRotMin) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            if (!labels || labels.length === 0) {
+              canvas.style.display = "none";
+              const msg = document.createElement("div");
+              msg.className = "text-muted small";
+              msg.style.padding = "6px 0";
+              msg.innerText = "No regional data for this selection.";
+              canvas.parentElement.appendChild(msg);
+              return;
+            }
+
+            new Chart(canvas, {
+              type: "bar",
+              data: { labels: labels, datasets: [{ label: "Value", data: data }] },
+              options: buildOptions(xRotMax, xRotMin)
+            });
+          }
+
+          renderBar("fwTopChart", topLabels, topData, 60, 30);
+          renderBar("fwRegionChart", regionLabels, regionData, 0, 0);
+        })();
+      </script>
+
+    {% else %}
+      <div class="text-muted mt-3">No snapshot data found for the selected indicator/year.</div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card fw-card fw-soft-shadow mb-4">
+  <div class="card-body p-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div class="fw-section-title">Records</div>
+      {% if total_count is defined %}
+        <div class="fw-muted small">
+          Showing
+          <span class="fw-semibold">{{ ((page - 1) * per_page + 1) if total_count > 0 else 0 }}</span>
+          –
+          <span class="fw-semibold">{{ [page * per_page, total_count] | min }}</span>
+          of <span class="fw-semibold">{{ total_count }}</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <form method="get" action="{{ url_for('freshwater.list_freshwater') }}" class="row g-3 align-items-end">
+      <input type="hidden" name="snap_indicator_id" value="{{ snapshot_filters.snap_indicator_id }}">
+      <input type="hidden" name="snap_year" value="{{ snapshot_filters.snap_year }}">
+      <input type="hidden" name="snap_country_id" value="{{ snapshot_filters.snap_country_id }}">
+
+      <div class="col-lg-4">
+        <label class="form-label fw-semibold">Search</label>
+        <input type="text" class="form-control" name="q" placeholder="Country / Code / Indicator..." value="{{ filters.q }}" />
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label fw-semibold">Country</label>
+        <select class="form-select" name="country_id">
+          <option value="">All countries</option>
+          {% for c in countries %}
+            <option value="{{ c.country_id }}" {% if filters.country_id == (c.country_id|string) %}selected{% endif %}>
+              {{ c.country_name }} ({{ c.country_code }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label fw-semibold">Indicator</label>
+        <select class="form-select" name="indicator_id">
+          <option value="">All indicators</option>
+          {% for ind in indicators %}
+            <option value="{{ ind.freshwater_indicator_id }}" {% if filters.indicator_id == (ind.freshwater_indicator_id|string) %}selected{% endif %}>
+              {{ ind.indicator_name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-lg-2">
+        <label class="form-label fw-semibold">Year</label>
+        <input type="number" class="form-control" name="year" placeholder="e.g. 2020" value="{{ filters.year }}" />
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label fw-semibold">Sort Column</label>
+        <select class="form-select" name="sort_by">
+          <option value="data_id" {% if filters.sort_by == "data_id" %}selected{% endif %}>ID</option>
+          <option value="country" {% if filters.sort_by == "country" %}selected{% endif %}>Country</option>
+          <option value="indicator" {% if filters.sort_by == "indicator" %}selected{% endif %}>Indicator</option>
+          <option value="year" {% if filters.sort_by == "year" %}selected{% endif %}>Year</option>
+          <option value="value" {% if filters.sort_by == "value" %}selected{% endif %}>Value</option>
+        </select>
+      </div>
+
+      <div class="col-lg-3">
+        <label class="form-label fw-semibold">Order</label>
+        <select class="form-select" name="order">
+          <option value="asc" {% if filters.order == "asc" %}selected{% endif %}>Ascending</option>
+          <option value="desc" {% if filters.order == "desc" %}selected{% endif %}>Descending</option>
+        </select>
+      </div>
+
+      <div class="col-lg-6 d-flex gap-2">
+        <button type="submit" class="btn btn-dark rounded-pill px-4">Apply</button>
+        <a href="{{ list_reset_url }}" class="btn btn-outline-secondary rounded-pill px-4">Reset</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table fw-table table-hover align-middle bg-white rounded-4 overflow-hidden">
+    <thead class="table-info">
+      <tr>
+        <th>#</th>
+        <th>Country</th>
+        <th>Region</th>
+        <th>Code</th>
+        <th>Indicator</th>
+        <th>Unit</th>
+        <th>Year</th>
+        <th class="text-end">Value</th>
+        <th>Source Notes</th>
+        {% if session.get("team_no")|int in [1, 2] %}
+          <th class="text-end">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+        <tr>
+          <td class="fw-semibold">{{ row.data_id }}</td>
+          <td class="fw-semibold">{{ row.country_name }}</td>
+          <td>
+            {% if row.region %}
+              <span class="badge rounded-pill text-bg-info">{{ row.region }}</span>
+            {% else %}
+              <span class="text-muted">-</span>
+            {% endif %}
+          </td>
+          <td><span class="badge rounded-pill text-bg-light">{{ row.country_code }}</span></td>
+          <td>{{ row.indicator_name }}</td>
+          <td class="text-muted">{{ row.unit_of_measure or '-' }}</td>
+          <td class="fw-semibold">{{ row.year }}</td>
+          <td class="text-end fw-semibold">
+            {{ "%.1f"|format(row.indicator_value) if row.indicator_value is not none else "-" }}
+          </td>
+          <td class="text-muted">{{ row.source_notes or '' }}</td>
+
+          {% if session.get("team_no")|int in [1, 2] %}
+            <td class="text-end">
+              <a href="{{ url_for('freshwater.edit_freshwater', id=row.data_id) }}"
+                 class="btn btn-sm btn-outline-primary rounded-pill me-1"
+                 title="Edit">
+                <i class="fa-solid fa-pen"></i>
+              </a>
+
+              {% if session.get("team_no")|int == 1 %}
+                <form action="{{ url_for('freshwater.delete_freshwater', id=row.data_id) }}"
+                      method="post"
+                      style="display:inline-block"
+                      onsubmit="return confirm('Delete this record?');">
+                  <input type="hidden" name="student_id" value="{{ session.get('student_id', '') }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill" title="Delete">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+              {% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+
+      {% if rows|length == 0 %}
+        {% set col_count = 9 + (1 if session.get("team_no")|int in [1, 2] else 0) %}
+        <tr>
+          <td colspan="{{ col_count }}" class="text-center text-muted py-4">No records found for the selected filters.</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+{% if total_pages is defined and total_pages > 1 %}
+  {% set base_url = url_for('freshwater.list_freshwater') ~ ('?' ~ base_qs ~ '&' if base_qs else '?') %}
+  <nav class="mt-3" aria-label="Records pagination">
+    <ul class="pagination fw-pagination justify-content-center">
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link" href="{{ base_url }}page={{ page - 1 }}">Prev</a>
+      </li>
+
+      {% set window = 2 %}
+      {% set start_p = page - window %}
+      {% set end_p = page + window %}
+      {% if start_p < 1 %}{% set start_p = 1 %}{% endif %}
+      {% if end_p > total_pages %}{% set end_p = total_pages %}{% endif %}
+
+      {% if start_p > 1 %}
+        <li class="page-item"><a class="page-link" href="{{ base_url }}page=1">1</a></li>
+        {% if start_p > 2 %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+      {% endif %}
+
+      {% for p in range(start_p, end_p + 1) %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+          <a class="page-link" href="{{ base_url }}page={{ p }}">{{ p }}</a>
+        </li>
+      {% endfor %}
+
+      {% if end_p < total_pages %}
+        {% if end_p < total_pages - 1 %}
+          <li class="page-item disabled"><span class="page-link">…</span></li>
+        {% endif %}
+        <li class="page-item"><a class="page-link" href="{{ base_url }}page={{ total_pages }}">{{ total_pages }}</a></li>
+      {% endif %}
+
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link" href="{{ base_url }}page={{ page + 1 }}">Next</a>
+      </li>
+    </ul>
+  </nav>
+{% endif %}
+
+{% endblock %}

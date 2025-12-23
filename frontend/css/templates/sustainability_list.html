@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Sustainability Indicators{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1 fw-bold text-primary">Sustainability Indicators</h1>
+    <p class="text-muted mb-0 small">
+      Country-based sustainability indicators with year and source notes.
+    </p>
+  </div>
+
+  {% if session.get("team_no")|int in [1, 2] %}
+    <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-primary px-4 shadow-sm border-0">
+      <i class="fa-solid fa-plus me-2"></i> Add New Record
+    </a>
+  {% endif %}
+</div>
+
+<form
+  method="GET"
+  action="{{ url_for('sustainability.list_sustainability') }}"
+  class="d-flex flex-wrap gap-3 mb-4 p-4 bg-white shadow-sm rounded border-top border-primary border-4 align-items-end"
+  style="border-top-color: #0d6efd !important;"
+>
+  <div style="flex: 1; min-width: 220px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Country</label>
+    <input
+      type="text"
+      name="country"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Country name"
+      value="{{ current_country or '' }}"
+    />
+  </div>
+
+  <div style="width: 180px; min-width: 180px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Region</label>
+    <input
+      type="text"
+      name="region"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Region"
+      value="{{ current_region or '' }}"
+    />
+  </div>
+
+  <div style="width: 140px; min-width: 140px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Code</label>
+    <input
+      type="text"
+      name="code"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="ALB"
+      value="{{ current_code or '' }}"
+    />
+  </div>
+
+  <div style="flex: 2; min-width: 260px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Indicator</label>
+    <input
+      type="text"
+      name="indicator"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Indicator name"
+      value="{{ current_indicator or '' }}"
+    />
+  </div>
+
+  <div style="width: 160px; min-width: 160px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Unit</label>
+    <input
+      type="text"
+      name="unit"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Unit (e.g. % or km³)"
+      value="{{ current_unit or '' }}"
+    />
+  </div>
+
+  <div style="width: 160px; min-width: 160px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Year</label>
+    <input
+      type="number"
+      name="year"
+      class="form-control border-0 bg-light shadow-none"
+      style="border-radius: 8px;"
+      placeholder="Year"
+      value="{{ current_year or '' }}"
+    />
+  </div>
+
+  <div style="flex: 1; min-width: 200px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Sort By</label>
+    <select name="sort_by" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
+      <option value="data_id" {% if current_sort_by == 'data_id' %}selected{% endif %}>ID</option>
+      <option value="country" {% if current_sort_by == 'country' %}selected{% endif %}>Country</option>
+      <option value="code" {% if current_sort_by == 'code' %}selected{% endif %}>Code</option>
+      <option value="region" {% if current_sort_by == 'region' %}selected{% endif %}>Region</option>
+      <option value="indicator" {% if current_sort_by == 'indicator' %}selected{% endif %}>Indicator</option>
+      <option value="unit" {% if current_sort_by == 'unit' %}selected{% endif %}>Unit</option>
+      <option value="year" {% if current_sort_by == 'year' %}selected{% endif %}>Year</option>
+      <option value="value" {% if current_sort_by == 'value' %}selected{% endif %}>Value</option>
+      <option value="source_note" disabled>Source Note</option>
+    </select>
+  </div>
+
+  <div style="flex: 1; min-width: 200px;">
+    <label class="form-label fw-bold text-primary small text-uppercase" style="letter-spacing: 0.5px;">Order</label>
+    <select name="order" class="form-select border-0 bg-light shadow-none" style="border-radius: 8px; cursor: pointer;">
+      <option value="asc" {% if current_order == 'asc' %}selected{% endif %}>Ascending</option>
+      <option value="desc" {% if current_order == 'desc' %}selected{% endif %}>Descending</option>
+    </select>
+  </div>
+
+  <div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" style="border-radius: 8px; height: 41px; background-color: #0d6efd;">
+      <i class="fa-solid fa-magnifying-glass me-2"></i>Apply
+    </button>
+
+    <a href="{{ url_for('sustainability.list_sustainability') }}" class="btn btn-outline-secondary px-4 fw-bold shadow-sm" style="border-radius: 8px; height: 41px;">
+      Reset
+    </a>
+  </div>
+</form>
+
+<div class="table-responsive shadow-sm rounded border">
+  <table class="table table-hover align-middle mb-0 bg-white">
+    <thead style="background-color: #084298; color: white;">
+      <tr>
+        <th class="py-3 ps-3 border-0">#</th>
+        <th class="py-3 border-0">Country</th>
+        <th class="py-3 border-0">Region</th>
+        <th class="py-3 border-0">Code</th>
+        <th class="py-3 border-0">Indicator</th>
+        <th class="py-3 border-0">Unit</th>
+        <th class="py-3 border-0 text-center">Year</th>
+        <th class="py-3 border-0 text-center">Value</th>
+        <th class="py-3 border-0">Source Note</th>
+        {% if session.get("team_no")|int in [1, 2] %}
+          <th class="py-3 border-0 text-center">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in summary_rows %}
+        {% set detail_key = s.key %}
+        <tr class="summary-row" data-key="{{ detail_key }}">
+          <td style="width:40px;" class="text-center expand-btn" onclick="toggleDetails('{{ detail_key }}')">
+            <i class="fa-solid fa-chevron-right" id="icon-{{ detail_key }}"></i>
+          </td>
+          <td class="fw-bold text-dark">{{ s.country_name or '-' }}</td>
+          <td><span class="badge rounded-pill bg-info text-dark fw-normal px-3" style="background-color: #e0f2fe !important; border: 1px solid #bae6fd;">{{ s.region or '-' }}</span></td>
+          <td><span class="badge bg-light text-primary border px-2">{{ s.country_code or '-' }}</span></td>
+          <td class="text-secondary small">Summary — {{ s.count }} indicator{{ 's' if s.count > 1 else '' }}</td>
+          <td class="small text-muted">—</td>
+          <td class="text-center">{{ s.year }}</td>
+          <td class="text-center">—</td>
+          <td class="small text-muted" style="font-size: 0.75rem; font-style: italic;">&nbsp;</td>
+          {% if session.get("team_no")|int in [1, 2] %}
+            <td class="text-center"> 
+              <div class="btn-group shadow-sm" role="group">
+                {% if session.get("team_no")|int in [1, 2] %}
+                <a href="{{ url_for('sustainability.add_sustainability') }}" class="btn btn-sm btn-outline-primary" title="Add new record">
+                  <i class="fa-solid fa-plus"></i>
+                </a>
+                {% endif %}
+              </div>
+            </td>
+          {% endif %}
+        </tr>
+
+        <!-- Detail row (hidden by default) -->
+        <tr class="detail-row" id="detail-{{ detail_key }}" data-expanded="false" style="display:none;">
+          <td colspan="{% if session.get('team_no')|int in [1,2] %}10{% else %}9{% endif %}" style="background-color: #f8f9fa;">
+            <div class="p-3">
+              <h6 class="mb-3 fw-bold" style="color: #084298;">Detailed Indicators — {{ s.country_name }} ({{ s.year }})</h6>
+              <div class="table-responsive">
+                <table class="table table-sm table-bordered mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:60px;">ID</th>
+                      <th>Indicator</th>
+                      <th style="width:120px;">Unit</th>
+                      <th style="width:90px;" class="text-center">Year</th>
+                      <th style="width:120px;" class="text-end">Value</th>
+                      <th style="width:200px;">Source Note</th>
+                      {% if session.get("team_no")|int in [1, 2] %}
+                        <th style="width:140px;" class="text-center">Actions</th>
+                      {% endif %}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in details_map[detail_key] %}
+                      <tr>
+                        <td class="fw-semibold text-muted">{{ row.data_id }}</td>
+                        <td class="small text-secondary">{{ row.indicator_name }}</td>
+                        <td class="small text-muted">{{ row.unit_symbol or '-' }}</td>
+                        <td class="text-center">{{ row.year }}</td>
+                        <td class="text-end fw-bold" style="color: #0d6efd !important;">{{ row.indicator_value }}</td>
+                        <td class="small text-muted" style="font-size: 0.75rem; font-style: italic;">{{ row.source_note or '' }}</td>
+                        {% if session.get("team_no")|int in [1, 2] %}
+                          <td class="text-center">
+                            <div class="btn-group" role="group">
+                              {% if session.get("team_no")|int in [1, 2] %}
+                              <a href="{{ url_for('sustainability.edit_sustainability', id=row.data_id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                              {% endif %}
+                              {% if session.get("team_no")|int == 1 %}
+                              <form action="{{ url_for('sustainability.delete_sustainability', id=row.data_id) }}" method="post" style="display:inline-block" onsubmit="return confirm('Delete this record?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                              </form>
+                              {% endif %}
+                            </div>
+                          </td>
+                        {% endif %}
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleDetails(key) {
+  const detailRow = document.getElementById('detail-' + key);
+  const icon = document.getElementById('icon-' + key);
+  const summaryRow = document.querySelector(`tr.summary-row[data-key="${key}"]`);
+  if (!detailRow || !icon) return;
+
+  const isExpanded = detailRow.getAttribute('data-expanded') === 'true';
+  if (isExpanded) {
+    detailRow.classList.remove('show');
+    detailRow.setAttribute('data-expanded', 'false');
+    if (summaryRow) summaryRow.classList.remove('expanded');
+    icon.classList.remove('fa-chevron-down');
+    icon.classList.add('fa-chevron-right');
+    setTimeout(() => { detailRow.style.display = 'none'; }, 200);
+  } else {
+    detailRow.style.display = 'table-row';
+    detailRow.offsetHeight; // force reflow
+    detailRow.classList.add('show');
+    detailRow.setAttribute('data-expanded', 'true');
+    if (summaryRow) summaryRow.classList.add('expanded');
+    icon.classList.remove('fa-chevron-right');
+    icon.classList.add('fa-chevron-down');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.detail-row').forEach(row => {
+    row.setAttribute('data-expanded', 'false');
+    row.classList.remove('show');
+    row.style.display = 'none';
+  });
+});
+</script>
+{% endblock %}

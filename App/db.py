@@ -1,29 +1,32 @@
-# App/db.py
+import os
 import mysql.connector
 from flask import g
-import os
 
-# Environment variables will come from .env file
+# Database configuration loaded from environment variables
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "localhost"),
     "user": os.getenv("DB_USER", "root"),
-    "password": os.getenv("DB_PASSWORD", ""),
-    "database": os.getenv("DB_NAME", "world_dev_indicators"),
+    "password": os.getenv("DB_PASSWORD", "db_pass"),
+    "database": os.getenv("DB_NAME", "wdi_project"),
     "port": int(os.getenv("DB_PORT", "3306")),
 }
 
+
 def get_db():
     """
-    It creates a single MySQL connection for Flask's request context and caches it via g.
+    Returns a single MySQL connection for the current Flask request context.
+    The connection is cached in flask.g to avoid reconnecting multiple times.
     """
     if "db" not in g:
         g.db = mysql.connector.connect(**DB_CONFIG)
     return g.db
 
+
 def close_db(e=None):
     """
-    When the request is completed, it closes the MySQL connection.
+    Closes the MySQL connection at the end of the request, if it exists.
+    This function is meant to be registered with app.teardown_appcontext.
     """
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
+    conn = g.pop("db", None)
+    if conn is not None:
+        conn.close()

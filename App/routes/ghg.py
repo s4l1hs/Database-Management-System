@@ -1,0 +1,1212 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash, abort, jsonify
+from mysql.connector import Error as MySQLError
+from mysql.connector.errors import IntegrityError
+from types import SimpleNamespace
+
+from App.db import get_db
+from App.routes.login import admin_required, editor_required
+
+ghg_bp = Blueprint("ghg", __name__, url_prefix="/ghg")
+
+
+def _row_to_dict(cursor, row):
+    """Convert database row to dictionary with column names as keys."""
+    columns = [desc[0] for desc in cursor.description]
+    return dict(zip(columns, row))
+
+
+def _row_to_obj(cursor, row):
+    """Convert database row to SimpleNamespace object for template compatibility."""
+    columns = [desc[0] for desc in cursor.description]
+    return SimpleNamespace(**dict(zip(columns, row)))
+
+
+# ---------- LIST (Summary View) ----------
+@ghg_bp.route("/", methods=["GET"])
+def list_ghg():
+    country_name = request.args.get("country", type=str)
+    year_min = request.args.get("year_min", type=int)
+    year_max = request.args.get("year_max", type=int)
+    latest_year_only = request.args.get("latest_year_only", type=str) == "true"
+    sort_by = request.args.get("sort", default="country", type=str)
+    sort_order = request.args.get("order", default="asc", type=str)
+    page = request.args.get("page", default=1, type=int)
+    per_page = 50
+
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    countries = []
+    indicators = []
+
+    try:
+        # Build WHERE clause
+        where_clauses = []
+        params = []
+
+        if country_name:
+            where_clauses.append("c.country_name LIKE %s")
+            params.append(f"%{country_name}%")
+
+        if year_min:
+            where_clauses.append("g.year >= %s")
+            params.append(year_min)
+
+        if year_max:
+            where_clauses.append("g.year <= %s")
+            params.append(year_max)
+
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+
+        if latest_year_only:
+            latest_year_condition = """
+                AND g.year = (
+                    SELECT MAX(g2.year)
+                    FROM greenhouse_emissions g2
+                    WHERE g2.country_id = g.country_id
+                )
+            """
+            where_sql = f"{where_sql} {latest_year_condition}"
+
+        query = f"""
+            SELECT 
+                country_id,
+                country_name,
+                country_code,
+                region,
+                year,
+                CAST(MAX(CASE WHEN ghg_indicator_id = 1 THEN indicator_value END) AS UNSIGNED) AS total_ghg,
+                CAST(MAX(CASE WHEN ghg_indicator_id = 5 THEN indicator_value END) AS UNSIGNED) AS co2_total,
+                CAST(MAX(CASE WHEN ghg_indicator_id = 6 THEN indicator_value END) AS DECIMAL(10,2)) AS co2_per_capita
+            FROM (
+                SELECT DISTINCT
+                    c.country_id,
+                    c.country_name,
+                    c.country_code,
+                    c.region,
+                    g.year,
+                    g.ghg_indicator_id,
+                    g.indicator_value
+                FROM countries c
+                INNER JOIN greenhouse_emissions g ON c.country_id = g.country_id
+                WHERE {where_sql}
+            ) AS emission_data
+            GROUP BY country_id, country_name, country_code, region, year
+        """
+        
+
+        sort_map = {
+            "country": "country_name",
+            "year": "year",
+            "region": "region",
+            "total_ghg": "total_ghg",
+            "co2_total": "co2_total",
+            "co2_per_capita": "co2_per_capita",
+            "trend": "trend_value"
+        }
+        
+        if sort_by in ["total_ghg", "co2_total", "co2_per_capita"]:
+            sort_column = sort_map.get(sort_by)
+            order = "ASC" if sort_order == "asc" else "DESC"
+            query += f" ORDER BY {sort_column} IS NULL, {sort_column} {order}"
+        elif sort_by == "trend":
+            query += " ORDER BY country_name ASC"
+        else:
+            sort_column = sort_map.get(sort_by, "country_name")
+            order = "ASC" if sort_order == "asc" else "DESC"
+            if sort_by in ["region", "country"]:
+                query += f" ORDER BY {sort_column} IS NULL, {sort_column} {order}"
+            else:
+                query += f" ORDER BY {sort_column} {order}"
+
+        count_query = f"""
+            SELECT COUNT(*) as total
+            FROM (
+                SELECT 
+                    c.country_id,
+                    g.year
+                FROM countries c
+                INNER JOIN greenhouse_emissions g ON c.country_id = g.country_id
+                WHERE {where_sql}
+                GROUP BY c.country_id, g.year
+            ) as unique_pairs
+        """
+        cursor.execute(count_query, params)
+        total_count = cursor.fetchone()['total']
+        total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
+
+        offset = (page - 1) * per_page
+        query += f" LIMIT {per_page} OFFSET {offset}"
+
+        cursor.execute(query, params)
+        raw_rows = cursor.fetchall()
+
+        unique_summary_dict = {}
+        for row in raw_rows:
+            pair_key = (row['country_id'], row['year'])
+            if pair_key not in unique_summary_dict:
+                unique_summary_dict[pair_key] = row
+            else:
+                existing = unique_summary_dict[pair_key]
+                if row['total_ghg'] is not None and existing['total_ghg'] is None:
+                    existing['total_ghg'] = row['total_ghg']
+                if row['co2_total'] is not None and existing['co2_total'] is None:
+                    existing['co2_total'] = row['co2_total']
+                if row['co2_per_capita'] is not None and existing['co2_per_capita'] is None:
+                    existing['co2_per_capita'] = row['co2_per_capita']
+        
+        summary_rows = list(unique_summary_dict.values())
+        
+        country_ids = list(set(row['country_id'] for row in summary_rows))
+        
+        full_data_map = {}
+        if country_ids:
+            placeholders = ','.join(['%s'] * len(country_ids))
+            cursor.execute(f"""
+                SELECT country_id, year, indicator_value
+                FROM greenhouse_emissions
+                WHERE country_id IN ({placeholders}) AND ghg_indicator_id = 6 AND indicator_value IS NOT NULL
+                ORDER BY country_id, year ASC
+            """, country_ids)
+            for data_row in cursor.fetchall():
+                key = (data_row['country_id'], data_row['year'])
+                full_data_map[key] = float(data_row['indicator_value'])
+        
+        country_latest_years_full = {}
+        country_earliest_years_full = {}
+        if country_ids:
+            placeholders = ','.join(['%s'] * len(country_ids))
+            cursor.execute(f"""
+                SELECT country_id, MAX(year) as max_year, MIN(year) as min_year
+                FROM greenhouse_emissions
+                WHERE country_id IN ({placeholders})
+                GROUP BY country_id
+            """, country_ids)
+            for data_row in cursor.fetchall():
+                country_latest_years_full[data_row['country_id']] = data_row['max_year']
+                country_earliest_years_full[data_row['country_id']] = data_row['min_year']
+        
+        for row in summary_rows:
+            country_id = row['country_id']
+            year = row['year']
+            trends = {}
+            show_trend = False
+            
+            current_value_raw = row.get('co2_per_capita')
+            current_value = float(current_value_raw) if current_value_raw is not None else None
+            
+            if current_value is not None:
+                prev_year = None
+                prev_value = None
+                available_years = sorted([y for (c, y) in full_data_map.keys() if c == country_id], reverse=True)
+                for y in available_years:
+                    if y < year:
+                        prev_year = y
+                        prev_value = full_data_map.get((country_id, y))
+                        break
+                
+                next_year = None
+                next_value = None
+                if prev_year is None:
+                    available_years_asc = sorted([y for (c, y) in full_data_map.keys() if c == country_id])
+                    for y in available_years_asc:
+                        if y > year:
+                            next_year = y
+                            next_value = full_data_map.get((country_id, y))
+                            break
+                
+                if prev_year is not None and prev_value is not None:
+                    change = current_value - prev_value
+                    percent = ((change / prev_value) * 100) if prev_value != 0 else None
+                    trends['co2_per_capita'] = {
+                        'change': change,
+                        'percent': percent,
+                        'comparison_year': prev_year,
+                        'comparison_type': 'previous',
+                        'comparison_value': prev_value
+                    }
+                    show_trend = True
+                elif next_year is not None and next_value is not None:
+                    change = next_value - current_value
+                    percent = ((change / current_value) * 100) if current_value != 0 else None
+                    trends['co2_per_capita'] = {
+                        'change': change,
+                        'percent': percent,
+                        'comparison_year': next_year,
+                        'comparison_type': 'next',
+                        'comparison_value': next_value
+                    }
+                    show_trend = True
+                else:
+                    trends['co2_per_capita'] = None
+            else:
+                trends['co2_per_capita'] = None
+            
+            row['trends'] = trends
+            row['show_trend'] = show_trend
+            row['is_latest_year'] = country_latest_years_full.get(country_id) == year
+            row['is_earliest_year'] = country_earliest_years_full.get(country_id) == year
+            
+            if trends.get('co2_per_capita') is not None:
+                row['trend_value'] = trends['co2_per_capita'].get('change', 0)
+            else:
+                row['trend_value'] = None
+        
+        cursor.execute("""
+            SELECT ghg_indicator_id, unit_symbol
+            FROM ghg_indicator_details
+            WHERE ghg_indicator_id IN (1, 5, 6)
+        """)
+        unit_symbols = {row['ghg_indicator_id']: row['unit_symbol'] for row in cursor.fetchall()}
+        
+        countries_grouped = {}
+        for row in summary_rows:
+            country_id = row['country_id']
+            if country_id not in countries_grouped:
+                countries_grouped[country_id] = {
+                    'country_id': country_id,
+                    'country_name': row['country_name'],
+                    'country_code': row['country_code'],
+                    'region': row['region'],
+                    'years': []
+                }
+            countries_grouped[country_id]['years'].append(row)
+        
+        for country_id in countries_grouped:
+            countries_grouped[country_id]['years'].sort(key=lambda x: x['year'])
+        
+        region_avg_by_year = {}
+        if summary_rows:
+            regions = list(set(row['region'] for row in summary_rows if row['region']))
+            years = list(set(row['year'] for row in summary_rows))
+            
+            if regions and years:
+                placeholders_years = ','.join(['%s'] * len(years))
+                for region in regions:
+                    cursor.execute(f"""
+                        SELECT year, AVG(indicator_value) as avg_value
+                        FROM greenhouse_emissions g
+                        INNER JOIN countries c ON c.country_id = g.country_id
+                        WHERE c.region = %s 
+                        AND g.ghg_indicator_id = 6 
+                        AND g.indicator_value IS NOT NULL
+                        AND g.year IN ({placeholders_years})
+                        GROUP BY year
+                    """, [region] + years)
+                    region_avg_by_year[region] = {row['year']: float(row['avg_value']) for row in cursor.fetchall()}
+        
+        global_avg_by_year = {}
+        cursor.execute("SELECT ghg_indicator_id FROM ghg_indicator_details ORDER BY ghg_indicator_id")
+        all_indicators = cursor.fetchall()
+        
+        for indicator_row in all_indicators:
+            indicator_id = indicator_row['ghg_indicator_id']
+            cursor.execute("""
+                SELECT 
+                    year,
+                    AVG(indicator_value) as avg_value,
+                    COUNT(DISTINCT country_id) as country_count
+                FROM greenhouse_emissions
+                WHERE ghg_indicator_id = %s 
+                AND indicator_value IS NOT NULL
+                GROUP BY year
+                ORDER BY year ASC
+            """, (indicator_id,))
+            global_avg_by_year[indicator_id] = [
+                {
+                    'year': row['year'],
+                    'avg_value': float(row['avg_value']),
+                    'country_count': row['country_count']
+                }
+                for row in cursor.fetchall()
+            ]
+        
+        top_risers = []
+        top_decliners = []
+        if country_ids and full_data_map:
+            risers_decliners = []
+            for country_id in country_ids:
+                country_years = sorted([y for (c, y) in full_data_map.keys() if c == country_id])
+                if len(country_years) >= 2:
+                    earliest_year = country_years[0]
+                    latest_year = country_years[-1]
+                    earliest_value = full_data_map.get((country_id, earliest_year))
+                    latest_value = full_data_map.get((country_id, latest_year))
+                    
+                    if earliest_value is not None and latest_value is not None and earliest_value != 0:
+                        percent_change = ((latest_value - earliest_value) / earliest_value * 100)
+                        country_name = next((row['country_name'] for row in summary_rows if row['country_id'] == country_id), 'Unknown')
+                        risers_decliners.append({
+                            'country_id': country_id,
+                            'country_name': country_name,
+                            'percent_change': percent_change,
+                            'earliest_year': earliest_year,
+                            'latest_year': latest_year
+                        })
+            
+            if risers_decliners:
+                risers_decliners.sort(key=lambda x: x['percent_change'], reverse=True)
+                top_risers = risers_decliners[:5]
+                top_decliners = sorted(risers_decliners[-5:], key=lambda x: x['percent_change'])
+        
+        country_coverage = {}
+        for country_id in countries_grouped:
+            years_list = countries_grouped[country_id]['years']
+            total_years = len(years_list)
+            if year_min or year_max:
+                filtered_years = [y for y in years_list if (not year_min or y['year'] >= year_min) and (not year_max or y['year'] <= year_max)]
+                total_years = len(filtered_years)
+            country_coverage[country_id] = {
+                'reported': total_years,
+                'total': total_years
+            }
+        
+        countries_list = list(countries_grouped.values())
+        
+        if sort_by == "trend":
+            countries_list.sort(
+                key=lambda c: (
+                    next((y['trend_value'] is None for y in c['years'] if y.get('is_latest_year')), True),
+                    next((y['trend_value'] for y in c['years'] if y.get('is_latest_year')), 0)
+                ),
+                reverse=(sort_order == "desc")
+            )
+        elif sort_by == "country":
+            countries_list.sort(
+                key=lambda c: c['country_name'].lower(),
+                reverse=(sort_order == "desc")
+            )
+        elif sort_by == "region":
+            countries_list.sort(
+                key=lambda c: (c['region'] or '').lower(),
+                reverse=(sort_order == "desc")
+            )
+        elif sort_by in ["co2_per_capita", "co2_total", "total_ghg"]:
+            def get_latest_value(c, field):
+                latest_year = max(c['years'], key=lambda y: y['year'])
+                return latest_year.get(field) if latest_year.get(field) is not None else float('-inf')
+            
+            countries_list.sort(
+                key=lambda c: (
+                    get_latest_value(c, sort_by) == float('-inf'),
+                    get_latest_value(c, sort_by)
+                ),
+                reverse=(sort_order == "desc")
+            )
+        else:
+            countries_list.sort(
+                key=lambda c: max(y['year'] for y in c['years']),
+                reverse=(sort_order == "desc")
+            )
+
+        detailed_data = {}
+        time_series_data = {}
+        
+        cursor.execute("SELECT COUNT(*) as total FROM ghg_indicator_details")
+        total_indicators = cursor.fetchone()['total']
+        
+        for row in summary_rows:
+            country_id = row['country_id']
+            year = row['year']
+            key = f"{country_id}-{year}"
+
+            detail_query = """
+                SELECT 
+                    g.row_id,
+                    g.ghg_indicator_id,
+                    g.indicator_value,
+                    g.share_of_total_pct,
+                    g.uncertainty_pct,
+                    g.source_notes,
+                    i.indicator_name,
+                    i.unit_symbol
+                FROM greenhouse_emissions g
+                INNER JOIN ghg_indicator_details i ON g.ghg_indicator_id = i.ghg_indicator_id
+                WHERE g.country_id = %s AND g.year = %s
+                ORDER BY g.ghg_indicator_id
+            """
+            cursor.execute(detail_query, (country_id, year))
+            detailed_data[key] = cursor.fetchall()
+            
+            coverage_count = sum(1 for detail in detailed_data[key] if detail['indicator_value'] is not None)
+            row['data_coverage'] = {
+                'reported': coverage_count,
+                'total': total_indicators
+            }
+            
+            if country_id not in time_series_data:
+                cursor.execute("""
+                    SELECT ghg_indicator_id, indicator_name, unit_symbol
+                    FROM ghg_indicator_details
+                    ORDER BY ghg_indicator_id
+                """)
+                all_indicators = cursor.fetchall()
+                indicator_map = {row['ghg_indicator_id']: {'name': row['indicator_name'], 'unit': row['unit_symbol']} for row in all_indicators}
+                
+                cursor.execute("""
+                    SELECT DISTINCT year
+                    FROM greenhouse_emissions
+                    WHERE country_id = %s
+                    ORDER BY year ASC
+                """, (country_id,))
+                all_years = [row['year'] for row in cursor.fetchall()]
+                
+                country_ts_by_indicator = {}
+                for indicator_id, indicator_info in indicator_map.items():
+                    cursor.execute("""
+                        SELECT year, indicator_value
+                        FROM greenhouse_emissions
+                        WHERE country_id = %s AND ghg_indicator_id = %s AND indicator_value IS NOT NULL
+                        ORDER BY year ASC
+                    """, (country_id, indicator_id))
+                    indicator_data = {row['year']: row['indicator_value'] for row in cursor.fetchall()}
+                    
+                    country_ts_by_indicator[indicator_id] = [
+                        {
+                            'year': year,
+                            'value': indicator_data.get(year)
+                        }
+                        for year in all_years
+                    ]
+                
+                cursor.execute("SELECT region FROM countries WHERE country_id = %s", (country_id,))
+                region_result = cursor.fetchone()
+                region_name = region_result['region'] if region_result else None
+                
+                region_avg_by_indicator = {}
+                if region_name:
+                    for indicator_id in indicator_map.keys():
+                        cursor.execute("""
+                            SELECT year, AVG(indicator_value) as avg_value
+                            FROM greenhouse_emissions g
+                            INNER JOIN countries c ON c.country_id = g.country_id
+                            WHERE c.region = %s AND g.ghg_indicator_id = %s AND g.indicator_value IS NOT NULL
+                            GROUP BY year
+                            ORDER BY year ASC
+                        """, (region_name, indicator_id))
+                        region_data = {row['year']: row['avg_value'] for row in cursor.fetchall()}
+                        
+                        region_avg_by_indicator[indicator_id] = [
+                            {
+                                'year': year,
+                                'value': region_data.get(year)
+                            }
+                            for year in all_years
+                        ]
+                
+                time_series_data[country_id] = {
+                    'indicators': indicator_map,
+                    'country_data': country_ts_by_indicator,
+                    'region_avg': region_avg_by_indicator,
+                    'region': region_name,
+                    'years': all_years
+                }
+
+    except MySQLError as e:
+        flash(f"Database error: {e}", "danger")
+        summary_rows = []
+        countries_list = []
+        detailed_data = {}
+        time_series_data = {}
+        unit_symbols = {1: 'kt CO₂-eq', 5: 'kt', 6: 't'}
+        region_avg_by_year = {}
+        global_avg_by_year = []
+        top_risers = []
+        top_decliners = []
+        country_coverage = {}
+        total_pages = 0
+    
+    students = []
+    if not countries or not indicators:
+        try:
+            modal_cursor = db_conn.cursor(dictionary=True)
+            modal_cursor.execute("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")
+            countries = modal_cursor.fetchall()
+
+            modal_cursor.execute(
+                "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
+            )
+            indicators = modal_cursor.fetchall()
+            
+            modal_cursor.execute("SELECT student_id, student_number, full_name FROM students ORDER BY student_number")
+            students = modal_cursor.fetchall()
+            modal_cursor.close()
+        except MySQLError:
+            countries = []
+            indicators = []
+            students = []
+    
+    if 'cursor' in locals() and cursor:
+        try:
+            cursor.close()
+        except:
+            pass
+
+    return render_template(
+        "ghg_list.html",
+        countries_grouped=countries_list,
+        summary_rows=summary_rows,
+        detailed_data=detailed_data,
+        time_series_data=time_series_data,
+        unit_symbols=unit_symbols,
+        region_avg_by_year=region_avg_by_year,
+        global_avg_by_year=global_avg_by_year,
+        top_risers=top_risers,
+        top_decliners=top_decliners,
+        country_coverage=country_coverage,
+        current_country=country_name,
+        current_year_min=year_min,
+        current_year_max=year_max,
+        latest_year_only=latest_year_only,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        total_pages=total_pages,
+        per_page=per_page,
+        countries=countries,
+        indicators=indicators,
+        students=students,
+    )
+
+
+# ---------- AUTOCOMPLETE ENDPOINT ----------
+@ghg_bp.route("/api/countries", methods=["GET"])
+def autocomplete_countries():
+    """Return countries for autocomplete"""
+    query = request.args.get("q", "", type=str)
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute(
+            """
+            SELECT DISTINCT country_name, country_code, region
+            FROM countries
+            WHERE country_name LIKE %s
+            ORDER BY country_name
+            LIMIT 20
+            """,
+            (f"%{query}%",)
+        )
+        countries = cursor.fetchall()
+    except MySQLError:
+        countries = []
+    finally:
+        cursor.close()
+
+    return {"countries": countries}
+
+
+# ---------- CREATE ----------
+@ghg_bp.route("/add", methods=["GET", "POST"])
+@editor_required
+def add_ghg():
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=False)
+
+    if request.method == "POST":
+        try:
+            c_id = request.form.get("country_id")
+            i_id = request.form.get("ghg_indicator_id")
+            year = request.form.get("year")
+            indicator_value = request.form.get("indicator_value")
+            share_of_total_pct = request.form.get("share_of_total_pct") or None
+            uncertainty_pct = request.form.get("uncertainty_pct") or None
+            source_notes = request.form.get("source_notes") or None
+            student_id = request.form.get("student_id") or None
+
+            if share_of_total_pct == "":
+                share_of_total_pct = None
+            if uncertainty_pct == "":
+                uncertainty_pct = None
+
+            insert_query = """
+                INSERT INTO greenhouse_emissions 
+                (country_id, ghg_indicator_id, year, indicator_value, 
+                 share_of_total_pct, uncertainty_pct, source_notes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(
+                insert_query,
+                (
+                    c_id,
+                    i_id,
+                    year,
+                    indicator_value,
+                    share_of_total_pct,
+                    uncertainty_pct,
+                    source_notes,
+                ),
+            )
+            new_row_id = cursor.lastrowid
+
+            if student_id:
+                audit_query = """
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """
+                cursor.execute(
+                    audit_query,
+                    (student_id, "CREATE", "greenhouse_emissions", new_row_id),
+                )
+
+            db_conn.commit()
+            flash("Record added successfully.", "success")
+            return redirect(url_for("ghg.list_ghg"))
+
+        except IntegrityError as e:
+            db_conn.rollback()
+            flash("This country + indicator + year combination already exists!", "danger")
+            return redirect(url_for("ghg.add_ghg"))
+
+        except MySQLError as e:
+            db_conn.rollback()
+            flash(f"Error: {e}", "danger")
+            return redirect(url_for("ghg.add_ghg"))
+
+        finally:
+            cursor.close()
+
+    try:
+        cursor.execute("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")
+        countries_data = cursor.fetchall()
+        countries = [
+            SimpleNamespace(country_id=row[0], country_name=row[1], country_code=row[2])
+            for row in countries_data
+        ]
+
+        cursor.execute(
+            "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
+        )
+        indicators_data = cursor.fetchall()
+        indicators = [
+            SimpleNamespace(
+                ghg_indicator_id=row[0], indicator_name=row[1], unit_symbol=row[2]
+            )
+            for row in indicators_data
+        ]
+
+        cursor.execute("SELECT student_id, student_number, full_name FROM students ORDER BY student_number")
+        students_data = cursor.fetchall()
+        students = [
+            SimpleNamespace(
+                student_id=row[0], student_number=row[1], full_name=row[2]
+            )
+            for row in students_data
+        ]
+
+    except MySQLError as e:
+        flash(f"Database error: {e}", "danger")
+        countries = []
+        indicators = []
+        students = []
+    finally:
+        cursor.close()
+
+    return render_template(
+        "ghg_form.html",
+        countries=countries,
+        indicators=indicators,
+        students=students,
+        action="Add",
+        record=None,
+    )
+
+
+# ---------- UPDATE ----------
+@ghg_bp.route("/edit/<int:id>", methods=["GET", "POST"])
+@editor_required
+def edit_ghg(id):
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=False)
+
+    if request.method == "POST":
+        try:
+            indicator_value = request.form.get("indicator_value", type=int)
+            share_val = request.form.get("share_of_total_pct")
+            uncertainty_val = request.form.get("uncertainty_pct")
+            share_of_total_pct = int(share_val) if share_val and share_val.strip() else None
+            uncertainty_pct = int(uncertainty_val) if uncertainty_val and uncertainty_val.strip() else None
+            year = request.form.get("year", type=int)
+            source_notes = request.form.get("source_notes") or None
+            student_id = request.form.get("student_id") or None
+
+            update_query = """
+                UPDATE greenhouse_emissions
+                SET indicator_value = %s,
+                    share_of_total_pct = %s,
+                    uncertainty_pct = %s,
+                    year = %s,
+                    source_notes = %s
+                WHERE row_id = %s
+            """
+            cursor.execute(
+                update_query,
+                (indicator_value, share_of_total_pct, uncertainty_pct, year, source_notes, id),
+            )
+
+            if student_id:
+                audit_query = """
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """
+                cursor.execute(
+                    audit_query,
+                    (student_id, "UPDATE", "greenhouse_emissions", id),
+                )
+
+            db_conn.commit()
+            flash("Record updated successfully.", "success")
+            return redirect(url_for("ghg.list_ghg"))
+
+        except MySQLError as e:
+            db_conn.rollback()
+            flash(f"Update error: {e}", "danger")
+            return redirect(url_for("ghg.edit_ghg", id=id))
+
+        finally:
+            cursor.close()
+
+    try:
+        cursor.execute(
+            """
+            SELECT row_id, country_id, ghg_indicator_id, indicator_value,
+                   share_of_total_pct, uncertainty_pct, year, source_notes
+            FROM greenhouse_emissions
+            WHERE row_id = %s
+        """,
+            (id,),
+        )
+        record_data = cursor.fetchone()
+
+        if not record_data:
+            abort(404)
+
+        record = SimpleNamespace(
+            row_id=record_data[0],
+            country_id=record_data[1],
+            ghg_indicator_id=record_data[2],
+            indicator_value=record_data[3],
+            share_of_total_pct=record_data[4],
+            uncertainty_pct=record_data[5],
+            year=record_data[6],
+            source_notes=record_data[7],
+        )
+
+        cursor.execute("SELECT country_id, country_name, country_code FROM countries ORDER BY country_name")
+        countries_data = cursor.fetchall()
+        countries = [
+            SimpleNamespace(country_id=row[0], country_name=row[1], country_code=row[2])
+            for row in countries_data
+        ]
+
+        cursor.execute(
+            "SELECT ghg_indicator_id, indicator_name, unit_symbol FROM ghg_indicator_details ORDER BY indicator_name"
+        )
+        indicators_data = cursor.fetchall()
+        indicators = [
+            SimpleNamespace(
+                ghg_indicator_id=row[0], indicator_name=row[1], unit_symbol=row[2]
+            )
+            for row in indicators_data
+        ]
+
+        cursor.execute("SELECT student_id, student_number, full_name FROM students ORDER BY student_number")
+        students_data = cursor.fetchall()
+        students = [
+            SimpleNamespace(
+                student_id=row[0], student_number=row[1], full_name=row[2]
+            )
+            for row in students_data
+        ]
+
+    except MySQLError as e:
+        flash(f"Database error: {e}", "danger")
+        abort(500)
+    finally:
+        cursor.close()
+
+    return render_template(
+        "ghg_form.html",
+        record=record,
+        countries=countries,
+        indicators=indicators,
+        students=students,
+        action="Edit",
+    )
+
+
+# ---------- DELETE ----------
+@ghg_bp.route("/delete/<int:id>", methods=["POST"])
+@admin_required
+def delete_ghg(id):
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=False)
+
+    try:
+        cursor.execute("SELECT row_id FROM greenhouse_emissions WHERE row_id = %s", (id,))
+        if not cursor.fetchone():
+            abort(404)
+
+        cursor.execute("DELETE FROM greenhouse_emissions WHERE row_id = %s", (id,))
+        db_conn.commit()
+        flash("Record deleted successfully.", "success")
+
+    except MySQLError as e:
+        db_conn.rollback()
+        flash(f"Delete error: {e}", "danger")
+    finally:
+        cursor.close()
+
+    return redirect(url_for("ghg.list_ghg"))
+
+
+# ---------- AJAX ENDPOINTS FOR INLINE CRUD ----------
+@ghg_bp.route("/api/add", methods=["POST"])
+@editor_required
+def api_add_ghg():
+    """AJAX endpoint for adding a new GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        data = request.get_json()
+        c_id = data.get("country_id")
+        i_id = data.get("ghg_indicator_id")
+        year = data.get("year")
+        indicator_value = data.get("indicator_value")
+        share_of_total_pct = data.get("share_of_total_pct") or None
+        uncertainty_pct = data.get("uncertainty_pct") or None
+        source_notes = data.get("source_notes") or None
+        audit_user_id = data.get("audit_user_id") or None
+
+        if not all([c_id, i_id, year, indicator_value is not None]):
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+        if share_of_total_pct == "":
+            share_of_total_pct = None
+        if uncertainty_pct == "":
+            uncertainty_pct = None
+        if audit_user_id == "":
+            audit_user_id = None
+
+        insert_query = """
+            INSERT INTO greenhouse_emissions 
+            (country_id, ghg_indicator_id, year, indicator_value, 
+             share_of_total_pct, uncertainty_pct, source_notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(
+            insert_query,
+            (c_id, i_id, year, indicator_value, share_of_total_pct, uncertainty_pct, source_notes),
+        )
+        new_row_id = cursor.lastrowid
+
+        if audit_user_id:
+            try:
+                cursor.execute("""
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (audit_user_id, "CREATE", "greenhouse_emissions", new_row_id))
+            except MySQLError:
+                pass
+
+        cursor.execute("""
+            SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
+                   g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
+                   c.country_name, c.country_code, c.region,
+                   i.indicator_name, i.unit_symbol
+            FROM greenhouse_emissions g
+            JOIN countries c ON g.country_id = c.country_id
+            JOIN ghg_indicator_details i ON g.ghg_indicator_id = i.ghg_indicator_id
+            WHERE g.row_id = %s
+        """, (new_row_id,))
+        record = cursor.fetchone()
+
+        db_conn.commit()
+        return jsonify({"success": True, "record": record}), 201
+
+    except IntegrityError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": "This country + indicator + year combination already exists!"}), 400
+    except MySQLError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+@ghg_bp.route("/api/edit/<int:id>", methods=["POST"])
+@editor_required
+def api_edit_ghg(id):
+    """AJAX endpoint for editing an existing GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        data = request.get_json()
+        indicator_value = data.get("indicator_value")
+        share_val = data.get("share_of_total_pct")
+        uncertainty_val = data.get("uncertainty_pct")
+        year = data.get("year")
+        source_notes = data.get("source_notes") or None
+        audit_user_id = data.get("audit_user_id") or None
+
+        share_of_total_pct = int(share_val) if share_val and str(share_val).strip() else None
+        uncertainty_pct = int(uncertainty_val) if uncertainty_val and str(uncertainty_val).strip() else None
+        if audit_user_id == "":
+            audit_user_id = None
+
+        if indicator_value is None or year is None:
+            return jsonify({"success": False, "error": "Missing required fields"}), 400
+
+        update_query = """
+            UPDATE greenhouse_emissions
+            SET indicator_value = %s,
+                share_of_total_pct = %s,
+                uncertainty_pct = %s,
+                year = %s,
+                source_notes = %s
+            WHERE row_id = %s
+        """
+        cursor.execute(
+            update_query,
+            (indicator_value, share_of_total_pct, uncertainty_pct, year, source_notes, id),
+        )
+
+        if audit_user_id:
+            try:
+                cursor.execute("""
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (audit_user_id, "UPDATE", "greenhouse_emissions", id))
+            except MySQLError:
+                pass
+
+        cursor.execute("""
+            SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
+                   g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
+                   c.country_name, c.country_code, c.region,
+                   i.indicator_name, i.unit_symbol
+            FROM greenhouse_emissions g
+            JOIN countries c ON g.country_id = c.country_id
+            JOIN ghg_indicator_details i ON g.ghg_indicator_id = i.ghg_indicator_id
+            WHERE g.row_id = %s
+        """, (id,))
+        record = cursor.fetchone()
+
+        if not record:
+            return jsonify({"success": False, "error": "Record not found"}), 404
+
+        db_conn.commit()
+        return jsonify({"success": True, "record": record}), 200
+
+    except MySQLError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+@ghg_bp.route("/api/delete/<int:id>", methods=["POST"])
+@admin_required
+def api_delete_ghg(id):
+    """AJAX endpoint for deleting a GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("SELECT row_id FROM greenhouse_emissions WHERE row_id = %s", (id,))
+        if not cursor.fetchone():
+            return jsonify({"success": False, "error": "Record not found"}), 404
+
+        data = request.get_json() or {}
+        audit_user_id = data.get("audit_user_id") or None
+        if audit_user_id == "":
+            audit_user_id = None
+
+        cursor.execute("DELETE FROM greenhouse_emissions WHERE row_id = %s", (id,))
+
+        if audit_user_id:
+            try:
+                cursor.execute("""
+                    INSERT INTO audit_logs 
+                    (student_id, action_type, table_name, record_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (audit_user_id, "DELETE", "greenhouse_emissions", id))
+            except MySQLError:
+                pass
+
+        db_conn.commit()
+        return jsonify({"success": True}), 200
+
+    except MySQLError as e:
+        db_conn.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+@ghg_bp.route("/api/get/<int:id>", methods=["GET"])
+@editor_required
+def api_get_ghg(id):
+    """AJAX endpoint for fetching a single GHG record."""
+    db_conn = get_db()
+    cursor = db_conn.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT g.row_id, g.country_id, g.ghg_indicator_id, g.year, g.indicator_value,
+                   g.share_of_total_pct, g.uncertainty_pct, g.source_notes,
+                   c.country_name, c.country_code, c.region,
+                   i.indicator_name, i.unit_symbol
+            FROM greenhouse_emissions g
+            JOIN countries c ON g.country_id = c.country_id
+            JOIN ghg_indicator_details i ON g.ghg_indicator_id = i.ghg_indicator_id
+            WHERE g.row_id = %s
+        """, (id,))
+        record = cursor.fetchone()
+
+        if not record:
+            return jsonify({"success": False, "error": "Record not found"}), 404
+
+        return jsonify({"success": True, "record": record}), 200
+
+    except MySQLError as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        cursor.close()
+
+
+# ---------- MAP VISUALIZATION ----------
+@ghg_bp.route("/map", methods=["GET"])
+def map_ghg():
+    """Display map visualization for GHG data with Country Mode and Region Mode."""
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        cursor.execute("SELECT DISTINCT year FROM greenhouse_emissions ORDER BY year DESC")
+        years = [row['year'] for row in cursor.fetchall()]
+        
+        cursor.execute("SELECT ghg_indicator_id, indicator_name FROM ghg_indicator_details ORDER BY ghg_indicator_id")
+        indicators = cursor.fetchall()
+        
+        cursor.execute("SELECT DISTINCT region FROM countries WHERE region IS NOT NULL ORDER BY region")
+        regions = [row['region'] for row in cursor.fetchall()]
+        
+        cursor.execute("""
+            SELECT 
+                country_code,
+                region,
+                country_name
+            FROM countries
+            WHERE country_code IS NOT NULL AND region IS NOT NULL
+            ORDER BY country_code
+        """)
+        country_region_map = {row['country_code'].upper(): row['region'] for row in cursor.fetchall()}
+        country_names_map = {row['country_code'].upper(): row['country_name'] for row in cursor.fetchall()}
+        
+    except MySQLError as e:
+        flash(f"Database error: {e}", "danger")
+        years = []
+        indicators = []
+        regions = []
+        country_region_map = {}
+        country_names_map = {}
+    finally:
+        cursor.close()
+    
+    return render_template(
+        "ghg_map.html", 
+        years=years, 
+        indicators=indicators, 
+        regions=regions,
+        country_region_map=country_region_map,
+        country_names_map=country_names_map
+    )
+
+
+@ghg_bp.route("/api/region-stats", methods=["GET"])
+def get_region_ghg_stats():
+    """Return aggregated GHG stats for a given region, year, and indicator."""
+    region = request.args.get("region", type=str)
+    year = request.args.get("year", type=int)
+    indicator_id = request.args.get("indicator_id", type=int, default=6)
+    
+    if not region:
+        abort(400, description="region parameter is required")
+    
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        where_clauses = ["c.region = %s", "g.ghg_indicator_id = %s"]
+        params = [region, indicator_id]
+        
+        if year:
+            where_clauses.append("g.year = %s")
+            params.append(year)
+        
+        where_sql = " AND ".join(where_clauses)
+        
+        query = f"""
+            SELECT 
+                c.region,
+                COUNT(DISTINCT c.country_id) as country_count,
+                AVG(g.indicator_value) as avg_value,
+                MIN(g.indicator_value) as min_value,
+                MAX(g.indicator_value) as max_value,
+                SUM(g.indicator_value) as total_value,
+                GROUP_CONCAT(DISTINCT c.country_name ORDER BY c.country_name SEPARATOR ', ') as countries
+            FROM countries c
+            INNER JOIN greenhouse_emissions g ON c.country_id = g.country_id
+            WHERE {where_sql}
+            AND g.indicator_value IS NOT NULL
+            GROUP BY c.region
+        """
+        
+        cursor.execute(query, params)
+        result = cursor.fetchone()
+        
+        if not result:
+            return jsonify({
+                "region": region,
+                "year": year,
+                "indicator_id": indicator_id,
+                "country_count": 0,
+                "avg_value": None,
+                "min_value": None,
+                "max_value": None,
+                "total_value": None,
+                "countries": []
+            })
+        
+        cursor.execute(
+            "SELECT indicator_name, unit_symbol FROM ghg_indicator_details WHERE ghg_indicator_id = %s",
+            (indicator_id,)
+        )
+        indicator_info = cursor.fetchone()
+        
+        return jsonify({
+            "region": result["region"],
+            "year": year,
+            "indicator_id": indicator_id,
+            "indicator_name": indicator_info["indicator_name"] if indicator_info else None,
+            "unit": indicator_info["unit_symbol"] if indicator_info else None,
+            "country_count": result["country_count"],
+            "avg_value": float(result["avg_value"]) if result["avg_value"] is not None else None,
+            "min_value": float(result["min_value"]) if result["min_value"] is not None else None,
+            "max_value": float(result["max_value"]) if result["max_value"] is not None else None,
+            "total_value": float(result["total_value"]) if result["total_value"] is not None else None,
+            "countries": result["countries"].split(", ") if result["countries"] else []
+        })
+        
+    except MySQLError as e:
+        abort(500, description=f"Database error: {e}")
+    finally:
+        cursor.close()

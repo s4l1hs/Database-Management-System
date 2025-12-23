@@ -1,0 +1,13 @@
+sus_indicator_id,indicator_name,indicator_code,indicator_description,unit_symbol
+1,"People using safely managed drinking water services % of population","SUS.H2O.SAFE.ZS","Access to safe drinking water","%"
+2,"People using safely managed sanitation services % of population","SUS.SAN.SAFE.ZS","Access to safe sanitation","%"
+3,"Access to electricity % of population","SUS.ELC.ACCS.ZS","Access to electricity","%"
+4,"Renewable energy consumption % of total final energy consumption","SUS.NRG.RNEW.ZS","Renewable energy share","%"
+5,"Expenditures for R&D % of GDP","SUS.RES.DEV.GDP","Research and development expenditure","%"
+6,"Urban population living in slums % of urban population","SUS.URB.SLUM.ZS","Urban slum population","%"
+7,"Ambient PM2.5 air pollution mean annual exposure micrograms per cubic meter","SUS.AIR.PM25","Air pollution exposure","µg/m3"
+8,"Adjusted net savings % of GNI","SUS.ECO.SAVE.ZS","Adjusted net savings","%"
+9,"Carbon dioxide emissions per capita metric tons","SUS.ENV.CO2","CO2 emissions per capita","metric tons"
+10,"Nationally protected terrestrial and marine areas % of total territorial area","SUS.ENV.PROT.ZS","Protected areas","%"
+11,"Intentional homicides Combined source estimates per 100,000 people","SUS.SOC.HOMI","Homicide rate","per 100k"
+12,"Internet use Individuals using the Internet % of population","SUS.TECH.INET.ZS","Internet usage","%"

@@ -1,0 +1,610 @@
+{% extends "base.html" %}
+
+{% block title %}Countries & Regions{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsvectormap/dist/css/jsvectormap.min.css" />
+<style>
+  .panel-soft {
+    border: 1px solid rgba(15,23,42,0.06);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 18px 50px rgba(15,23,42,0.06);
+  }
+  #world-map { width: 100%; height: 460px; border-radius: 18px; }
+  .map-shell { background: linear-gradient(135deg, #e0f2fe 0%, #eef2ff 60%, #ffffff 100%); padding: 16px; border-radius: 20px; border: 1px solid rgba(15,23,42,0.05); }
+  .jvm-tooltip { background: #111827; border-radius: 6px; padding: 6px 10px; font-family: 'Manrope', system-ui, sans-serif; color: #f9fafb; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; background: #eef2ff; color: #312e81; font-weight: 700; font-size: 13px; border: 1px solid rgba(37,99,235,0.2); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+  .region-legend { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tab-btn { border: 1px solid rgba(15,23,42,0.08); padding: 8px 14px; border-radius: 999px; background: #fff; color: #0f172a; font-weight: 700; }
+  .tab-btn.active { background: linear-gradient(90deg, #2563eb, #1d4ed8); color: #fff; border-color: #2563eb; box-shadow: 0 10px 30px rgba(37,99,235,0.25); }
+  .search-card { border: 1px solid rgba(15,23,42,0.05); border-radius: 14px; background: #fff; box-shadow: 0 10px 30px rgba(15,23,42,0.05); }
+  .table thead { background: linear-gradient(90deg, #eef2ff 0%, #e0f2fe 100%); }
+  .badge-soft { background: #eef2ff; color: #1d4ed8; border: 1px solid rgba(37,99,235,0.2); }
+  .region-stats-card { border: 1px solid rgba(15,23,42,0.06); border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.06); }
+  .stat-chip { border: 1px solid rgba(15,23,42,0.06); border-radius: 14px; padding: 12px 14px; background: #fff; box-shadow: 0 12px 30px rgba(15,23,42,0.06); }
+  .stat-chip h6 { margin: 0; font-size: 13px; color: #64748b; letter-spacing: 0.3px; text-transform: uppercase; }
+  .stat-chip .value { font-size: 22px; font-weight: 800; color: #0f172a; }
+  .stat-chip small { color: #94a3b8; }
+  .country-row {
+    cursor: pointer;
+    transition: background-color 0.12s ease, transform 0.02s ease;
+  }
+  .country-row:hover {
+    background-color: rgba(37,99,235,0.04);
+  }
+  .country-row.no-data {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .country-row.no-data:hover {
+    background-color: transparent;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-start mb-4 gap-3">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <span class="pill"><i class="fa-solid fa-globe"></i> Interactive map</span>
+      <span class="pill" style="background:#ecfdf3;color:#166534;border-color:rgba(22,101,52,0.2);">{{ regions|length }} regions</span>
+      <span class="pill" style="background:#fff7ed;color:#9a3412;border-color:rgba(234,88,12,0.2);">{{ rows|length }} countries</span>
+    </div>
+    <h1 class="h3 fw-bold mb-1">Countries & Regions Explorer</h1>
+    <p class="text-muted mb-0">Hover to see details, click to filter or load region averages.</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <button class="tab-btn active" id="tab-countries" data-mode="countries">Countries</button>
+    <button class="tab-btn" id="tab-regions" data-mode="regions">Regions</button>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-chip">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6>Countries</h6>
+        <i class="fa-solid fa-flag text-primary"></i>
+      </div>
+      <div class="value">{{ total_count }}</div>
+      <small>Total countries</small>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-chip">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6>Regions</h6>
+        <i class="fa-solid fa-earth-europe text-success"></i>
+      </div>
+      <div class="value">{{ regions|length }}</div>
+      <small>Continental groups</small>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-chip">
+      <div class="d-flex justify-content-between align-items-center">
+        <h6>Mode</h6>
+        <i class="fa-solid fa-layer-group text-warning"></i>
+      </div>
+      <div class="value" id="modeLabel">Countries</div>
+      <small>Toggles with the tabs</small>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-7">
+    <div class="map-shell">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="text-muted small" id="modeHint">Country mode: hover to see country names, click to filter the list.</div>
+        <div class="region-legend" id="regionLegend"></div>
+      </div>
+      <div id="world-map"></div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="search-card p-3 mb-3">
+      <form method="get" class="row g-2 align-items-center" id="searchForm">
+        <div class="col-sm-7">
+          <input
+            type="text"
+            class="form-control"
+            name="q"
+            id="searchInput"
+            placeholder="Search by name or code..."
+            value="{{ search }}"
+          />
+        </div>
+        <div class="col-sm-auto">
+          <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass me-1"></i>Search</button>
+        </div>
+        {% if search %}
+          <div class="col-sm-auto">
+            <a href="{{ url_for('countries.list_countries') }}" class="btn btn-outline-secondary">Clear ({{ search }})</a>
+          </div>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="panel-countries" role="tabpanel">
+        <div class="table-responsive panel-soft p-2" style="max-height: 600px; overflow-y: auto;">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Country</th>
+                <th>Code</th>
+                <th>Region</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+                {% set has_data = (row.data_count or 0) > 0 %}
+                <tr
+                  class="country-row {% if not has_data %}no-data{% endif %}"
+                  title="{{ row.region }}"
+                  data-index="{{ loop.index0 }}"
+                  data-country-id="{{ row.country_id }}"
+                  data-country-name="{{ row.country_name }}"
+                  data-has-data="{{ 1 if has_data else 0 }}"
+                >
+                  <td>{{ loop.index }}</td>
+                  <td class="fw-semibold">{{ row.country_name }}</td>
+                  <td><span class="badge bg-primary">{{ row.country_code }}</span></td>
+                  <td><span class="badge badge-soft">{{ row.region or '-' }}</span></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div id="noDataMessage" class="alert alert-info mt-3 d-none small mb-0">
+          No data available for this country in the selected dataset.
+        </div>
+        {% if not rows %}
+          <div class="alert alert-warning text-center mt-3">
+            No country found for "<strong>{{ search }}</strong>".
+            <a href="{{ url_for('countries.list_countries') }}">Show All</a>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="tab-pane fade" id="panel-regions" role="tabpanel">
+        <div class="mb-3 d-flex flex-wrap gap-2" id="regionChips">
+          {% for r in regions %}
+            <button type="button" class="btn btn-outline-primary btn-sm" data-region="{{ r }}">{{ r }}</button>
+          {% endfor %}
+        </div>
+        <div id="region-stats-container" class="mt-4" style="display: none;">
+    <div class="card shadow-sm p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h3 class="mb-0">Regional Averages: <span id="region-title" class="text-primary"></span></h3>
+        
+        <div class="d-flex align-items-center gap-2 bg-light p-2 rounded border">
+            <label for="regionYearSelector" class="fw-bold small text-muted text-uppercase mb-0">Year:</label>
+            <select id="regionYearSelector" class="form-select form-select-sm border-0 bg-transparent fw-bold" style="width: auto;" onchange="updateRegionDisplay()">
+                </select>
+        </div>
+    </div>
+    
+    <ul class="nav nav-pills mb-3" id="regionTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" onclick="switchRegionTab('energy')" id="tab-energy">Energy</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('health')" id="tab-health">Health</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('freshwater')" id="tab-freshwater">Freshwater</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('ghg')" id="tab-ghg">GHG</button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" onclick="switchRegionTab('sustainability')" id="tab-sustainability">Sustainability</button>
+        </li>
+    </ul>
+
+       <div class="table-responsive">
+    <table class="table table-hover table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th style="width: 50%;">Indicator</th>
+                <th style="width: 15%;" class="text-center">Year</th> 
+                <th style="width: 20%;">Regional Average</th>
+                <th style="width: 15%;">Unit</th>
+            </tr>
+        </thead>
+        <tbody id="region-table-body">
+            </tbody>
+    </table>
+</div>
+        <div class="mt-4 pt-3 border-top">
+            <small class="text-muted d-block mb-2">Countries in this region:</small>
+            <div id="region-countries-container" class="d-flex flex-wrap"></div>
+        </div>
+    </div>
+</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/js/jsvectormap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsvectormap/dist/maps/world.js"></script>
+
+<script>
+  let currentRegionData = {};
+  let currentCategory = 'energy';
+  
+    // Continent mapping (ISO2 -> continent)
+    const continentMap = {
+      AF:'Asia',AL:'Europe',DZ:'Africa',AS:'Oceania',AD:'Europe',AO:'Africa',AI:'North America',AQ:'Antarctica',AG:'North America',AR:'South America',AM:'Asia',AW:'North America',AU:'Oceania',AT:'Europe',AZ:'Asia',BS:'North America',BH:'Asia',BD:'Asia',BB:'North America',BY:'Europe',BE:'Europe',BZ:'North America',BJ:'Africa',BM:'North America',BT:'Asia',BO:'South America',BA:'Europe',BW:'Africa',BV:'Antarctica',BR:'South America',IO:'Asia',VG:'North America',BN:'Asia',BG:'Europe',BF:'Africa',BI:'Africa',KH:'Asia',CM:'Africa',CA:'North America',CV:'Africa',KY:'North America',CF:'Africa',TD:'Africa',CL:'South America',CN:'Asia',CX:'Asia',CC:'Asia',CO:'South America',KM:'Africa',CG:'Africa',CD:'Africa',CK:'Oceania',CR:'North America',CI:'Africa',HR:'Europe',CU:'North America',CY:'Asia',CZ:'Europe',DK:'Europe',DJ:'Africa',DM:'North America',DO:'North America',EC:'South America',EG:'Africa',SV:'North America',GQ:'Africa',ER:'Africa',EE:'Europe',SZ:'Africa',ET:'Africa',FK:'South America',FO:'Europe',FJ:'Oceania',FI:'Europe',FR:'Europe',GF:'South America',PF:'Oceania',TF:'Antarctica',GA:'Africa',GM:'Africa',GE:'Asia',DE:'Europe',GH:'Africa',GI:'Europe',GR:'Europe',GL:'North America',GD:'North America',GP:'North America',GU:'Oceania',GT:'North America',GG:'Europe',GN:'Africa',GW:'Africa',GY:'South America',HT:'North America',HM:'Antarctica',VA:'Europe',HN:'North America',HK:'Asia',HU:'Europe',IS:'Europe',IN:'Asia',ID:'Asia',IR:'Asia',IQ:'Asia',IE:'Europe',IM:'Europe',IL:'Asia',IT:'Europe',JM:'North America',JP:'Asia',JE:'Europe',JO:'Asia',KZ:'Asia',KE:'Africa',KI:'Oceania',KP:'Asia',KR:'Asia',KW:'Asia',KG:'Asia',LA:'Asia',LV:'Europe',LB:'Asia',LS:'Africa',LR:'Africa',LY:'Africa',LI:'Europe',LT:'Europe',LU:'Europe',MO:'Asia',MK:'Europe',MG:'Africa',MW:'Africa',MY:'Asia',MV:'Asia',ML:'Africa',MT:'Europe',MH:'Oceania',MQ:'North America',MR:'Africa',MU:'Africa',YT:'Africa',MX:'North America',FM:'Oceania',MD:'Europe',MC:'Europe',MN:'Asia',ME:'Europe',MS:'North America',MA:'Africa',MZ:'Africa',MM:'Asia',NA:'Africa',NR:'Oceania',NP:'Asia',NL:'Europe',NC:'Oceania',NZ:'Oceania',NI:'North America',NE:'Africa',NG:'Africa',NU:'Oceania',NF:'Oceania',MP:'Oceania',NO:'Europe',OM:'Asia',PK:'Asia',PW:'Oceania',PS:'Asia',PA:'North America',PG:'Oceania',PY:'South America',PE:'South America',PH:'Asia',PN:'Oceania',PL:'Europe',PT:'Europe',PR:'North America',QA:'Asia',RE:'Africa',RO:'Europe',RU:'Asia',RW:'Africa',BL:'North America',SH:'Africa',KN:'North America',LC:'North America',MF:'North America',PM:'North America',VC:'North America',WS:'Oceania',SM:'Europe',ST:'Africa',SA:'Asia',SN:'Africa',RS:'Europe',SC:'Africa',SL:'Africa',SG:'Asia',SX:'North America',SK:'Europe',SI:'Europe',SB:'Oceania',SO:'Africa',ZA:'Africa',GS:'Antarctica',SS:'Africa',ES:'Europe',LK:'Asia',SD:'Africa',SR:'South America',SJ:'Europe',SE:'Europe',CH:'Europe',SY:'Asia',TW:'Asia',TJ:'Asia',TZ:'Africa',TH:'Asia',TL:'Asia',TG:'Africa',TK:'Oceania',TO:'Oceania',TT:'North America',TN:'Africa',TR:'Asia',TM:'Asia',TC:'North America',TV:'Oceania',UG:'Africa',UA:'Europe',AE:'Asia',GB:'Europe',US:'North America',UM:'Oceania',UY:'South America',UZ:'Asia',VU:'Oceania',VE:'South America',VN:'Asia',VI:'North America',WF:'Oceania',EH:'Africa',YE:'Asia',ZM:'Africa',ZW:'Africa',AX:'Europe'
+    };
+
+    const regionStatsUrl = "{{ url_for('countries.get_region_stats') }}";
+    const hasDataByIso2 = {{ has_data_by_iso2|tojson|safe }};
+    let mode = 'countries';
+
+    const regionList = ['Africa','Europe','Asia','North America','South America','Oceania','Antarctica'];
+    const regionColors = {
+      'Africa': '#a0522d', 
+      'Europe': '#ffd54f', 
+      'Asia': '#10b981',
+      'North America': '#2563eb',
+      'South America': '#f97316',
+      'Oceania': '#0ea5e9',
+      'Antarctica': '#94a3b8'
+    };
+
+    function buildLegend() {
+      const legend = document.getElementById('regionLegend');
+      legend.innerHTML = regionList.map(r => `<span class="small text-muted"><span class="legend-dot" style="background:${regionColors[r]}"></span>${r}</span>`).join('');
+    }
+
+    const map = new jsVectorMap({
+        selector: '#world-map',
+        map: 'world',
+        zoomButtons: true,
+        zoomOnScroll: false,
+        regionStyle: {
+        initial: { fill: '#d1d5db', stroke: '#f8fafc', strokeWidth: 0, fillOpacity: 1 },
+        hover: { fill: '#0d6efd', cursor: 'pointer', strokeWidth: 0.4 },
+        selected: { fill: '#0d6efd', fillOpacity: 1 } 
+    },
+        series: {
+          regions: [{ values: {}, scale: regionColors, normalizeFunction: 'polynomial' }]
+        },
+       onRegionTooltipShow: function(event, tooltip, code) {
+    if (mode === 'regions') {
+        // --- REGION MODE: Show Continent Name ---
+        const regionName = continentMap[code.toUpperCase()];
+        if (regionName) {
+           
+            tooltip.text(
+                `<div class="text-center">
+                    <strong>${regionName}</strong><br>
+                    <small class="text-muted">Click to view averages</small>
+                 </div>`
+            , true); 
+        }
+    } else {
+        // --- COUNTRY MODE: Default Behavior ---
+
+    }
+},
+        onRegionClick: function(event, code) {
+    const codeUpper = code.toUpperCase();
+    
+    if (mode === 'regions') {
+        // --- REGION MODE ---
+       
+        const regionName = continentMap[codeUpper];
+        
+        if (regionName) {
+            
+            fetchRegionStats(regionName);
+
+           
+            document.querySelectorAll('#regionChips button').forEach(btn => {
+                if (btn.innerText === regionName) {
+                    btn.classList.remove('btn-outline-primary');
+                    btn.classList.add('btn-primary');
+                } else {
+                    btn.classList.add('btn-outline-primary');
+                    btn.classList.remove('btn-primary');
+                }
+            });
+        }
+    } else {
+        // --- COUNTRY MODE ---
+      
+        const hasData = Object.prototype.hasOwnProperty.call(hasDataByIso2, codeUpper)
+          ? !!hasDataByIso2[codeUpper]
+          : false;
+
+        if (!hasData) {
+          event.preventDefault();
+          showNoDataMessage('No data available for this country in the selected dataset.');
+          return;
+        }
+
+        window.location.href = `/countries/resolve/${codeUpper}`;
+    }
+}
+    });
+
+    function applyRegionColors(enable) {
+    
+    if (!map || !map.series || !map.series.regions) return;
+    
+    const series = map.series.regions[0];
+    
+    if (enable) {
+        // --- REGION MODE: HIDE INTERNAL BORDERS ---
+        
+        series.setValues(continentMap);
+        
+        
+        Object.keys(map.regions).forEach(code => {
+            const regionName = continentMap[code.toUpperCase()];
+            if (regionName && regionColors[regionName]) {
+                const color = regionColors[regionName];
+                
+                
+                map.regions[code].element.setStyle({
+                    stroke: color, 
+                    'stroke-width': 1.5 
+                });
+            }
+        });
+
+    } else {
+        // --- COUNTRY MODE: SHOW INTERNAL BORDERS ---
+        
+    
+        series.clear(); 
+        
+   
+        Object.keys(map.regions).forEach(code => {
+            map.regions[code].element.setStyle({
+                fill: '#d1d5db',    
+                stroke: '#ffffff', 
+                'stroke-width': 0.5 
+            });
+        });
+    }
+}
+
+    const hint = document.getElementById('modeHint');
+    const regionStatsBox = document.getElementById('region-stats-container');
+    document.querySelectorAll('[data-mode]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('[data-mode]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            mode = btn.dataset.mode;
+            document.getElementById('panel-countries').classList.toggle('show', mode === 'countries');
+            document.getElementById('panel-countries').classList.toggle('active', mode === 'countries');
+            document.getElementById('panel-regions').classList.toggle('show', mode === 'regions');
+            document.getElementById('panel-regions').classList.toggle('active', mode === 'regions');
+            hint.textContent = mode === 'countries'
+              ? 'Country mode: hover to see country names, click to filter the list.'
+              : 'Region mode: hover to see the region, click to load region averages.';
+            applyRegionColors(mode === 'regions');
+            if (mode === 'countries') {
+              if (regionStatsBox) regionStatsBox.classList.add('d-none');
+              map.clearSelectedRegions();
+            }
+            const modeLabel = document.getElementById('modeLabel');
+            if (modeLabel) modeLabel.textContent = mode === 'countries' ? 'Countries' : 'Regions';
+        });
+    });
+
+    document.querySelectorAll('#regionChips [data-region]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            mode = 'regions';
+            document.getElementById('tab-regions').classList.add('active');
+            document.getElementById('tab-countries').classList.remove('active');
+            document.getElementById('panel-regions').classList.add('show','active');
+            document.getElementById('panel-countries').classList.remove('show','active');
+            hint.textContent = 'Region mode: hover to see the region, click to load region averages.';
+            applyRegionColors(true);
+            fetchRegionStats(btn.dataset.region);
+            const modeLabel = document.getElementById('modeLabel');
+            if (modeLabel) modeLabel.textContent = 'Regions';
+        });
+    });
+
+   async function fetchRegionStats(regionName) {
+   
+    const container = document.getElementById("region-stats-container");
+    if (container) container.style.display = "block";
+
+   
+    const titleEl = document.getElementById("region-title");
+    if (titleEl) titleEl.textContent = regionName;
+
+   
+    const tbody = document.getElementById("region-table-body");
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <div class="mt-2 text-muted">Loading ${regionName} averages...</div>
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        
+        const res = await fetch(`${regionStatsUrl}?region=${encodeURIComponent(regionName)}`);
+        if (!res.ok) throw new Error('Failed to load region stats');
+        
+        const data = await res.json();
+        
+       
+        renderRegionStats(data);
+        
+    } catch (err) {
+     
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="text-center text-danger py-3">
+                        Error: ${err.message}
+                    </td>
+                </tr>`;
+        }
+    }
+}
+
+function switchRegionTab(category) {
+    currentCategory = category; // Update category state
+    
+    // Update visual "Active" state of the tabs
+    document.querySelectorAll('#regionTabs .nav-link').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById(`tab-${category}`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Refresh the table display
+    updateRegionDisplay();
+}
+    function renderRegionStats(data) {
+    currentRegionData = data; 
+    
+    // 1. Collect every unique year available in the dataset for the dropdown
+    const allYears = new Set();
+    ['energy', 'health', 'freshwater', 'ghg', 'sustainability'].forEach(cat => {
+        if (data[cat]) {
+            data[cat].forEach(item => {
+                if (item.year) allYears.add(item.year);
+            });
+        }
+    });
+
+    const yearSelector = document.getElementById("regionYearSelector");
+    const sortedYears = Array.from(allYears).sort((a, b) => b - a); 
+
+    // 2. Populate the Year Dropdown UI
+    if (sortedYears.length > 0) {
+        yearSelector.innerHTML = sortedYears.map(y => `<option value="${y}">${y}</option>`).join('');
+    } else {
+        yearSelector.innerHTML = '<option value="">No Data</option>';
+    }
+
+    // 3. Update Title and Country Badges
+    const countryCount = data.countries ? data.countries.length : 0;
+    document.getElementById("region-title").innerHTML = `${data.region} <span class="badge bg-primary fs-6 ms-2">${countryCount} countries</span>`;
+    
+    const countriesContainer = document.getElementById("region-countries-container");
+    if (countriesContainer) {
+        countriesContainer.innerHTML = (data.countries || [])
+            .map(c => `<span class="badge bg-light text-dark border me-1 mb-1">${c}</span>`)
+            .join('');
+    }
+
+    // 4. Show container and trigger the default view
+    document.getElementById("region-stats-container").style.display = "block";
+    switchRegionTab('energy');
+}
+function updateRegionDisplay() {
+    const yearSelector = document.getElementById("regionYearSelector");
+    if (!yearSelector) return;
+
+    const selectedYear = parseInt(yearSelector.value);
+    const tbody = document.getElementById("region-table-body");
+    const items = currentRegionData[currentCategory] || [];
+
+    // Filter items based on the user-selected year
+    const filteredItems = items.filter(item => parseInt(item.year) === selectedYear);
+
+    tbody.innerHTML = ""; 
+
+    if (filteredItems.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">No ${currentCategory} data found for ${selectedYear}.</td></tr>`;
+        return;
+    }
+
+    // Build and inject the new rows into the table
+    filteredItems.forEach(item => {
+        const avgVal = item.avg_val !== null ? parseFloat(item.avg_val).toFixed(2) : "N/A";
+        tbody.innerHTML += `
+            <tr>
+                <td class="fw-bold">${item.indicator_name}</td>
+                <td class="text-center"><span class="badge bg-light text-dark border">${item.year}</span></td>
+                <td><span class="badge bg-primary fs-6">${avgVal}</span></td>
+                <td class="text-muted small">${item.unit || ""}</td>
+            </tr>
+        `;
+    });
+}
+
+document.getElementById('btn-regions').addEventListener('click', function() {
+    mode = 'regions';
+    applyRegionColors(true); 
+});
+
+    function showNoDataMessage(text) {
+      const el = document.getElementById('noDataMessage');
+      if (!el) return;
+      el.textContent = text || 'No data available for this country in the selected dataset.';
+      el.classList.remove('d-none');
+
+      if (showNoDataMessage._timeoutId) {
+        clearTimeout(showNoDataMessage._timeoutId);
+      }
+      showNoDataMessage._timeoutId = setTimeout(() => {
+        el.classList.add('d-none');
+      }, 4000);
+    }
+
+    // Table row click handling for Countries tab
+    document.querySelectorAll('tr.country-row').forEach((row) => {
+      row.addEventListener('click', (ev) => {
+        const hasData = row.dataset.hasData === '1';
+        const countryId = row.dataset.countryId;
+        const countryName = row.dataset.countryName || 'this country';
+
+        if (!hasData) {
+          ev.preventDefault();
+          showNoDataMessage(`No data available for ${countryName} in the selected dataset.`);
+          return;
+        }
+
+        if (countryId) {
+          window.location.href = `/countries/profile/${countryId}`;
+        }
+      });
+    });
+
+    // Visually mute regions with no data on the world map in country mode
+    function applyDataAvailabilityStyling() {
+      if (!map || !map.regions) return;
+      Object.keys(map.regions).forEach((code) => {
+        const codeUpper = code.toUpperCase();
+        const hasData = Object.prototype.hasOwnProperty.call(hasDataByIso2, codeUpper)
+          ? !!hasDataByIso2[codeUpper]
+          : false;
+
+        if (!hasData) {
+          map.regions[code].element.setStyle({
+            fill: '#e5e7eb',
+            'fill-opacity': 0.6,
+            cursor: 'not-allowed'
+          });
+        }
+      });
+    }
+
+    buildLegend();
+    applyDataAvailabilityStyling();
+   
+</script>
+{% endblock %}

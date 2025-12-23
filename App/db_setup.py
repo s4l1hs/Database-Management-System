@@ -1,51 +1,75 @@
 import os
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError
+import re
+import mysql.connector
+from dotenv import load_dotenv
 
-DB_USER = "root"
-DB_PASS = "sifren"
-DB_HOST = "localhost"
-DB_NAME = "wdi_project"
+load_dotenv()
 
-SQL_FILE_PATH = os.path.join('SQL', 'master.sql')
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASS = os.getenv("DB_PASSWORD", "db_pass")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_NAME = os.getenv("DB_NAME", "wdi_project")
+DB_PORT = int(os.getenv("DB_PORT", "3306"))
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+SQL_FILE_PATH = os.path.join(BASE_DIR, 'SQL', 'database.sql')
 
-def setup_database():
+
+def _exec_statements(cursor, sql_text: str):
+    # remove single-line and block comments, then split on semicolon
+    sql_clean = re.sub(r'--.*\n', '\n', sql_text)
+    sql_clean = re.sub(r'/\*.*?\*/', '', sql_clean, flags=re.S)
+    commands = [c.strip() for c in sql_clean.split(';') if c.strip()]
+    for cmd in commands:
+        cursor.execute(cmd)
+
+
+def setup_nuclear():
+    # connect as root (no database) to drop/create the database
     try:
-        engine_url_root = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}"
-        root_engine = create_engine(engine_url_root)
-
-        with root_engine.connect() as conn:
-            conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"))
-            print(f"Database '{DB_NAME}' checked/created.")
-
-        engine_url_db = f"mysql+pymysql://{DB_USER}:{DB_PASS}@{DB_HOST}/{DB_NAME}"
-        db_engine = create_engine(engine_url_db)
-
+        conn_root = mysql.connector.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, port=DB_PORT)
+        conn_root.autocommit = True
+        cur = conn_root.cursor()
         try:
-            with open(SQL_FILE_PATH, 'r', encoding='utf-8') as f:
-                sql_script = f.read()
-        except FileNotFoundError:
-            print(f"HATA: '{SQL_FILE_PATH}' dosyası bulunamadı.")
-            return
-
-        with db_engine.connect() as conn:
-            commands = sql_script.split(';')
-            print(f"Executing commands from '{SQL_FILE_PATH}'...")
-            
-            for command in commands:
-                if command.strip():
-                    conn.execute(text(command))
-            
-            conn.commit()
-            print("Success! All tables created and sample data inserted.")
-
-    except OperationalError as e:
-        if "Access denied" in str(e):
-            print(f"HATA: MySQL bağlantısı başarısız. Kullanıcı adı veya şifre hatalı.")
-        else:
-            print(f"Veritabanı hatası: {e}")
+            cur.execute(f"DROP DATABASE IF EXISTS `{DB_NAME}`")
+            print(f"🗑️ The old database '{DB_NAME}' has been completely deleted.")
+            cur.execute(f"CREATE DATABASE `{DB_NAME}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+        finally:
+            cur.close()
     except Exception as e:
-        print(f"Beklenmedik hata: {e}")
+        print(f"ERROR (Root Connection): {e}")
+        return
+    finally:
+        try:
+            conn_root.close()
+        except Exception:
+            pass
+
+    # connect to the newly created database and run SQL script
+    try:
+        with open(SQL_FILE_PATH, 'r', encoding='utf-8') as f:
+            sql_script = f.read()
+    except FileNotFoundError:
+        print(f"error:'{SQL_FILE_PATH}' could not be found.")
+        return
+
+    try:
+        conn_db = mysql.connector.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, port=DB_PORT, database=DB_NAME)
+        conn_db.autocommit = True
+        cur = conn_db.cursor()
+        try:
+            cur.execute("SET FOREIGN_KEY_CHECKS = 0;")
+            _exec_statements(cur, sql_script)
+            cur.execute("SET FOREIGN_KEY_CHECKS = 1;")
+        finally:
+            cur.close()
+    except Exception as e:
+        print(f"UNEXPECTED ERROR: {e}")
+    finally:
+        try:
+            conn_db.close()
+        except Exception:
+            pass
+
 
 if __name__ == "__main__":
-    setup_database()
+    setup_nuclear()

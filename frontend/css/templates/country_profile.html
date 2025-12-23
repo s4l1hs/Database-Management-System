@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% block title %}{{ country.country_name }} | Country Profile{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 fw-bold mb-1">{{ country.country_name }}</h1>
+      <div class="text-muted">
+        <span class="me-2">ID: <span class="badge bg-dark">{{ country.country_id }}</span></span>
+        <span class="me-2">Code: <span class="badge bg-primary">{{ country.country_code }}</span></span>
+        <span>Region: <span class="badge bg-light text-dark">{{ country.region or '-' }}</span></span>
+      </div>
+    </div>
+    <a href="{{ url_for('countries.list_countries') }}" class="btn btn-outline-secondary">Back</a>
+  </div>
+
+  <ul class="nav nav-pills mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#t-health" type="button">Health ({{ health|length }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-energy" type="button">Energy ({{ energy|length }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-freshwater" type="button">Freshwater ({{ freshwater|length }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-ghg" type="button">GHG ({{ ghg|length }})</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#t-sus" type="button">Sustainability ({{ sustainability|length }})</button></li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- HEALTH -->
+    <div class="tab-pane fade show active" id="t-health">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="mb-3">Health System</h5>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th><th>Year</th><th>Indicator</th><th>Value</th><th>Unit</th><th>Source Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in health %}
+                  <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.year }}</td>
+                    <td class="fw-semibold">{{ r.indicator }}</td>
+                    <td>{{ r.value }}</td>
+                    <td>{{ r.unit or '-' }}</td>
+                    <td class="text-muted small">{{ r.note or '' }}</td>
+                  </tr>
+                {% endfor %}
+                {% if not health %}
+                  <tr><td colspan="6" class="text-muted text-center py-4">No health data for this country.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENERGY -->
+    <div class="tab-pane fade" id="t-energy">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="mb-3">Energy</h5>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th><th>Year</th><th>Indicator</th><th>Value</th><th>Unit</th><th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in energy %}
+                  <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.year }}</td>
+                    <td class="fw-semibold">{{ r.indicator }}</td>
+                    <td>{{ r.value }}</td>
+                    <td>{{ r.unit or '-' }}</td>
+                    <td class="text-muted small">{{ r.note or '' }}</td>
+                  </tr>
+                {% endfor %}
+                {% if not energy %}
+                  <tr><td colspan="6" class="text-muted text-center py-4">No energy data for this country.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FRESHWATER -->
+    <div class="tab-pane fade" id="t-freshwater">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="mb-3">Freshwater</h5>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th><th>Year</th><th>Indicator</th><th>Value</th><th>Unit</th><th>Source Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in freshwater %}
+                  <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.year }}</td>
+                    <td class="fw-semibold">{{ r.indicator }}</td>
+                    <td>{{ r.value }}</td>
+                    <td>{{ r.unit or '-' }}</td>
+                    <td class="text-muted small">{{ r.note or '' }}</td>
+                  </tr>
+                {% endfor %}
+                {% if not freshwater %}
+                  <tr><td colspan="6" class="text-muted text-center py-4">No freshwater data for this country.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GHG -->
+    <div class="tab-pane fade" id="t-ghg">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="mb-3">GHG Emissions</h5>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th><th>Year</th><th>Indicator</th><th>Value</th><th>Unit</th><th>Source Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in ghg %}
+                  <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.year }}</td>
+                    <td class="fw-semibold">{{ r.indicator }}</td>
+                    <td>{{ r.value }}</td>
+                    <td>{{ r.unit or '-' }}</td>
+                    <td class="text-muted small">{{ r.note or '' }}</td>
+                  </tr>
+                {% endfor %}
+                {% if not ghg %}
+                  <tr><td colspan="6" class="text-muted text-center py-4">No GHG data for this country.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUSTAINABILITY -->
+    <div class="tab-pane fade" id="t-sus">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="mb-3">Sustainability</h5>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>ID</th><th>Year</th><th>Indicator</th><th>Value</th><th>Source Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in sustainability %}
+                  <tr>
+                    <td>{{ r.id }}</td>
+                    <td>{{ r.year }}</td>
+                    <td class="fw-semibold">{{ r.indicator }}</td>
+                    <td>{{ r.value }}</td>
+                    <td class="text-muted small">{{ r.note or '' }}</td>
+                  </tr>
+                {% endfor %}
+                {% if not sustainability %}
+                  <tr><td colspan="5" class="text-muted text-center py-4">No sustainability data for this country.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
